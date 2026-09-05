@@ -17,4 +17,5 @@ abstract class AppRoutes {
   static const String administration = '/administration';
   static const String reports = '/reports';
   static const String auditLogs = '/audit-logs';
+  static const String newConversation = '/new-conversation';
 }

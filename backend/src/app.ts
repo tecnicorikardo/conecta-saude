@@ -11,6 +11,7 @@ import messagesRoutes from './modules/messages/messages.routes';
 import announcementsRoutes from './modules/announcements/announcements.routes';
 import reportsRoutes from './modules/reports/reports.routes';
 import auditRoutes from './modules/audit/audit.routes';
+import channelsRoutes from './modules/channels/channels.routes';
 
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 
@@ -81,6 +82,7 @@ export function createApp(): express.Application {
   app.use('/api/conversations', conversationsRoutes);
   app.use('/api/messages', messagesRoutes);
   app.use('/api/announcements', announcementsRoutes);
+  app.use('/api/channels', channelsRoutes);
   app.use('/api/reports', reportsRoutes);
   app.use('/api/admin/audit-logs', auditRoutes);
 

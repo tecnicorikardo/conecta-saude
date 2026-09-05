@@ -8,6 +8,7 @@ import '../../domain/entities/conversation_entity.dart';
 import '../../domain/entities/message_entity.dart';
 import '../providers/chat_provider.dart';
 import '../widgets/conversation_avatar.dart';
+import 'new_conversation_page.dart';
 
 class ConversationsPage extends ConsumerStatefulWidget {
   const ConversationsPage({super.key});
@@ -80,7 +81,21 @@ class _ConversationsPageState extends ConsumerState<ConversationsPage>
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // TODO: abrir seletor de novo contato
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (_) => DraggableScrollableSheet(
+              initialChildSize: 0.9,
+              maxChildSize: 0.95,
+              minChildSize: 0.5,
+              builder: (_, scrollController) => ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(20)),
+                child: const NewConversationPage(),
+              ),
+            ),
+          );
         },
         tooltip: 'Nova conversa',
         child: const Icon(Icons.chat_outlined),
@@ -115,10 +130,30 @@ class _ConversationsPageState extends ConsumerState<ConversationsPage>
         ),
         PopupMenuButton<String>(
           icon: const Icon(Icons.more_vert, color: Colors.white),
-          onSelected: (_) {},
+          onSelected: (value) {
+            if (value == 'novo_grupo') {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (_) => DraggableScrollableSheet(
+                  initialChildSize: 0.9,
+                  maxChildSize: 0.95,
+                  minChildSize: 0.5,
+                  builder: (_, __) => ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(20)),
+                    child: const NewConversationPage(),
+                  ),
+                ),
+              );
+            } else if (value == 'recarregar') {
+              ref.read(conversationsProvider.notifier).load();
+            }
+          },
           itemBuilder: (_) => const [
             PopupMenuItem(value: 'novo_grupo', child: Text('Novo grupo')),
-            PopupMenuItem(value: 'marcar_lidas', child: Text('Marcar como lidas')),
+            PopupMenuItem(value: 'recarregar', child: Text('Recarregar')),
           ],
         ),
       ],

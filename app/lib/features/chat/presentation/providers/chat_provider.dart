@@ -1,318 +1,312 @@
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
-import '../../domain/entities/message_entity.dart';
+
+import '../../../auth/presentation/providers/current_user_provider.dart';
+import '../../data/repositories/conversation_repository.dart';
+import '../../data/models/conversation_model.dart';
 import '../../domain/entities/conversation_entity.dart';
+import '../../domain/entities/message_entity.dart';
 
-// ─── Provider do usuário atual (mock até integração real) ─────────────────────
-final currentUserIdProvider = Provider<String>((_) => 'user-me');
-final currentUserNomeProvider = Provider<String>((_) => 'Você');
+// ─── Usuário atual ────────────────────────────────────────────────────────────
+final currentUserIdProvider = Provider<String>((ref) {
+  final user = ref.watch(currentUserProvider).value;
+  return user?.id ?? '';
+});
 
-// ─── Dados mock para desenvolvimento ─────────────────────────────────────────
-final _mockParticipants = [
-  const ConversationParticipant(
-    id: 'user-ana',
-    nome: 'Ana Paula Ferreira',
-    cargo: 'Coordenadora de Enfermagem',
-    setorNome: 'Enfermagem',
-    hierarquiaNivel: 2,
-  ),
-  const ConversationParticipant(
-    id: 'user-marcos',
-    nome: 'Marcos Antônio Silva',
-    cargo: 'Supervisor de Enfermagem',
-    setorNome: 'Enfermagem',
-    hierarquiaNivel: 3,
-  ),
-  const ConversationParticipant(
-    id: 'user-bruna',
-    nome: 'Bruna Oliveira Souza',
-    cargo: 'Técnica de Enfermagem',
-    setorNome: 'Enfermagem',
-    hierarquiaNivel: 4,
-  ),
-  const ConversationParticipant(
-    id: 'user-roberto',
-    nome: 'Roberto Alves Costa',
-    cargo: 'Coordenador de Manutenção',
-    setorNome: 'Manutenção',
-    hierarquiaNivel: 2,
-  ),
-];
+final currentUserNomeProvider = Provider<String>((ref) {
+  final user = ref.watch(currentUserProvider).value;
+  return user?.nome ?? 'Você';
+});
 
-const _mockMe = ConversationParticipant(
-  id: 'user-me',
-  nome: 'Você',
-  cargo: 'Supervisor',
-  setorNome: 'Enfermagem',
-  hierarquiaNivel: 3,
-);
-
-// ─── Lista de conversas ───────────────────────────────────────────────────────
-final conversationsProvider = StateNotifierProvider<ConversationsNotifier,
-    AsyncValue<List<ConversationEntity>>>((ref) {
-  return ConversationsNotifier();
+// ─── Lista de conversas — dados reais da API ──────────────────────────────────
+final conversationsProvider =
+    StateNotifierProvider<ConversationsNotifier,
+        AsyncValue<List<ConversationEntity>>>((ref) {
+  return ConversationsNotifier(ref);
 });
 
 class ConversationsNotifier
     extends StateNotifier<AsyncValue<List<ConversationEntity>>> {
-  ConversationsNotifier() : super(const AsyncValue.loading()) {
-    _load();
+  ConversationsNotifier(this._ref) : super(const AsyncValue.loading()) {
+    load();
   }
 
-  void _load() {
-    final now = DateTime.now();
-    state = AsyncValue.data([
-      ConversationEntity(
-        id: 'conv-1',
-        tipo: 'individual',
-        participantes: [_mockMe, _mockParticipants[0]],
-        lastMessage: MessageEntity(
-          id: 'msg-0',
-          conversationId: 'conv-1',
-          texto: 'Precisamos revisar a escala da próxima semana.',
-          remetente: MessageSender(
-            id: _mockParticipants[0].id,
-            nome: _mockParticipants[0].nome,
-            cargo: _mockParticipants[0].cargo,
-          ),
-          criadoEm: now.subtract(const Duration(minutes: 5)),
-          status: MessageStatus.read,
-        ),
-        unreadCount: 2,
-        atualizadoEm: now.subtract(const Duration(minutes: 5)),
-      ),
-      ConversationEntity(
-        id: 'conv-2',
-        tipo: 'individual',
-        participantes: [_mockMe, _mockParticipants[1]],
-        lastMessage: MessageEntity(
-          id: 'msg-1',
-          conversationId: 'conv-2',
-          texto: 'Certo, vou verificar agora.',
-          remetente: const MessageSender(
-            id: 'user-me',
-            nome: 'Você',
-            cargo: 'Supervisor',
-          ),
-          criadoEm: now.subtract(const Duration(hours: 1)),
-          status: MessageStatus.read,
-        ),
-        unreadCount: 0,
-        atualizadoEm: now.subtract(const Duration(hours: 1)),
-      ),
-      ConversationEntity(
-        id: 'conv-3',
-        tipo: 'grupo',
-        nome: 'Equipe Enfermagem',
-        participantes: [_mockMe, ..._mockParticipants.take(3)],
-        lastMessage: MessageEntity(
-          id: 'msg-2',
-          conversationId: 'conv-3',
-          texto: 'Reunião amanhã às 14h no auditório.',
-          remetente: MessageSender(
-            id: _mockParticipants[0].id,
-            nome: _mockParticipants[0].nome,
-            cargo: _mockParticipants[0].cargo,
-          ),
-          criadoEm: now.subtract(const Duration(hours: 3)),
-          status: MessageStatus.delivered,
-        ),
-        unreadCount: 5,
-        atualizadoEm: now.subtract(const Duration(hours: 3)),
-      ),
-      ConversationEntity(
-        id: 'conv-4',
-        tipo: 'individual',
-        participantes: [_mockMe, _mockParticipants[3]],
-        lastMessage: MessageEntity(
-          id: 'msg-3',
-          conversationId: 'conv-4',
-          texto: 'O equipamento da sala 3 foi consertado.',
-          remetente: MessageSender(
-            id: _mockParticipants[3].id,
-            nome: _mockParticipants[3].nome,
-            cargo: _mockParticipants[3].cargo,
-          ),
-          criadoEm: now.subtract(const Duration(days: 1)),
-          status: MessageStatus.read,
-        ),
-        unreadCount: 0,
-        atualizadoEm: now.subtract(const Duration(days: 1)),
-      ),
-    ]);
+  final Ref _ref;
+
+  Future<void> load() async {
+    state = const AsyncValue.loading();
+    try {
+      final repo = _ref.read(conversationRepositoryProvider);
+      final conversations = await repo.listConversations();
+      state = AsyncValue.data(conversations);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+
+  /// Adiciona uma conversa recém-criada à lista sem recarregar tudo
+  void addConversation(ConversationEntity conv) {
+    final current = state.value ?? [];
+    // Evitar duplicata
+    if (current.any((c) => c.id == conv.id)) return;
+    state = AsyncValue.data([conv, ...current]);
+  }
+
+  /// Atualiza a última mensagem de uma conversa
+  void updateLastMessage(String conversationId, MessageEntity msg) {
+    final current = state.value ?? [];
+    state = AsyncValue.data(current.map((c) {
+      if (c.id != conversationId) return c;
+      return ConversationEntity(
+        id: c.id,
+        tipo: c.tipo,
+        nome: c.nome,
+        participantes: c.participantes,
+        lastMessage: msg,
+        unreadCount: c.unreadCount,
+        atualizadoEm: DateTime.now(),
+      );
+    }).toList()
+      ..sort((a, b) => b.atualizadoEm.compareTo(a.atualizadoEm)));
   }
 }
 
-// ─── Mensagens de uma conversa ────────────────────────────────────────────────
-final messagesProvider = StateNotifierProvider.family<MessagesNotifier,
-    AsyncValue<List<MessageEntity>>, String>((ref, conversationId) {
-  return MessagesNotifier(conversationId);
+// ─── Mensagens de uma conversa — dados reais + polling ───────────────────────
+final messagesProvider =
+    StateNotifierProvider.family<MessagesNotifier,
+        AsyncValue<List<MessageEntity>>, String>((ref, conversationId) {
+  return MessagesNotifier(conversationId, ref);
 });
 
 class MessagesNotifier
     extends StateNotifier<AsyncValue<List<MessageEntity>>> {
-  final String conversationId;
-  final _uuid = const Uuid();
-
-  MessagesNotifier(this.conversationId) : super(const AsyncValue.loading()) {
+  MessagesNotifier(this.conversationId, this._ref)
+      : super(const AsyncValue.loading()) {
     _load();
+    _startPolling();
   }
 
-  void _load() {
-    final now = DateTime.now();
-    final ana = MessageSender(
-      id: _mockParticipants[0].id,
-      nome: _mockParticipants[0].nome,
-      cargo: _mockParticipants[0].cargo,
-    );
-    const me = MessageSender(
-      id: 'user-me',
-      nome: 'Você',
-      cargo: 'Supervisor',
-    );
+  final String conversationId;
+  final Ref _ref;
+  final _uuid = const Uuid();
+  Timer? _pollTimer;
 
-    state = AsyncValue.data([
-      MessageEntity(
-        id: 'msg-1',
-        conversationId: conversationId,
-        texto: 'Bom dia! Tudo bem?',
-        remetente: ana,
-        criadoEm: now.subtract(const Duration(hours: 2, minutes: 10)),
-        status: MessageStatus.read,
-      ),
-      MessageEntity(
-        id: 'msg-2',
-        conversationId: conversationId,
-        texto: 'Bom dia! Tudo ótimo, obrigado.',
-        remetente: me,
-        criadoEm: now.subtract(const Duration(hours: 2, minutes: 8)),
-        status: MessageStatus.read,
-      ),
-      MessageEntity(
-        id: 'msg-3',
-        conversationId: conversationId,
-        texto: 'Precisamos revisar a escala da próxima semana. Você tem disponibilidade amanhã às 14h?',
-        remetente: ana,
-        criadoEm: now.subtract(const Duration(hours: 2)),
-        status: MessageStatus.read,
-      ),
-      MessageEntity(
-        id: 'msg-4',
-        conversationId: conversationId,
-        texto: 'Sim, estarei disponível. Pode confirmar a sala?',
-        remetente: me,
-        criadoEm: now.subtract(const Duration(hours: 1, minutes: 55)),
-        status: MessageStatus.read,
-      ),
-      MessageEntity(
-        id: 'msg-5',
-        conversationId: conversationId,
-        texto: 'Sala de reuniões do 2º andar. Vou enviar o convite agora.',
-        remetente: ana,
-        criadoEm: now.subtract(const Duration(hours: 1, minutes: 50)),
-        status: MessageStatus.read,
-      ),
-      MessageEntity(
-        id: 'msg-6',
-        conversationId: conversationId,
-        texto: 'Perfeito! Até amanhã.',
-        remetente: me,
-        criadoEm: now.subtract(const Duration(minutes: 45)),
-        status: MessageStatus.read,
-      ),
-      MessageEntity(
-        id: 'msg-7',
-        conversationId: conversationId,
-        texto: 'Precisamos revisar a escala da próxima semana.',
-        remetente: ana,
-        criadoEm: now.subtract(const Duration(minutes: 5)),
-        status: MessageStatus.delivered,
-      ),
-    ]);
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
   }
 
-  /// Envia uma mensagem de texto
-  void sendTextMessage(String texto) {
+  /// Inicia polling a cada 3 segundos para mensagens novas
+  void _startPolling() {
+    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (mounted) _pollNewMessages();
+    });
+  }
+
+  /// Carregamento inicial completo
+  Future<void> _load() async {
+    try {
+      final repo = _ref.read(conversationRepositoryProvider);
+      final messages = await repo.listMessages(conversationId);
+      if (mounted) state = AsyncValue.data(messages);
+    } catch (e, st) {
+      if (mounted) state = AsyncValue.error(e, st);
+    }
+  }
+
+  /// Polling — busca mensagens novas sem apagar as locais
+  Future<void> _pollNewMessages() async {
+    final current = state.value;
+    if (current == null) return;
+
+    try {
+      final repo = _ref.read(conversationRepositoryProvider);
+      final fresh = await repo.listMessages(conversationId);
+
+      if (!mounted) return;
+
+      // Mesclar: manter mensagens "sending" locais que ainda não chegaram
+      final freshIds = fresh.map((m) => m.id).toSet();
+      final stillSending = current
+          .where((m) =>
+              m.status == MessageStatus.sending &&
+              !freshIds.contains(m.id))
+          .toList();
+
+      state = AsyncValue.data([...fresh, ...stillSending]);
+
+      // Atualizar última mensagem da conversa
+      if (fresh.isNotEmpty) {
+        _ref
+            .read(conversationsProvider.notifier)
+            .updateLastMessage(conversationId, fresh.last);
+      }
+    } catch (_) {
+      // Polling silencioso — não exibe erro
+    }
+  }
+
+  // ─── Enviar mensagem de texto ───────────────────────────────────────────
+  Future<void> sendTextMessage(String texto) async {
     if (texto.trim().isEmpty) return;
-    final current = state.value ?? [];
-    final msg = MessageEntity(
-      id: _uuid.v4(),
+
+    final currentUserId = _ref.read(currentUserIdProvider);
+    final currentUserNome = _ref.read(currentUserNomeProvider);
+    final currentUser = _ref.read(currentUserProvider).value;
+
+    // Adicionar localmente como "sending" imediatamente (UX responsiva)
+    final tempId = 'temp_${_uuid.v4()}';
+    final tempMsg = MessageEntity(
+      id: tempId,
       conversationId: conversationId,
       texto: texto.trim(),
-      remetente: const MessageSender(
-        id: 'user-me',
-        nome: 'Você',
-        cargo: 'Supervisor',
+      remetente: MessageSender(
+        id: currentUserId,
+        nome: currentUserNome,
+        cargo: currentUser?.cargo ?? '',
+        fotoUrl: currentUser?.fotoUrl,
       ),
       criadoEm: DateTime.now(),
       status: MessageStatus.sending,
     );
-    state = AsyncValue.data([...current, msg]);
 
-    // Simular confirmação de envio após 500ms
-    Future.delayed(const Duration(milliseconds: 500), () {
-      _updateMessageStatus(msg.id, MessageStatus.sent);
-    });
-    // Simular entregue após 1s
-    Future.delayed(const Duration(seconds: 1), () {
-      _updateMessageStatus(msg.id, MessageStatus.delivered);
-    });
+    final current = state.value ?? [];
+    state = AsyncValue.data([...current, tempMsg]);
+
+    try {
+      final repo = _ref.read(conversationRepositoryProvider);
+      final realMsg = await repo.sendMessage(conversationId, texto.trim());
+
+      // Substituir a mensagem temporária pela real
+      if (mounted) {
+        final updated = state.value ?? [];
+        state = AsyncValue.data(
+          updated.map((m) => m.id == tempId ? realMsg : m).toList(),
+        );
+
+        // Atualizar lista de conversas
+        _ref
+            .read(conversationsProvider.notifier)
+            .updateLastMessage(conversationId, realMsg);
+      }
+    } catch (e) {
+      // Marcar como erro
+      if (mounted) {
+        final updated = state.value ?? [];
+        state = AsyncValue.data(
+          updated
+              .map((m) => m.id == tempId
+                  ? m.copyWith(status: MessageStatus.sent)
+                  : m)
+              .toList(),
+        );
+      }
+      rethrow;
+    }
   }
 
-  /// Envia mensagem de áudio
+  // ─── Enviar áudio ──────────────────────────────────────────────────────
   void sendAudioMessage(String path, int durationSeconds) {
-    final current = state.value ?? [];
+    final currentUserId = _ref.read(currentUserIdProvider);
+    final currentUserNome = _ref.read(currentUserNomeProvider);
+    final currentUser = _ref.read(currentUserProvider).value;
+
     final msg = MessageEntity(
-      id: _uuid.v4(),
+      id: 'temp_${_uuid.v4()}',
       conversationId: conversationId,
       texto: '🎤 Áudio',
       tipo: MessageType.audio,
-      remetente: const MessageSender(
-        id: 'user-me',
-        nome: 'Você',
-        cargo: 'Supervisor',
+      remetente: MessageSender(
+        id: currentUserId,
+        nome: currentUserNome,
+        cargo: currentUser?.cargo ?? '',
       ),
       criadoEm: DateTime.now(),
       status: MessageStatus.sending,
       audioDuration: durationSeconds,
       audioPath: path,
     );
+
+    final current = state.value ?? [];
     state = AsyncValue.data([...current, msg]);
-    Future.delayed(const Duration(milliseconds: 500), () {
-      _updateMessageStatus(msg.id, MessageStatus.sent);
-    });
+    // TODO: upload de áudio para storage
   }
 
-  /// Edita uma mensagem (apenas dentro da janela de 5 min)
-  void editMessage(String messageId, String novoTexto) {
+  // ─── Editar mensagem ───────────────────────────────────────────────────
+  Future<void> editMessage(String messageId, String novoTexto) async {
+    // Otimista: atualizar local primeiro
     final current = state.value ?? [];
     state = AsyncValue.data(current.map((m) {
-      if (m.id == messageId) {
-        return m.copyWith(
-          texto: novoTexto,
-          editado: true,
-          editadoEm: DateTime.now(),
-        );
-      }
-      return m;
+      if (m.id != messageId) return m;
+      return m.copyWith(
+        texto: novoTexto,
+        editado: true,
+        editadoEm: DateTime.now(),
+      );
     }).toList());
+
+    try {
+      final repo = _ref.read(conversationRepositoryProvider);
+      await repo.editMessage(conversationId, messageId, novoTexto);
+    } catch (e) {
+      // Reverter em caso de erro — recarregar do servidor
+      _load();
+      rethrow;
+    }
   }
 
-  /// Exclusão lógica
-  void deleteMessage(String messageId) {
+  // ─── Excluir mensagem ──────────────────────────────────────────────────
+  Future<void> deleteMessage(String messageId) async {
+    // Otimista
     final current = state.value ?? [];
     state = AsyncValue.data(current.map((m) {
-      if (m.id == messageId) return m.copyWith(excluido: true);
-      return m;
+      if (m.id != messageId) return m;
+      return m.copyWith(excluido: true);
     }).toList());
+
+    try {
+      final repo = _ref.read(conversationRepositoryProvider);
+      await repo.deleteMessage(messageId);
+    } catch (e) {
+      _load();
+      rethrow;
+    }
   }
 
-  void _updateMessageStatus(String messageId, MessageStatus status) {
-    if (!mounted) return;
-    final current = state.value ?? [];
-    state = AsyncValue.data(current.map((m) {
-      if (m.id == messageId) return m.copyWith(status: status);
-      return m;
-    }).toList());
+  /// Forçar recarregamento
+  Future<void> refresh() => _load();
+}
+
+// ─── Usuários disponíveis para nova conversa / grupo ─────────────────────────
+final availableUsersProvider =
+    FutureProvider.autoDispose<List<UserSummary>>((ref) async {
+  final repo = ref.watch(conversationRepositoryProvider);
+  return repo.listAvailableUsers();
+});
+
+final usersSearchProvider = StateNotifierProvider.autoDispose<
+    UsersSearchNotifier, AsyncValue<List<UserSummary>>>((ref) {
+  return UsersSearchNotifier(ref);
+});
+
+class UsersSearchNotifier
+    extends StateNotifier<AsyncValue<List<UserSummary>>> {
+  UsersSearchNotifier(this._ref) : super(const AsyncValue.loading()) {
+    search('');
+  }
+
+  final Ref _ref;
+
+  Future<void> search(String query) async {
+    state = const AsyncValue.loading();
+    try {
+      final repo = _ref.read(conversationRepositoryProvider);
+      final users = await repo.listAvailableUsers(search: query);
+      state = AsyncValue.data(users);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
   }
 }
