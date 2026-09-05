@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/services/http_service.dart';
 import '../../../auth/domain/entities/user_entity.dart';
+import '../../../auth/presentation/providers/current_user_provider.dart';
 import '../../data/repositories/employees_repository_impl.dart';
 import '../../domain/repositories/employees_repository.dart';
 
@@ -22,6 +23,7 @@ class EmployeesState extends Equatable {
   final String? selectedSetorId;
   final int? selectedHierarquia;
   final bool? selectedAtivo;
+  final UserEntity? currentUser;
 
   const EmployeesState({
     this.users = const [],
@@ -34,7 +36,33 @@ class EmployeesState extends Equatable {
     this.selectedSetorId,
     this.selectedHierarquia,
     this.selectedAtivo,
+    this.currentUser,
   });
+
+  bool get isDirecao => currentUser?.isDirecao ?? false;
+
+  /// Retorna os usuários filtrados respeitando a regra institucional:
+  /// Não-direção só vê colegas do mesmo centro e Direção Geral.
+  List<UserEntity> get visibleUsers {
+    if (isDirecao || currentUser == null) return users;
+
+    final mySetorId = currentUser!.setorId;
+    final mySetorNome = currentUser!.setorNome.toUpperCase();
+
+    return users.where((u) {
+      // Direção Geral é visível para todos
+      if (u.isDirecao || u.hierarquiaNivel == 1) return true;
+
+      // Mesmo setor / centro
+      if (mySetorId.isNotEmpty && u.setorId == mySetorId) return true;
+
+      if (mySetorNome.contains('CCD') && u.setorNome.toUpperCase().contains('CCD')) return true;
+      if (mySetorNome.contains('CCO') && u.setorNome.toUpperCase().contains('CCO')) return true;
+      if (mySetorNome.contains('CCE') && u.setorNome.toUpperCase().contains('CCE')) return true;
+
+      return false;
+    }).toList();
+  }
 
   EmployeesState copyWith({
     List<UserEntity>? users,
@@ -50,6 +78,7 @@ class EmployeesState extends Equatable {
     bool clearHierarquia = false,
     bool? selectedAtivo,
     bool clearAtivo = false,
+    UserEntity? currentUser,
   }) {
     return EmployeesState(
       users: users ?? this.users,
@@ -63,6 +92,7 @@ class EmployeesState extends Equatable {
       selectedHierarquia:
           clearHierarquia ? null : (selectedHierarquia ?? this.selectedHierarquia),
       selectedAtivo: clearAtivo ? null : (selectedAtivo ?? this.selectedAtivo),
+      currentUser: currentUser ?? this.currentUser,
     );
   }
 
@@ -78,19 +108,28 @@ class EmployeesState extends Equatable {
         selectedSetorId,
         selectedHierarquia,
         selectedAtivo,
+        currentUser,
       ];
 }
 
 final employeesProvider =
     StateNotifierProvider<EmployeesNotifier, EmployeesState>((ref) {
   final repository = ref.watch(employeesRepositoryProvider);
-  return EmployeesNotifier(repository);
+  final userAsync = ref.watch(currentUserProvider);
+  final user = userAsync.valueOrNull;
+  return EmployeesNotifier(repository, user);
 });
 
 class EmployeesNotifier extends StateNotifier<EmployeesState> {
   final EmployeesRepository _repository;
 
-  EmployeesNotifier(this._repository) : super(const EmployeesState()) {
+  EmployeesNotifier(this._repository, UserEntity? currentUser)
+      : super(EmployeesState(
+          currentUser: currentUser,
+          selectedSetorId: (currentUser != null && !currentUser.isDirecao)
+              ? currentUser.setorId
+              : null,
+        )) {
     fetchEmployees();
   }
 
@@ -160,6 +199,7 @@ class EmployeesNotifier extends StateNotifier<EmployeesState> {
   }
 
   void setSetorFilter(String? setorId) {
+    if (!state.isDirecao) return; // Não-direção não pode trocar de setor
     state = state.copyWith(
       selectedSetorId: setorId,
       clearSetor: setorId == null,

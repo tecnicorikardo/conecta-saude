@@ -61,38 +61,44 @@ class ChannelsPage extends ConsumerWidget {
                   ),
                   const SizedBox(height: 10),
 
-                  // Abas dos Centros Oficiais: CCD (esquerda), CCO (meio), CCE (direita)
+                  // Abas dos Centros Oficiais respeitando o centro do funcionário
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
                       children: [
-                        _buildCategoryChip(
-                          label: 'CCD (CCDTI)',
-                          sublabel: 'Imagem e Diagnóstico',
-                          isSelected: state.selectedTab == ChannelTab.ccd,
-                          onTap: () => ref
-                              .read(channelsProvider.notifier)
-                              .setTab(ChannelTab.ccd),
-                        ),
-                        const SizedBox(width: 8),
-                        _buildCategoryChip(
-                          label: 'CCO',
-                          sublabel: 'Centro do Olho',
-                          isSelected: state.selectedTab == ChannelTab.cco,
-                          onTap: () => ref
-                              .read(channelsProvider.notifier)
-                              .setTab(ChannelTab.cco),
-                        ),
-                        const SizedBox(width: 8),
-                        _buildCategoryChip(
-                          label: 'CCE',
-                          sublabel: 'Especialidades',
-                          isSelected: state.selectedTab == ChannelTab.cce,
-                          onTap: () => ref
-                              .read(channelsProvider.notifier)
-                              .setTab(ChannelTab.cce),
-                        ),
-                        const SizedBox(width: 8),
+                        if (state.isDirecao || state.userCentroTag == 'CCD' || state.userCentroTag == 'TODOS') ...[
+                          _buildCategoryChip(
+                            label: 'CCD (CCDTI)',
+                            sublabel: 'Imagem e Diagnóstico',
+                            isSelected: state.selectedTab == ChannelTab.ccd,
+                            onTap: () => ref
+                                .read(channelsProvider.notifier)
+                                .setTab(ChannelTab.ccd),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                        if (state.isDirecao || state.userCentroTag == 'CCO' || state.userCentroTag == 'TODOS') ...[
+                          _buildCategoryChip(
+                            label: 'CCO',
+                            sublabel: 'Centro do Olho',
+                            isSelected: state.selectedTab == ChannelTab.cco,
+                            onTap: () => ref
+                                .read(channelsProvider.notifier)
+                                .setTab(ChannelTab.cco),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
+                        if (state.isDirecao || state.userCentroTag == 'CCE' || state.userCentroTag == 'TODOS') ...[
+                          _buildCategoryChip(
+                            label: 'CCE',
+                            sublabel: 'Especialidades',
+                            isSelected: state.selectedTab == ChannelTab.cce,
+                            onTap: () => ref
+                                .read(channelsProvider.notifier)
+                                .setTab(ChannelTab.cce),
+                          ),
+                          const SizedBox(width: 8),
+                        ],
                         _buildCategoryChip(
                           label: '🚨 Emergência',
                           isSelected: state.selectedTab == ChannelTab.emergencia,
@@ -101,14 +107,16 @@ class ChannelsPage extends ConsumerWidget {
                               .read(channelsProvider.notifier)
                               .setTab(ChannelTab.emergencia),
                         ),
-                        const SizedBox(width: 8),
-                        _buildCategoryChip(
-                          label: 'Todos',
-                          isSelected: state.selectedTab == ChannelTab.todos,
-                          onTap: () => ref
-                              .read(channelsProvider.notifier)
-                              .setTab(ChannelTab.todos),
-                        ),
+                        if (state.isDirecao) ...[
+                          const SizedBox(width: 8),
+                          _buildCategoryChip(
+                            label: 'Todos',
+                            isSelected: state.selectedTab == ChannelTab.todos,
+                            onTap: () => ref
+                                .read(channelsProvider.notifier)
+                                .setTab(ChannelTab.todos),
+                          ),
+                        ],
                       ],
                     ),
                   ),

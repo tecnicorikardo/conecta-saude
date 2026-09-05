@@ -1,20 +1,31 @@
 import 'package:dartz/dartz.dart';
+import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/errors/failures.dart';
-import '../../../../core/services/http_service.dart';
 import '../../domain/entities/user_entity.dart';
 import '../../domain/repositories/auth_repository.dart';
-import '../models/user_model.dart';
 
-/// Implementação do AuthRepository.
-/// Firebase Auth → ID Token → validação no backend Node.js.
 class AuthRepositoryImpl implements AuthRepository {
-  AuthRepositoryImpl(this._ref);
+  AuthRepositoryImpl([Ref? _]);
 
-  final Ref _ref;
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
+
+  static const _baseUrl = 'http://localhost:3000/api';
+
+  Dio _buildDio([String? token]) {
+    return Dio(
+      BaseOptions(
+        baseUrl: _baseUrl,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 15),
+        headers: token != null
+            ? {'Authorization': 'Bearer $token'}
+            : {},
+      ),
+    );
+  }
 
   @override
   Future<Either<Failure, UserEntity>> signInWithEmailAndPassword({
@@ -22,9 +33,9 @@ class AuthRepositoryImpl implements AuthRepository {
     required String password,
   }) async {
     try {
-      // 1. Autenticar no Firebase Auth
+      // 1. Firebase Auth
       final credential = await _firebaseAuth.signInWithEmailAndPassword(
-        email: email,
+        email: email.trim(),
         password: password,
       );
 
@@ -33,35 +44,41 @@ class AuthRepositoryImpl implements AuthRepository {
         return const Left(AuthFailure('Falha na autenticação.'));
       }
 
-      // 2. Obter ID Token
-      final idToken = await firebaseUser.getIdToken();
+      // 2. Forçar refresh do token para garantir que é válido
+      final idToken = await firebaseUser.getIdToken(true);
       if (idToken == null) {
-        return const Left(
-          AuthFailure('Não foi possível obter o token de autenticação.'),
-        );
+        return const Left(AuthFailure('Não foi possível obter o token.'));
       }
 
-      // 3. Validar no backend Node.js (/auth/verify) e obter dados completos
-      final httpService = _ref.read(httpServiceProvider);
-      final response = await httpService.post(
-        '/auth/verify',
-        data: {'idToken': idToken},
-      );
-
-      final responseData = response.data;
-      if (responseData is Map<String, dynamic> &&
-          responseData['data'] is Map<String, dynamic>) {
-        final userModel = UserModel.fromJson(
-          responseData['data'] as Map<String, dynamic>,
+      // 3. Chamar backend para validar e obter dados reais do banco
+      try {
+        final response = await _buildDio().post(
+          '/auth/verify',
+          data: {'idToken': idToken},
         );
-        return Right(userModel);
-      }
 
-      return const Left(ServerFailure('Resposta inválida do servidor.'));
+        if (response.data['success'] == true) {
+          final data = response.data['data'] as Map<String, dynamic>;
+          return Right(_mapToEntity(data));
+        }
+        return const Left(AuthFailure('Resposta inválida do servidor.'));
+      } on DioException catch (e) {
+        final statusCode = e.response?.statusCode;
+
+        if (statusCode == 403) {
+          return Left(UserInactiveFailure());
+        }
+        if (statusCode == 404) {
+          return const Left(UserNotFoundFailure());
+        }
+
+        // Backend inacessível — logar o erro e usar fallback do Firebase
+        // ignore: avoid_print
+        print('[Auth] Backend inacessível: ${e.message}. Usando dados do Firebase.');
+        return Right(_mapFromFirebase(firebaseUser));
+      }
     } on FirebaseAuthException catch (e) {
-      return Left(AuthFailure(_mapFirebaseAuthError(e.code)));
-    } on Failure catch (failure) {
-      return Left(failure);
+      return Left(AuthFailure(_mapFirebaseError(e.code)));
     } catch (e) {
       return Left(UnknownFailure(e.toString()));
     }
@@ -72,10 +89,10 @@ class AuthRepositoryImpl implements AuthRepository {
     required String email,
   }) async {
     try {
-      await _firebaseAuth.sendPasswordResetEmail(email: email);
+      await _firebaseAuth.sendPasswordResetEmail(email: email.trim());
       return const Right(null);
     } on FirebaseAuthException catch (e) {
-      return Left(AuthFailure(_mapFirebaseAuthError(e.code)));
+      return Left(AuthFailure(_mapFirebaseError(e.code)));
     } catch (e) {
       return Left(UnknownFailure(e.toString()));
     }
@@ -97,22 +114,19 @@ class AuthRepositoryImpl implements AuthRepository {
       final firebaseUser = _firebaseAuth.currentUser;
       if (firebaseUser == null) return const Right(null);
 
-      // Buscar perfil completo atualizado no backend
-      final httpService = _ref.read(httpServiceProvider);
-      final response = await httpService.get('/auth/me');
+      final idToken = await firebaseUser.getIdToken();
+      if (idToken == null) return Right(_mapFromFirebase(firebaseUser));
 
-      final responseData = response.data;
-      if (responseData is Map<String, dynamic> &&
-          responseData['data'] is Map<String, dynamic>) {
-        final userModel = UserModel.fromJson(
-          responseData['data'] as Map<String, dynamic>,
-        );
-        return Right(userModel);
+      try {
+        final response = await _buildDio(idToken).get('/me');
+        if (response.data['success'] == true) {
+          final data = response.data['data'] as Map<String, dynamic>;
+          return Right(_mapToEntity(data));
+        }
+        return Right(_mapFromFirebase(firebaseUser));
+      } catch (_) {
+        return Right(_mapFromFirebase(firebaseUser));
       }
-
-      return const Left(ServerFailure('Resposta inválida do servidor.'));
-    } on Failure catch (failure) {
-      return Left(failure);
     } catch (e) {
       return Left(UnknownFailure(e.toString()));
     }
@@ -124,52 +138,71 @@ class AuthRepositoryImpl implements AuthRepository {
       if (firebaseUser == null) return null;
 
       try {
-        final httpService = _ref.read(httpServiceProvider);
-        final response = await httpService.get('/auth/me');
-        final responseData = response.data;
-        if (responseData is Map<String, dynamic> &&
-            responseData['data'] is Map<String, dynamic>) {
-          return UserModel.fromJson(
-            responseData['data'] as Map<String, dynamic>,
-          );
-        }
-      } catch (_) {
-        // Fallback básico caso o backend esteja temporariamente inacessível
-      }
+        final idToken = await firebaseUser.getIdToken();
+        if (idToken == null) return _mapFromFirebase(firebaseUser);
 
-      return UserEntity(
-        id: firebaseUser.uid,
-        firebaseUid: firebaseUser.uid,
-        nome: firebaseUser.displayName ?? 'Usuário',
-        email: firebaseUser.email ?? '',
-        cargo: 'Funcionário',
-        hierarquiaNivel: 4,
-        setorId: '',
-        setorNome: '',
-        fotoUrl: firebaseUser.photoURL,
-        ativo: true,
-        criadoEm: DateTime.now(),
-      );
+        final response = await _buildDio(idToken).get('/me');
+        if (response.data['success'] == true) {
+          final data = response.data['data'] as Map<String, dynamic>;
+          return _mapToEntity(data);
+        }
+        return _mapFromFirebase(firebaseUser);
+      } catch (_) {
+        return _mapFromFirebase(firebaseUser);
+      }
     });
   }
 
-  // ─── Mapeamento de erros Firebase ────────────────────────────────────────
-  String _mapFirebaseAuthError(String code) {
+  // ─── Helpers ──────────────────────────────────────────────────────────────
+
+  UserEntity _mapToEntity(Map<String, dynamic> data) {
+    return UserEntity(
+      id: data['id'] as String? ?? '',
+      firebaseUid: data['firebaseUid'] as String? ?? '',
+      nome: data['nome'] as String? ?? 'Usuário',
+      email: data['email'] as String? ?? '',
+      cargo: data['cargo'] as String? ?? 'Funcionário',
+      hierarquiaNivel: data['hierarquiaNivel'] as int? ?? 4,
+      setorId: data['setorId'] as String? ?? '',
+      setorNome: data['setorNome'] as String? ?? '',
+      fotoUrl: data['fotoUrl'] as String?,
+      ativo: data['ativo'] as bool? ?? true,
+      criadoEm: DateTime.tryParse(data['criadoEm'] as String? ?? '') ??
+          DateTime.now(),
+    );
+  }
+
+  UserEntity _mapFromFirebase(User firebaseUser) {
+    return UserEntity(
+      id: firebaseUser.uid,
+      firebaseUid: firebaseUser.uid,
+      nome: firebaseUser.displayName ?? firebaseUser.email ?? 'Usuário',
+      email: firebaseUser.email ?? '',
+      cargo: 'Funcionário',
+      hierarquiaNivel: 4,
+      setorId: '',
+      setorNome: '',
+      fotoUrl: firebaseUser.photoURL,
+      ativo: true,
+      criadoEm: DateTime.now(),
+    );
+  }
+
+  String _mapFirebaseError(String code) {
     switch (code) {
       case 'user-not-found':
         return 'E-mail não encontrado no sistema.';
       case 'wrong-password':
-        return 'Senha incorreta.';
+      case 'invalid-credential':
+        return 'E-mail ou senha incorretos.';
       case 'invalid-email':
         return 'E-mail inválido.';
       case 'user-disabled':
-        return 'Este acesso foi desativado. Entre em contato com o RH.';
+        return 'Acesso desativado. Entre em contato com o RH.';
       case 'too-many-requests':
-        return 'Muitas tentativas. Aguarde alguns minutos e tente novamente.';
+        return 'Muitas tentativas. Aguarde alguns minutos.';
       case 'network-request-failed':
         return 'Sem conexão com a internet.';
-      case 'invalid-credential':
-        return 'E-mail ou senha incorretos.';
       default:
         return 'Erro de autenticação. Tente novamente.';
     }

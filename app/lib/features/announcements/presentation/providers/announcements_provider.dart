@@ -1,4 +1,6 @@
-﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../auth/domain/entities/user_entity.dart';
+import '../../../auth/presentation/providers/current_user_provider.dart';
 import '../../data/repositories/announcements_repository_impl.dart';
 import '../../domain/entities/announcement_entity.dart';
 import '../../domain/repositories/announcements_repository.dart';
@@ -11,6 +13,7 @@ class AnnouncementsState {
   final AnnouncementFilter filter;
   final String searchQuery;
   final String? errorMessage;
+  final UserEntity? currentUser;
 
   const AnnouncementsState({
     this.isLoading = false,
@@ -18,13 +21,43 @@ class AnnouncementsState {
     this.filter = AnnouncementFilter.todos,
     this.searchQuery = '',
     this.errorMessage,
+    this.currentUser,
   });
 
-  int get unreadCount => announcements.where((a) => !a.lido).length;
+  bool get isDirecao => currentUser?.isDirecao ?? false;
+
+  String get userCentroTag {
+    if (currentUser == null || isDirecao) return 'TODOS';
+    final s = ('${currentUser!.setorNome} ${currentUser!.setorId}').toUpperCase();
+    if (s.contains('CCD') || s.contains('IMAGEM')) return 'CCD';
+    if (s.contains('CCO') || s.contains('OLHO')) return 'CCO';
+    if (s.contains('CCE') || s.contains('ESPECIALIDADE')) return 'CCE';
+    return 'TODOS';
+  }
+
+  int get unreadCount => filteredAnnouncements.where((a) => !a.lido).length;
 
   List<AnnouncementEntity> get filteredAnnouncements {
+    final allowedCentro = userCentroTag;
+
     return announcements.where((item) {
-      // Filtro de busca
+      // 1. Isolamento por centro para funcionários:
+      // Direção vê tudo. Funcionário vê comunicados do seu centro e da Direção Geral.
+      if (!isDirecao && allowedCentro != 'TODOS') {
+        final t = item.titulo.toUpperCase();
+        final c = item.criadorCargo.toUpperCase();
+
+        final isDirecaoPost = t.contains('DIREÇÃO') || c.contains('DIRETOR') || c.contains('GERAL');
+        final isMyCenter = (allowedCentro == 'CCD' && (t.contains('CCD') || c.contains('CCDTI'))) ||
+            (allowedCentro == 'CCO' && (t.contains('CCO') || c.contains('CCO'))) ||
+            (allowedCentro == 'CCE' && (t.contains('CCE') || c.contains('CCE')));
+
+        if (!isDirecaoPost && !isMyCenter) {
+          return false;
+        }
+      }
+
+      // 2. Filtro de busca
       if (searchQuery.isNotEmpty) {
         final query = searchQuery.toLowerCase();
         final matchTitulo = item.titulo.toLowerCase().contains(query);
@@ -33,7 +66,7 @@ class AnnouncementsState {
         if (!matchTitulo && !matchMensagem && !matchAutor) return false;
       }
 
-      // Filtro de categoria
+      // 3. Filtro de categoria
       switch (filter) {
         case AnnouncementFilter.naoLidos:
           return !item.lido;
@@ -51,6 +84,7 @@ class AnnouncementsState {
     AnnouncementFilter? filter,
     String? searchQuery,
     String? errorMessage,
+    UserEntity? currentUser,
   }) {
     return AnnouncementsState(
       isLoading: isLoading ?? this.isLoading,
@@ -58,6 +92,7 @@ class AnnouncementsState {
       filter: filter ?? this.filter,
       searchQuery: searchQuery ?? this.searchQuery,
       errorMessage: errorMessage,
+      currentUser: currentUser ?? this.currentUser,
     );
   }
 }
@@ -68,7 +103,8 @@ final announcementsRepositoryProvider =
 class AnnouncementsNotifier extends StateNotifier<AnnouncementsState> {
   final AnnouncementsRepository _repository;
 
-  AnnouncementsNotifier(this._repository) : super(const AnnouncementsState()) {
+  AnnouncementsNotifier(this._repository, UserEntity? currentUser)
+      : super(AnnouncementsState(currentUser: currentUser)) {
     loadAnnouncements();
   }
 
@@ -80,7 +116,7 @@ class AnnouncementsNotifier extends StateNotifier<AnnouncementsState> {
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: 'Não foi possível carregar os comunicados.',
+        errorMessage: 'Erro ao carregar comunicados.',
       );
     }
   }
@@ -94,21 +130,26 @@ class AnnouncementsNotifier extends StateNotifier<AnnouncementsState> {
   }
 
   Future<bool> confirmRead(String id) async {
-    final success = await _repository.confirmRead(id);
-    if (success) {
-      final updated = state.announcements.map((a) {
-        if (a.id == id) {
-          return a.copyWith(
-            lido: true,
-            lidoEm: DateTime.now(),
-            totalLeituras: a.totalLeituras + (a.lido ? 0 : 1),
-          );
-        }
-        return a;
-      }).toList();
-      state = state.copyWith(announcements: updated);
+    try {
+      final success = await _repository.confirmRead(id);
+      if (success) {
+        final updatedList = state.announcements.map((item) {
+          if (item.id == id) {
+            return item.copyWith(
+              lido: true,
+              lidoEm: DateTime.now(),
+              totalLeituras: item.totalLeituras + 1,
+            );
+          }
+          return item;
+        }).toList();
+        state = state.copyWith(announcements: updatedList);
+        return true;
+      }
+      return false;
+    } catch (_) {
+      return false;
     }
-    return success;
   }
 
   Future<bool> createAnnouncement({
@@ -135,5 +176,7 @@ class AnnouncementsNotifier extends StateNotifier<AnnouncementsState> {
 final announcementsProvider =
     StateNotifierProvider<AnnouncementsNotifier, AnnouncementsState>((ref) {
   final repo = ref.watch(announcementsRepositoryProvider);
-  return AnnouncementsNotifier(repo);
+  final userAsync = ref.watch(currentUserProvider);
+  final user = userAsync.valueOrNull;
+  return AnnouncementsNotifier(repo, user);
 });

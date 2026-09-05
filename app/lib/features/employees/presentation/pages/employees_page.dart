@@ -136,24 +136,26 @@ class _EmployeesPageState extends ConsumerState<EmployeesPage> {
                 ),
                 const SizedBox(width: 8),
 
-                // Filtro por Setor
-                sectorsAsync.when(
-                  data: (sectors) {
-                    final selectedSector = sectors
-                        .where((s) => s.id == state.selectedSetorId)
-                        .firstOrNull;
-                    return _FilterChipButton(
-                      label: selectedSector == null
-                          ? 'Setor: Todos'
-                          : 'Setor: ${selectedSector.nome}',
-                      isSelected: state.selectedSetorId != null,
-                      onTap: () => _showSetorFilterMenu(context, sectors),
-                    );
-                  },
-                  loading: () => const SizedBox.shrink(),
-                  error: (_, __) => const SizedBox.shrink(),
-                ),
-                const SizedBox(width: 8),
+                // Filtro por Setor (Apenas Direção Geral pode filtrar múltiplos setores)
+                if (state.isDirecao) ...[
+                  sectorsAsync.when(
+                    data: (sectors) {
+                      final selectedSector = sectors
+                          .where((s) => s.id == state.selectedSetorId)
+                          .firstOrNull;
+                      return _FilterChipButton(
+                        label: selectedSector == null
+                            ? 'Setor: Todos'
+                            : 'Setor: ${selectedSector.nome}',
+                        isSelected: state.selectedSetorId != null,
+                        onTap: () => _showSetorFilterMenu(context, sectors),
+                      );
+                    },
+                    loading: () => const SizedBox.shrink(),
+                    error: (_, __) => const SizedBox.shrink(),
+                  ),
+                  const SizedBox(width: 8),
+                ],
 
                 // Filtro Ativos / Inativos
                 _FilterChipButton(
@@ -214,11 +216,13 @@ class _EmployeesPageState extends ConsumerState<EmployeesPage> {
   }
 
   Widget _buildListContent(BuildContext context, EmployeesState state) {
-    if (state.isLoading && state.users.isEmpty) {
+    final visibleList = state.visibleUsers;
+
+    if (state.isLoading && visibleList.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (state.errorMessage != null && state.users.isEmpty) {
+    if (state.errorMessage != null && visibleList.isEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -246,7 +250,7 @@ class _EmployeesPageState extends ConsumerState<EmployeesPage> {
       );
     }
 
-    if (state.users.isEmpty) {
+    if (visibleList.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -278,10 +282,10 @@ class _EmployeesPageState extends ConsumerState<EmployeesPage> {
     return ListView.separated(
       controller: _scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      itemCount: state.users.length + (state.isLoadingMore ? 1 : 0),
+      itemCount: visibleList.length + (state.isLoadingMore ? 1 : 0),
       separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
-        if (index == state.users.length) {
+        if (index == visibleList.length) {
           return const Center(
             child: Padding(
               padding: EdgeInsets.symmetric(vertical: 16),
@@ -290,7 +294,7 @@ class _EmployeesPageState extends ConsumerState<EmployeesPage> {
           );
         }
 
-        final user = state.users[index];
+        final user = visibleList[index];
         return _UserCard(
           user: user,
           onTap: () {

@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/channel_entity.dart';
+import '../../../auth/domain/entities/user_entity.dart';
+import '../../../auth/presentation/providers/current_user_provider.dart';
 
 enum ChannelTab {
   ccd,        // Esquerda: Centro Carioca de Diagnóstico e Tratamento por Imagem (CCDTI)
@@ -15,6 +17,7 @@ class ChannelsState {
   final ChannelTab selectedTab;
   final String searchQuery;
   final String? errorMessage;
+  final UserEntity? currentUser;
 
   const ChannelsState({
     this.isLoading = false,
@@ -22,14 +25,38 @@ class ChannelsState {
     this.selectedTab = ChannelTab.ccd,
     this.searchQuery = '',
     this.errorMessage,
+    this.currentUser,
   });
+
+  bool get isDirecao => currentUser?.isDirecao ?? false;
+
+  String get userCentroTag {
+    if (currentUser == null || isDirecao) return 'TODOS';
+    final s = ('${currentUser!.setorNome} ${currentUser!.setorId}').toUpperCase();
+    if (s.contains('CCD') || s.contains('IMAGEM')) return 'CCD';
+    if (s.contains('CCO') || s.contains('OLHO')) return 'CCO';
+    if (s.contains('CCE') || s.contains('ESPECIALIDADE')) return 'CCE';
+    return 'TODOS';
+  }
 
   ChannelEntity? get emergencyChannel =>
       channels.where((c) => c.isEmergencia).firstOrNull;
 
   List<ChannelEntity> get filteredChannels {
+    final allowedCentro = userCentroTag;
+
     return channels.where((c) {
-      // Busca textual
+      // 1. Isolamento institucional estrito:
+      // Se não for Direção Geral, só pode ver canais do seu centro, de emergência ou institucionais gerais
+      if (!isDirecao && allowedCentro != 'TODOS') {
+        final isMyCenter = c.centroTag == allowedCentro;
+        final isGeneralOrEmergency = c.isEmergencia || c.centroTag == 'GERAL';
+        if (!isMyCenter && !isGeneralOrEmergency) {
+          return false;
+        }
+      }
+
+      // 2. Busca textual
       if (searchQuery.isNotEmpty) {
         final query = searchQuery.toLowerCase();
         final matchNome = c.nome.toLowerCase().contains(query);
@@ -38,14 +65,14 @@ class ChannelsState {
         if (!matchNome && !matchDesc && !matchSetor) return false;
       }
 
-      // Filtro por Aba
+      // 3. Filtro por Aba Selecionada
       switch (selectedTab) {
         case ChannelTab.ccd:
-          return c.centroTag == 'CCD';
+          return c.centroTag == 'CCD' || (!isDirecao && c.centroTag == 'GERAL' && allowedCentro == 'CCD');
         case ChannelTab.cco:
-          return c.centroTag == 'CCO';
+          return c.centroTag == 'CCO' || (!isDirecao && c.centroTag == 'GERAL' && allowedCentro == 'CCO');
         case ChannelTab.cce:
-          return c.centroTag == 'CCE';
+          return c.centroTag == 'CCE' || (!isDirecao && c.centroTag == 'GERAL' && allowedCentro == 'CCE');
         case ChannelTab.emergencia:
           return c.isEmergencia;
         case ChannelTab.todos:
@@ -60,6 +87,7 @@ class ChannelsState {
     ChannelTab? selectedTab,
     String? searchQuery,
     String? errorMessage,
+    UserEntity? currentUser,
   }) {
     return ChannelsState(
       isLoading: isLoading ?? this.isLoading,
@@ -67,18 +95,40 @@ class ChannelsState {
       selectedTab: selectedTab ?? this.selectedTab,
       searchQuery: searchQuery ?? this.searchQuery,
       errorMessage: errorMessage,
+      currentUser: currentUser ?? this.currentUser,
     );
   }
 }
 
 class ChannelsNotifier extends StateNotifier<ChannelsState> {
-  ChannelsNotifier() : super(const ChannelsState()) {
+  ChannelsNotifier(UserEntity? user) : super(ChannelsState(currentUser: user)) {
+    _initDefaultTab(user);
     loadChannels();
+  }
+
+  void _initDefaultTab(UserEntity? user) {
+    if (user != null && !user.isDirecao) {
+      final s = ('${user.setorNome} ${user.setorId}').toUpperCase();
+      if (s.contains('CCO') || s.contains('OLHO')) {
+        state = state.copyWith(selectedTab: ChannelTab.cco);
+      } else if (s.contains('CCE') || s.contains('ESPECIALIDADE')) {
+        state = state.copyWith(selectedTab: ChannelTab.cce);
+      } else {
+        state = state.copyWith(selectedTab: ChannelTab.ccd);
+      }
+    }
+  }
+
+  void updateUser(UserEntity? user) {
+    if (state.currentUser != user) {
+      state = state.copyWith(currentUser: user);
+      _initDefaultTab(user);
+    }
   }
 
   Future<void> loadChannels() async {
     state = state.copyWith(isLoading: true);
-    await Future.delayed(const Duration(milliseconds: 300));
+    await Future.delayed(const Duration(milliseconds: 250));
 
     final mockChannels = [
       // ─── Emergência Geral ────────────────────────────────────────────────
@@ -245,6 +295,8 @@ class ChannelsNotifier extends StateNotifier<ChannelsState> {
 
 final channelsProvider =
     StateNotifierProvider<ChannelsNotifier, ChannelsState>((ref) {
-  return ChannelsNotifier();
+  final userAsync = ref.watch(currentUserProvider);
+  final user = userAsync.valueOrNull;
+  final notifier = ChannelsNotifier(user);
+  return notifier;
 });
-

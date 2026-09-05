@@ -21,18 +21,23 @@ export function createApp(): express.Application {
   app.use(helmet());
 
   // ─── CORS ─────────────────────────────────────────────────────────────────
-  const allowedOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:3001')
+  // Em desenvolvimento aceita qualquer localhost para facilitar testes
+  const allowedOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:8080')
     .split(',')
     .map((o) => o.trim());
 
   app.use(
     cors({
       origin: (origin, callback) => {
-        if (!origin || allowedOrigins.includes(origin)) {
-          callback(null, true);
-        } else {
-          callback(new Error(`Origem não permitida: ${origin}`));
+        // Sem origin (mobile/Postman) ou localhost sempre permitido em dev
+        if (!origin) return callback(null, true);
+        if (process.env.NODE_ENV === 'development' && origin.startsWith('http://localhost')) {
+          return callback(null, true);
         }
+        if (allowedOrigins.includes(origin)) {
+          return callback(null, true);
+        }
+        callback(new Error(`Origem não permitida: ${origin}`));
       },
       credentials: true,
     }),
