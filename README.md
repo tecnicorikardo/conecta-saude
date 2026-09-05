@@ -1,194 +1,67 @@
-# Conecta Saúde
+# Conecta Saúde — Plataforma Institucional SUS
 
-Plataforma institucional de comunicação interna para ambiente hospitalar.
+Plataforma institucional de comunicação interna para ambiente hospitalar do SUS, integrando os centros **CCDTI** (Centro Carioca de Diagnóstico e Tratamento por Imagem), **CCO** (Centro Carioca do Olho), **CCE** (Centro Carioca de Especialidades) e a **Direção Geral**.
 
-Comunicação profissional, organizada, segura e com rastreabilidade — separada da comunicação pessoal dos funcionários.
-
----
-
-## Arquitetura
-
-```
-Flutter App (Android)
-    ↓
-Firebase Authentication → ID Token
-    ↓
-Node.js API (TypeScript)
-    ├── Firebase Admin SDK (validação de tokens + FCM)
-    └── PostgreSQL via Prisma (dados, usuários, mensagens, auditoria)
-```
+Comunicação profissional, organizada, segura e com rastreabilidade — mantendo estrita governança hierárquica e isolamento setorial entre os centros de atendimento.
 
 ---
 
-## Tecnologias
+## 🌟 Recursos Implementados
 
-| Camada       | Tecnologia                              |
-|--------------|-----------------------------------------|
-| Frontend     | Flutter, Dart, Riverpod, GoRouter       |
-| UI           | Material 3, Google Fonts (Inter)        |
-| Auth         | Firebase Authentication                 |
-| Notificações | Firebase Cloud Messaging (FCM)          |
-| Backend      | Node.js, TypeScript, Express            |
-| Banco        | PostgreSQL (Supabase ou Neon)           |
-| ORM          | Prisma                                  |
-| Validação    | Zod                                     |
+1. **Isolamento Institucional e Governança por Nível**:
+   - **Nível 1 (Direção Geral)**: Acesso irrestrito a todos os centros, painel executivo de indicadores, gestão de funcionários, auditoria de logs e triagem de ouvidoria.
+   - **Nível 2 (Coordenação Médica/Cirúrgica)**: Gestão de canais do seu setor, publicação de comunicados oficiais e acionamento de emergências.
+   - **Nível 3 (Supervisão)**: Supervisão operacional de equipes e canais permitidos.
+   - **Nível 4 (Funcionário)**: Comunicação estritamente restrita ao seu próprio centro (CCDTI, CCO ou CCE), comunicados gerais e canal de emergência.
 
----
+2. **Canais Oficiais & Setoriais**:
+   - Isolamento de canais por sigla (`CCDTI`, `CCO`, `CCE`). Colaboradores de um setor não acessam canais de outros setores, com exceção da Direção Geral.
+   - Canal de Avisos da Direção Geral aberto a toda a rede.
+   - Canal Prioritário de Emergência com disparo de alertas em tempo real.
 
-## Estrutura do Projeto
+3. **Comunicados Oficiais com Confirmação de Leitura**:
+   - Publicação exclusiva por Lideranças e Coordenações.
+   - Níveis de prioridade: Normal, Alta e 🚨 Urgente.
+   - Confirmação formal de leitura por colaborador com métrica de taxa de leitura institucional.
 
-```
-conecta-saude/
-├── app/                    # Flutter
-│   ├── lib/
-│   │   ├── core/           # Tema, rotas, config, utils
-│   │   └── features/       # auth, home, chat, channels...
-│   └── pubspec.yaml
-│
-└── backend/                # Node.js
-    ├── src/
-    │   ├── config/         # Firebase, banco
-    │   ├── middleware/      # Auth, errors
-    │   ├── modules/         # auth, users, sectors, conversations...
-    │   └── utils/
-    ├── prisma/
-    │   ├── schema.prisma
-    │   └── seed.ts
-    └── package.json
-```
+4. **Central de Emergência e Ramais Hospitalares**:
+   - Ramais diretos imediatos para Tomografia/CCDTI, Bloco Cirúrgico/CCO, Regulação/CCE e Plantão Geral.
+   - Protocolos padronizados SUS: Código Amarelo, Código Vermelho e Código Roxo.
+   - Disparo prioritário de Alerta Vermelho na rede hospitalar.
+
+5. **Conversas e Mensagens Seguras**:
+   - Mensagens diretas entre profissionais respeitando hierarquia.
+   - Suporte a reprodução de mensagens de áudio institucionais gravadas.
+   - Exclusão com soft-delete e ferramenta de denúncia para condutas impróprias.
+
+6. **Gestão de Funcionários, Auditoria e Ouvidoria**:
+   - Cadastro e ativação/desativação de funcionários pela Direção Geral.
+   - Trilha imutável de logs de auditoria com IP, módulo, ação e data/hora.
+   - Triagem e resolução de ocorrências anônimas de integridade e ética.
 
 ---
 
-## Configuração do Backend
+## 🚀 Execução no Ambiente
 
-### 1. Instalar dependências
-
-```bash
-cd backend
-npm install
-```
-
-### 2. Configurar variáveis de ambiente
-
-```bash
-cp .env.example .env
-# Editar .env com suas credenciais reais
-```
-
-### 3. Banco de dados
-
-Recomendado: **Neon** (neon.tech) ou **Supabase** — ambos possuem plano gratuito.
-
-Após configurar o `DATABASE_URL` no `.env`:
-
-```bash
-npm run db:generate   # Gerar cliente Prisma
-npm run db:migrate    # Executar migrations
-npm run db:seed       # Popular com dados de desenvolvimento
-```
-
-### 4. Firebase Admin SDK
-
-1. Acesse o Firebase Console
-2. Configurações do Projeto → Contas de Serviço
-3. Gerar nova chave privada
-4. Copiar `project_id`, `client_email` e `private_key` para o `.env`
-5. **Nunca versionar o arquivo JSON da service account**
-
-### 5. Executar em desenvolvimento
-
-```bash
-npm run dev
-```
-
-API disponível em: `http://localhost:3000`
-Health check: `http://localhost:3000/health`
+- **Ambiente**: Node.js 22
+- **Porta**: 3000
+- **Frontend**: React 19, TypeScript, Vite, Tailwind CSS v4, Lucide Icons
+- **Scripts**:
+  ```bash
+  npm run dev     # Inicia o servidor Vite na porta 3000 (host 0.0.0.0)
+  npm run build   # Compilação estática de produção em dist/
+  npm run lint    # Verificação de tipos TypeScript
+  ```
 
 ---
 
-## Endpoints Principais
+## 👥 Papéis Pré-Configurados para Testes
 
-| Método | Endpoint                        | Descrição                        | Auth |
-|--------|---------------------------------|----------------------------------|------|
-| POST   | /api/auth/verify                | Validar ID Token Firebase        | Não  |
-| GET    | /api/me                         | Dados do usuário autenticado     | Sim  |
-| GET    | /api/users                      | Listar funcionários              | Sim  |
-| POST   | /api/users                      | Criar funcionário (Direção)      | Sim  |
-| PUT    | /api/users/:id                  | Editar funcionário (Direção)     | Sim  |
-| PATCH  | /api/users/:id/status           | Ativar/desativar (Direção)       | Sim  |
-| GET    | /api/sectors                    | Listar setores                   | Sim  |
-| GET    | /api/conversations              | Listar conversas                 | Sim  |
-| POST   | /api/conversations              | Criar conversa                   | Sim  |
-| GET    | /api/conversations/:id/messages | Listar mensagens                 | Sim  |
-| POST   | /api/conversations/:id/messages | Enviar mensagem                  | Sim  |
-| PUT    | /api/messages/:id               | Editar mensagem                  | Sim  |
-| DELETE | /api/messages/:id               | Excluir mensagem (soft delete)   | Sim  |
-| GET    | /api/announcements              | Listar comunicados               | Sim  |
-| POST   | /api/announcements              | Criar comunicado (Coord+)        | Sim  |
-| POST   | /api/announcements/:id/read     | Confirmar leitura                | Sim  |
-| POST   | /api/reports                    | Registrar denúncia               | Sim  |
-| GET    | /api/admin/audit-logs           | Logs de auditoria (Direção)      | Sim  |
-
----
-
-## Hierarquia
-
-| Nível | Nome          | Permissões principais                              |
-|-------|---------------|----------------------------------------------------|
-| 1     | Direção       | Acesso total, gerencia todos                       |
-| 2     | Coordenação   | Gerencia seu setor, cria canais do setor           |
-| 3     | Supervisão    | Conversa com superiores e colegas do setor         |
-| 4     | Funcionário   | Conversa com superiores e colegas do setor         |
-
-> Toda validação de hierarquia acontece no backend. O app Flutter é apenas cliente.
-
----
-
-## Configuração do Flutter
-
-### 1. Instalar Flutter
-
-Baixar em: https://docs.flutter.dev/get-started/install/windows
-
-### 2. Dependências
-
-```bash
-cd app
-flutter pub get
-```
-
-### 3. Firebase
-
-1. Adicionar o app Android no Firebase Console (package: `com.conectasaude.app`)
-2. Baixar `google-services.json` e colocar em `android/app/`
-3. Atualizar `lib/core/config/firebase_options.dart` com o `appId` Android correto
-
-### 4. Executar
-
-```bash
-flutter run
-```
-
----
-
-## Segurança
-
-- Tokens Firebase são verificados pelo backend em **toda** requisição
-- Hierarquia, setor e status do usuário são sempre lidos do PostgreSQL
-- O app Flutter **nunca** define permissões — apenas exibe
-- Soft delete em mensagens e usuários — histórico preservado
-- Auditoria de todas as ações administrativas
-- Rate limiting global (200 req/15min) e por autenticação (20 req/15min)
-- Variáveis sensíveis exclusivamente no backend via `.env`
-
----
-
-## Fases de Desenvolvimento
-
-- [x] **Fase 1** — Base (Flutter + Backend + Firebase Auth)
-- [ ] **Fase 2** — Usuários, setores e hierarquia (UI completa)
-- [ ] **Fase 3** — Chat e mensagens
-- [ ] **Fase 4** — Comunicados, canais, FCM
-- [ ] **Fase 5** — Administração, denúncias, auditoria
-- [ ] **Fase 6** — Segurança e testes
-- [ ] **Fase 7** — Polimento, Dark Mode, acessibilidade
+O seletor rápido no topo da aplicação permite alternar instantaneamente entre os perfis institucionais:
+- **Dr. Carlos Eduardo Mendes** (Direção Geral — Nível 1)
+- **Dra. Juliana Moreira** (Coord. Médica CCDTI — Nível 2)
+- **Lucas Ribeiro** (Técnico Radiologia CCDTI — Nível 4)
+- **Dr. Roberto Vasconcelos** (Coord. Cirúrgico CCO — Nível 2)
+- **Paula Souza** (Técnica Oftalmológica CCO — Nível 4)
+- **Dra. Beatriz Castro** (Coord. Ambulatorial CCE — Nível 2)
+- **Gabriel Mendes** (Assistente Regulação CCE — Nível 4)
