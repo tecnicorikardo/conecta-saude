@@ -1,6 +1,6 @@
 # Conecta Saúde — Progresso do Projeto
-> **Última atualização:** 05/09/2026 às 10:13 (horário de Brasília)
-> **Status geral:** 🟢 Em desenvolvimento ativo — 80% completo
+> **Última atualização:** 05/09/2026 às 11:02 (horário de Brasília)
+> **Status geral:** 🟢 Em desenvolvimento ativo — 85% completo
 
 ---
 
@@ -16,6 +16,7 @@
 | Fase 4 — Canais e Comunicados | Canais por centro (CCD/CCO/CCE), Comunicados | ✅ 100% |
 | Fase 5 — Administração | Painel admin, Denúncias, Auditoria | ✅ 100% |
 | Fase 5b — Emergência e Notificações | Tela de emergência, Central de Notificações | ✅ 100% |
+| Banco de Dados (Neon) | PostgreSQL nuvem, Prisma schema, Seed CCDTI/CCO/CCE | ✅ 100% |
 | Fase 6 — HTTP Real (Dio) | Integração com API backend real | 🔄 Próxima |
 | Fase 7 — FCM | Notificações push Firebase | ⏳ Pendente |
 | Fase 8 — Testes e Segurança | Vitest backend, testes Flutter | ⏳ Pendente |
@@ -281,14 +282,14 @@ conecta-saude/
 | 05/09/2026 09:53 | **Fase 5**: Painel Admin, Denúncias, Auditoria — implementação completa |
 | 05/09/2026 10:08 | PROGRESSO.md reestruturado completo |
 | 05/09/2026 10:13 | **Fase 5b**: Central de Emergência & Central de Notificações concluídas com 0 issues |
+| 05/09/2026 11:02 | **Neon PostgreSQL**: CLI instalada, MCP/skills configurados, link project `spring-fire-94048078`, `neon deploy`, `prisma db push` e `db:seed` executados com sucesso no Neon |
 
 ---
 
 ## 🚀 PRÓXIMOS PASSOS (ordem de prioridade)
 
-1. **[AGORA]** Tela de Emergência — visual vermelho, protocolo, canal direto
-2. **[AGORA]** Central de Notificações — histórico, categorias, marcar lida
-3. **[PRÓXIMO]** Integração Dio / HTTP real — substituir mocks por chamadas à API
-4. **[FUTURO]** FCM — notificações push em foreground e background
-5. **[FUTURO]** Testes de segurança backend (Vitest)
-6. **[FUTURO]** Polimento: dark mode, skeleton, acessibilidade
+1. **[AGORA]** Integração Dio / HTTP real (Fase 6) — conectar chamadas do app Flutter à API Node.js/Prisma
+2. **[PRÓXIMO]** Credenciais do Firebase Admin SDK no `backend/.env`
+3. **[FUTURO]** FCM — notificações push em foreground e background
+4. **[FUTURO]** Testes de segurança backend (Vitest)
+5. **[FUTURO]** Polimento: dark mode, skeleton, acessibilidade
