@@ -1,0 +1,36 @@
+# Dependências e Builds
+node_modules/
+dist/
+build/
+.dart_tool/
+.pub-cache/
+.pub/
+.packages
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Arquivos sensíveis e credenciais (NUNCA SUBIR)
+.env
+.env.*
+*.env
+*serviceAccount*.json
+*service-account*.json
+firebase-admin*.json
+google-services.json
+GoogleService-Info.plist
+
+# Android & iOS gerados/locais
+**/android/local.properties
+**/android/.gradle/
+**/android/key.properties
+**/ios/Flutter/.last_build_id
+**/ios/Podfile.lock
+
+# Sistema e IDEs
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.iml
+*.log
+logs/

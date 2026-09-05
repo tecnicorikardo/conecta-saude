@@ -1,0 +1,37 @@
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+
+# Android
+android/local.properties
+android/.gradle/
+android/key.properties
+android/app/google-services.json
+
+# iOS
+ios/Flutter/.last_build_id
+ios/Podfile.lock
+ios/GoogleService-Info.plist
+
+# Firebase — NUNCA versionar
+google-services.json
+GoogleService-Info.plist
+firebase_options.dart.bak
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.iml
+
+# Variáveis de ambiente
+.env
+.env.local

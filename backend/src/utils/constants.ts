@@ -1,0 +1,6 @@
+export const AppConstants = {
+  MESSAGE_EDIT_WINDOW_MINUTES: 5,
+  PAGE_SIZE_DEFAULT: 30,
+  PAGE_SIZE_MAX: 100,
+  MESSAGE_BATCH_SIZE: 50,
+} as const;

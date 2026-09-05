@@ -1,0 +1,225 @@
+import 'package:equatable/equatable.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../../core/services/http_service.dart';
+import '../../../auth/domain/entities/user_entity.dart';
+import '../../data/repositories/employees_repository_impl.dart';
+import '../../domain/repositories/employees_repository.dart';
+
+final employeesRepositoryProvider = Provider<EmployeesRepository>((ref) {
+  final httpService = ref.watch(httpServiceProvider);
+  return EmployeesRepositoryImpl(httpService);
+});
+
+class EmployeesState extends Equatable {
+  final List<UserEntity> users;
+  final bool isLoading;
+  final bool isLoadingMore;
+  final String? errorMessage;
+  final int page;
+  final bool hasMore;
+  final String searchQuery;
+  final String? selectedSetorId;
+  final int? selectedHierarquia;
+  final bool? selectedAtivo;
+
+  const EmployeesState({
+    this.users = const [],
+    this.isLoading = false,
+    this.isLoadingMore = false,
+    this.errorMessage,
+    this.page = 1,
+    this.hasMore = true,
+    this.searchQuery = '',
+    this.selectedSetorId,
+    this.selectedHierarquia,
+    this.selectedAtivo,
+  });
+
+  EmployeesState copyWith({
+    List<UserEntity>? users,
+    bool? isLoading,
+    bool? isLoadingMore,
+    String? errorMessage,
+    int? page,
+    bool? hasMore,
+    String? searchQuery,
+    String? selectedSetorId,
+    bool clearSetor = false,
+    int? selectedHierarquia,
+    bool clearHierarquia = false,
+    bool? selectedAtivo,
+    bool clearAtivo = false,
+  }) {
+    return EmployeesState(
+      users: users ?? this.users,
+      isLoading: isLoading ?? this.isLoading,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+      errorMessage: errorMessage,
+      page: page ?? this.page,
+      hasMore: hasMore ?? this.hasMore,
+      searchQuery: searchQuery ?? this.searchQuery,
+      selectedSetorId: clearSetor ? null : (selectedSetorId ?? this.selectedSetorId),
+      selectedHierarquia:
+          clearHierarquia ? null : (selectedHierarquia ?? this.selectedHierarquia),
+      selectedAtivo: clearAtivo ? null : (selectedAtivo ?? this.selectedAtivo),
+    );
+  }
+
+  @override
+  List<Object?> get props => [
+        users,
+        isLoading,
+        isLoadingMore,
+        errorMessage,
+        page,
+        hasMore,
+        searchQuery,
+        selectedSetorId,
+        selectedHierarquia,
+        selectedAtivo,
+      ];
+}
+
+final employeesProvider =
+    StateNotifierProvider<EmployeesNotifier, EmployeesState>((ref) {
+  final repository = ref.watch(employeesRepositoryProvider);
+  return EmployeesNotifier(repository);
+});
+
+class EmployeesNotifier extends StateNotifier<EmployeesState> {
+  final EmployeesRepository _repository;
+
+  EmployeesNotifier(this._repository) : super(const EmployeesState()) {
+    fetchEmployees();
+  }
+
+  Future<void> fetchEmployees({bool isRefresh = false}) async {
+    if (isRefresh) {
+      state = state.copyWith(page: 1, hasMore: true);
+    }
+
+    state = state.copyWith(isLoading: true, errorMessage: null);
+
+    final result = await _repository.listUsers(
+      page: 1,
+      limit: 30,
+      search: state.searchQuery,
+      setorId: state.selectedSetorId,
+      hierarquiaNivel: state.selectedHierarquia,
+      ativo: state.selectedAtivo,
+    );
+
+    result.fold(
+      (failure) => state = state.copyWith(
+        isLoading: false,
+        errorMessage: failure.message,
+      ),
+      (paginated) => state = state.copyWith(
+        isLoading: false,
+        users: paginated.items,
+        page: 1,
+        hasMore: paginated.hasMore,
+      ),
+    );
+  }
+
+  Future<void> loadMore() async {
+    if (state.isLoading || state.isLoadingMore || !state.hasMore) return;
+
+    state = state.copyWith(isLoadingMore: true);
+    final nextPage = state.page + 1;
+
+    final result = await _repository.listUsers(
+      page: nextPage,
+      limit: 30,
+      search: state.searchQuery,
+      setorId: state.selectedSetorId,
+      hierarquiaNivel: state.selectedHierarquia,
+      ativo: state.selectedAtivo,
+    );
+
+    result.fold(
+      (failure) => state = state.copyWith(
+        isLoadingMore: false,
+        errorMessage: failure.message,
+      ),
+      (paginated) => state = state.copyWith(
+        isLoadingMore: false,
+        users: [...state.users, ...paginated.items],
+        page: nextPage,
+        hasMore: paginated.hasMore,
+      ),
+    );
+  }
+
+  void setSearchQuery(String query) {
+    if (query == state.searchQuery) return;
+    state = state.copyWith(searchQuery: query);
+    fetchEmployees(isRefresh: true);
+  }
+
+  void setSetorFilter(String? setorId) {
+    state = state.copyWith(
+      selectedSetorId: setorId,
+      clearSetor: setorId == null,
+    );
+    fetchEmployees(isRefresh: true);
+  }
+
+  void setHierarquiaFilter(int? nivel) {
+    state = state.copyWith(
+      selectedHierarquia: nivel,
+      clearHierarquia: nivel == null,
+    );
+    fetchEmployees(isRefresh: true);
+  }
+
+  void setAtivoFilter(bool? ativo) {
+    state = state.copyWith(
+      selectedAtivo: ativo,
+      clearAtivo: ativo == null,
+    );
+    fetchEmployees(isRefresh: true);
+  }
+
+  Future<bool> updateStatus(String id, bool ativo) async {
+    final result = await _repository.updateUserStatus(id: id, ativo: ativo);
+    return result.fold(
+      (failure) => false,
+      (_) {
+        final updatedUsers = state.users.map((u) {
+          if (u.id == id) {
+            return UserEntity(
+              id: u.id,
+              firebaseUid: u.firebaseUid,
+              nome: u.nome,
+              email: u.email,
+              cargo: u.cargo,
+              hierarquiaNivel: u.hierarquiaNivel,
+              setorId: u.setorId,
+              setorNome: u.setorNome,
+              fotoUrl: u.fotoUrl,
+              ativo: ativo,
+              criadoEm: u.criadoEm,
+            );
+          }
+          return u;
+        }).toList();
+        state = state.copyWith(users: updatedUsers);
+        return true;
+      },
+    );
+  }
+
+  void updateOrAddUserLocally(UserEntity user) {
+    final index = state.users.indexWhere((u) => u.id == user.id);
+    if (index >= 0) {
+      final updated = List<UserEntity>.from(state.users);
+      updated[index] = user;
+      state = state.copyWith(users: updated);
+    } else {
+      state = state.copyWith(users: [user, ...state.users]);
+    }
+  }
+}

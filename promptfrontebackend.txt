@@ -1,0 +1,1262 @@
+# MASTER PROMPT — SISTEMA INSTITUCIONAL DE COMUNICAÇÃO HOSPITALAR
+
+## 1. OBJETIVO DO PROJETO
+
+Desenvolver uma plataforma institucional de comunicação interna para um hospital.
+
+O sistema deverá funcionar como um canal oficial de comunicação entre funcionários, setores, coordenações, supervisões e direção.
+
+A proposta NÃO é simplesmente criar um "WhatsApp corporativo".
+
+O objetivo é:
+
+* Separar comunicação profissional da comunicação pessoal.
+* Evitar que funcionários precisem utilizar seus números pessoais para assuntos profissionais.
+* Organizar a comunicação por setores e hierarquia.
+* Reduzir mensagens pessoais, fotos e vídeos enviados por engano.
+* Reduzir comportamentos inadequados e situações que possam favorecer assédio.
+* Criar rastreabilidade das comunicações institucionais.
+* Permitir controle de permissões.
+* Manter histórico organizado.
+* Facilitar comunicados oficiais.
+* Criar canais de emergência.
+* Registrar ações administrativas através de auditoria.
+* Aplicar segurança e privacidade desde a arquitetura.
+
+O sistema deverá ser pensado para ambiente hospitalar e deverá respeitar princípios de segurança da informação, controle de acesso e LGPD.
+
+IMPORTANTE:
+
+O sistema NÃO deve ser apresentado como uma tentativa de "acabar com o WhatsApp".
+
+A apresentação deve utilizar conceitos como:
+
+"Plataforma institucional para comunicação interna, criada para separar a comunicação profissional da comunicação pessoal e proporcionar maior organização, segurança, rastreabilidade e controle hierárquico."
+
+---
+
+# 2. ARQUITETURA TECNOLÓGICA
+
+## FRONT-END
+
+Utilizar:
+
+* Flutter
+* Dart
+* Riverpod
+* Material 3
+* Arquitetura limpa e modular
+* Android como plataforma principal
+* Web responsivo como possibilidade futura
+
+O código deverá ser organizado para facilitar manutenção e expansão.
+
+Estrutura sugerida:
+
+lib/
+core/
+config/
+models/
+services/
+repositories/
+providers/
+features/
+auth/
+home/
+chat/
+channels/
+announcements/
+emergency/
+notifications/
+profile/
+employees/
+administration/
+reports/
+widgets/
+routes/
+
+Não colocar regras críticas de segurança apenas no Flutter.
+
+O aplicativo é apenas cliente.
+
+Toda autorização real deverá ser validada no backend.
+
+---
+
+# 3. BACK-END
+
+Utilizar:
+
+* Node.js
+* TypeScript
+* API REST
+* Fastify ou Express
+* Firebase Admin SDK
+* PostgreSQL
+* ORM como Prisma
+
+O backend será responsável por:
+
+* Autenticar requisições.
+* Validar Firebase ID Tokens.
+* Consultar usuários.
+* Validar permissões.
+* Validar hierarquia.
+* Validar setor.
+* Criar e editar mensagens.
+* Criar canais.
+* Gerenciar membros.
+* Processar comunicados.
+* Registrar auditoria.
+* Processar denúncias.
+* Gerenciar notificações.
+* Aplicar regras de negócio.
+* Impedir escalação de privilégios.
+* Validar todos os dados recebidos do aplicativo.
+
+NUNCA confiar em informações enviadas pelo Flutter para definir:
+
+* cargo;
+* hierarquia;
+* setor;
+* permissões;
+* administrador;
+* direção;
+* usuário ativo.
+
+Essas informações devem ser obtidas e validadas pelo backend.
+
+---
+
+# 4. FIREBASE — REGRA PRINCIPAL
+
+Utilizar o máximo possível dos recursos gratuitos do Firebase.
+
+REGRA:
+
+"Firebase gratuito primeiro."
+
+Se determinado serviço puder ser utilizado gratuitamente dentro das cotas disponíveis, utilizar Firebase.
+
+Se determinado recurso exigir Blaze ou cobrança obrigatória para o funcionamento planejado, NÃO tornar o sistema dependente dele.
+
+Nesse caso, utilizar backend próprio ou outro serviço adequado.
+
+O sistema deve possuir baixo acoplamento ao Firebase.
+
+---
+
+# 5. SERVIÇOS FIREBASE
+
+## Firebase Authentication
+
+Utilizar para autenticação dos funcionários.
+
+Preferência:
+
+* Email e senha.
+
+Evitar Phone Authentication/SMS caso gere custo.
+
+Fluxo:
+
+Flutter
+↓
+Firebase Authentication
+↓
+ID Token
+↓
+Backend Node.js
+↓
+Firebase Admin SDK
+↓
+Validação do Token
+↓
+PostgreSQL
+↓
+Validação de usuário/permissão
+
+Nunca colocar credenciais administrativas do Firebase no aplicativo.
+
+---
+
+# 6. FIREBASE CLOUD MESSAGING
+
+Utilizar FCM para:
+
+* Notificações de novas mensagens.
+* Novos comunicados.
+* Avisos importantes.
+* Mensagens de emergência.
+* Alertas administrativos.
+* Notificações de leitura quando necessário.
+
+O token FCM deverá ser associado ao usuário no backend.
+
+O backend será responsável pelo envio das notificações.
+
+---
+
+# 7. OUTROS RECURSOS GRATUITOS DO FIREBASE
+
+Sempre que estiverem disponíveis gratuitamente e forem úteis, avaliar a utilização de:
+
+* Crashlytics
+* Analytics
+* App Check
+* Performance Monitoring
+* Remote Config
+* In-App Messaging
+
+Não adicionar serviços apenas por adicionar.
+
+Utilizar somente quando houver benefício real para o sistema.
+
+---
+
+# 8. FIRESTORE
+
+NÃO utilizar Firestore como banco principal do sistema.
+
+O banco principal deverá ser PostgreSQL.
+
+Motivos:
+
+* Sistema possui forte relacionamento entre usuários, setores e hierarquia.
+* Necessidade de auditoria.
+* Relatórios.
+* Controle de permissões.
+* Consultas relacionais.
+* Maior independência do Firebase.
+
+Se algum recurso pequeno puder utilizar Firestore dentro da cota gratuita e houver vantagem real, poderá ser considerado posteriormente.
+
+Porém:
+
+USUÁRIOS, MENSAGENS, SETORES, PERMISSÕES, CANAIS E AUDITORIA DEVEM FICAR NO POSTGRESQL.
+
+---
+
+# 9. CLOUD FUNCTIONS
+
+Não tornar Cloud Functions obrigatórias.
+
+Caso determinada funcionalidade exija plano Blaze, implementar no Node.js próprio.
+
+Exemplo:
+
+Firebase FCM
++
+Node.js Backend
+
+em vez de depender de:
+
+Firebase Cloud Functions
+
+---
+
+# 10. BANCO DE DADOS
+
+Utilizar PostgreSQL.
+
+Pode utilizar inicialmente:
+
+* Supabase PostgreSQL
+  OU
+* Neon PostgreSQL
+
+Escolher a alternativa mais adequada considerando:
+
+* plano gratuito disponível;
+* facilidade;
+* estabilidade;
+* conexão com Node.js;
+* possibilidade de crescimento;
+* facilidade de backup;
+* segurança.
+
+O código deverá permitir trocar o provedor PostgreSQL futuramente sem reescrever toda a aplicação.
+
+---
+
+# 11. ESTRUTURA DO BANCO
+
+Criar inicialmente entidades para:
+
+## users
+
+Campos sugeridos:
+
+* id
+* firebase_uid
+* nome
+* email
+* cargo
+* hierarquia_nivel
+* setor_id
+* foto_url
+* ativo
+* fcm_token
+* criado_em
+* atualizado_em
+
+## sectors
+
+* id
+* nome
+* descricao
+* ativo
+* criado_em
+* atualizado_em
+
+## conversations
+
+* id
+* tipo
+* nome
+* criado_por
+* setor_id
+* ativo
+* criado_em
+* atualizado_em
+
+## conversation_members
+
+* id
+* conversation_id
+* user_id
+* criado_em
+
+## messages
+
+* id
+* conversation_id
+* remetente_id
+* texto
+* criado_em
+* atualizado_em
+* editado
+* excluido
+* excluido_em
+
+## message_reads
+
+* id
+* message_id
+* user_id
+* lido_em
+
+## channels
+
+* id
+* nome
+* descricao
+* tipo
+* setor_id
+* criado_por
+* ativo
+* criado_em
+* atualizado_em
+
+## channel_members
+
+* id
+* channel_id
+* user_id
+* criado_em
+
+## announcements
+
+* id
+* titulo
+* mensagem
+* criado_por
+* prioridade
+* publicado_em
+* ativo
+
+## announcement_reads
+
+* id
+* announcement_id
+* user_id
+* lido_em
+
+## reports
+
+* id
+* reporter_id
+* reported_user_id
+* message_id
+* motivo
+* descricao
+* status
+* criado_em
+* atualizado_em
+
+## audit_logs
+
+* id
+* user_id
+* acao
+* entidade
+* entidade_id
+* detalhes
+* ip
+* user_agent
+* criado_em
+
+---
+
+# 12. HIERARQUIA
+
+Implementar quatro níveis:
+
+NÍVEL 1 — DIREÇÃO
+
+NÍVEL 2 — COORDENAÇÃO
+
+NÍVEL 3 — SUPERVISÃO
+
+NÍVEL 4 — FUNCIONÁRIO / OPERACIONAL
+
+A hierarquia deve ser configurável pelo backend.
+
+Não utilizar apenas verificações visuais no aplicativo.
+
+---
+
+# 13. REGRAS DE COMUNICAÇÃO
+
+## DIREÇÃO
+
+Pode:
+
+* Comunicar-se com qualquer funcionário.
+* Comunicar-se com qualquer setor.
+* Criar canais.
+* Criar comunicados.
+* Enviar comunicados gerais.
+* Criar canais de emergência.
+* Gerenciar funcionários.
+* Ativar/desativar funcionários.
+* Gerenciar setores.
+* Visualizar registros administrativos permitidos.
+* Excluir mensagens quando necessário.
+* Administrar denúncias.
+
+## COORDENAÇÃO
+
+Pode:
+
+* Comunicar-se com Direção.
+* Comunicar-se com outras coordenações conforme permissão.
+* Comunicar-se com supervisores.
+* Comunicar-se com funcionários do seu setor.
+* Criar canais restritos ao seu setor, conforme permissão.
+* Publicar comunicados autorizados.
+
+Não pode:
+
+* Administrar usuários globalmente.
+* Alterar sua própria hierarquia.
+* Acessar setores sem autorização.
+
+## SUPERVISÃO
+
+Pode:
+
+* Comunicar-se com Direção.
+* Comunicar-se com Coordenação.
+* Comunicar-se com funcionários do seu setor.
+* Participar de canais autorizados.
+* Criar canais quando permitido pela política do setor.
+
+## FUNCIONÁRIO / OPERACIONAL
+
+Pode:
+
+* Comunicar-se com responsáveis autorizados.
+* Comunicar-se com colegas do mesmo setor.
+* Participar de canais autorizados.
+* Receber comunicados.
+* Enviar mensagens onde possuir permissão.
+
+Não pode:
+
+* Criar canais administrativos.
+* Alterar permissões.
+* Gerenciar usuários.
+* Acessar setores não autorizados.
+
+---
+
+# 14. REGRA FUNDAMENTAL DE SEGURANÇA
+
+Toda requisição autenticada deve passar por:
+
+1. Verificação do Firebase ID Token.
+2. Identificação do usuário.
+3. Verificação se o usuário está ativo.
+4. Recuperação da hierarquia no banco.
+5. Recuperação do setor no banco.
+6. Verificação da permissão.
+7. Execução da operação somente se autorizada.
+
+Nunca confiar em:
+
+hierarquia enviada pelo Flutter.
+
+Nunca confiar em:
+
+setor enviado pelo Flutter.
+
+Nunca confiar em:
+
+"admin=true" enviado pelo Flutter.
+
+Nunca confiar em:
+
+permissões enviadas pelo cliente.
+
+---
+
+# 15. CHAT
+
+Implementar:
+
+* Conversa individual.
+* Conversas por setor.
+* Canais institucionais.
+* Canais de emergência.
+* Histórico.
+* Mensagens não lidas.
+* Indicador de leitura.
+* Pesquisa.
+* Data e horário.
+* Identificação do remetente.
+* Mensagem editada.
+* Exclusão lógica.
+
+Usuário pode editar suas próprias mensagens dentro de uma janela configurável.
+
+Exemplo inicial:
+
+5 minutos.
+
+Após esse período, não permitir edição comum.
+
+Direção poderá possuir permissões administrativas adicionais.
+
+---
+
+# 16. EXCLUSÃO DE MENSAGENS
+
+Nunca apagar definitivamente mensagens importantes sem política definida.
+
+Utilizar soft delete.
+
+Exemplo:
+
+excluido = true
+
+A mensagem poderá aparecer como:
+
+"Mensagem removida."
+
+Registrar a ação no audit_logs quando aplicável.
+
+---
+
+# 17. COMUNICADOS OFICIAIS
+
+Criar sistema de comunicados.
+
+Exemplo:
+
+COMUNICADO — DIREÇÃO
+
+"Reunião geral amanhã às 14h."
+
+Mostrar:
+
+* Quem publicou.
+* Data.
+* Hora.
+* Prioridade.
+* Público-alvo.
+* Status de leitura.
+
+Dashboard administrativo:
+
+87% visualizaram
+13% ainda não visualizaram
+
+Permitir acompanhar quem recebeu/visualizou quando isso estiver de acordo com a política institucional.
+
+---
+
+# 18. CANAL DE EMERGÊNCIA
+
+Criar canal específico para mensagens urgentes.
+
+Exemplo:
+
+🚨 EMERGÊNCIA
+
+Mensagens poderão gerar notificações prioritárias.
+
+Utilizar FCM.
+
+O canal deverá possuir regras próprias de permissão.
+
+---
+
+# 19. DENÚNCIA DE COMPORTAMENTO INADEQUADO
+
+Permitir que o usuário denuncie:
+
+* mensagem;
+* comportamento;
+* conteúdo inadequado;
+* assédio;
+* comunicação incompatível com ambiente profissional.
+
+A denúncia deverá gerar registro.
+
+Não permitir que qualquer funcionário visualize denúncias administrativas.
+
+Somente usuários autorizados poderão acessar.
+
+---
+
+# 20. AUDITORIA
+
+Registrar ações administrativas importantes:
+
+* criação de usuário;
+* alteração de usuário;
+* desativação;
+* alteração de setor;
+* alteração de hierarquia;
+* criação de canal;
+* alteração de canal;
+* exclusão administrativa;
+* análise de denúncia;
+* alterações críticas.
+
+Nunca registrar senhas ou tokens sensíveis.
+
+---
+
+# 21. PERFIL DO FUNCIONÁRIO
+
+Mostrar:
+
+* Foto.
+* Nome.
+* Cargo.
+* Setor.
+* Hierarquia.
+* Status.
+* Preferências de notificação.
+
+Não permitir que o usuário comum altere informações administrativas.
+
+---
+
+# 22. ADMINISTRAÇÃO
+
+Criar painel administrativo para usuários autorizados.
+
+Funções:
+
+* Listar funcionários.
+* Pesquisar funcionários.
+* Criar funcionário.
+* Editar funcionário.
+* Alterar setor.
+* Alterar cargo.
+* Alterar hierarquia.
+* Ativar/desativar.
+* Visualizar canais.
+* Gerenciar permissões.
+* Consultar denúncias.
+* Consultar auditoria.
+
+Desativação deverá utilizar:
+
+ativo = false
+
+Não apagar imediatamente o usuário do banco.
+
+---
+
+# 23. INTERFACE
+
+Criar uma interface:
+
+* Moderna.
+* Profissional.
+* Institucional.
+* Limpa.
+* Responsiva.
+* Fácil de usar.
+* Adequada para ambiente hospitalar.
+
+NÃO copiar:
+
+* WhatsApp.
+* Telegram.
+* Messenger.
+* Slack.
+
+A identidade visual deve ser própria.
+
+Utilizar Material 3 como base, mas criar identidade visual própria.
+
+---
+
+# 24. TEMA
+
+Disponibilizar:
+
+* Light Mode.
+* Dark Mode.
+
+A identidade visual deve transmitir:
+
+* confiança;
+* organização;
+* segurança;
+* tecnologia;
+* ambiente institucional;
+* comunicação profissional.
+
+---
+
+# 25. TELAS PRINCIPAIS
+
+Criar inicialmente:
+
+1. Login.
+2. Recuperação de acesso.
+3. Dashboard.
+4. Conversas.
+5. Chat.
+6. Canais.
+7. Comunicado oficial.
+8. Emergência.
+9. Notificações.
+10. Perfil.
+11. Funcionários.
+12. Administração.
+13. Denúncias.
+14. Auditoria.
+
+---
+
+# 26. DASHBOARD
+
+Exibir informações relevantes ao usuário conforme seu nível hierárquico.
+
+Exemplos:
+
+* Comunicados recentes.
+* Mensagens não lidas.
+* Canais.
+* Avisos importantes.
+* Notificações.
+* Emergências.
+
+Para administração:
+
+* Funcionários ativos.
+* Funcionários inativos.
+* Comunicados publicados.
+* Percentual de leitura.
+* Denúncias pendentes.
+* Atividade recente.
+
+---
+
+# 27. BACKEND API
+
+Criar endpoints organizados.
+
+Exemplos:
+
+POST /auth/verify
+
+GET /me
+
+GET /users
+
+POST /users
+
+PUT /users/:id
+
+PATCH /users/:id/status
+
+GET /sectors
+
+POST /sectors
+
+GET /conversations
+
+POST /conversations
+
+GET /conversations/:id/messages
+
+POST /conversations/:id/messages
+
+PUT /messages/:id
+
+DELETE /messages/:id
+
+GET /channels
+
+POST /channels
+
+POST /channels/:id/members
+
+GET /announcements
+
+POST /announcements
+
+POST /announcements/:id/read
+
+POST /reports
+
+GET /admin/reports
+
+GET /admin/audit-logs
+
+Os endpoints podem ser reorganizados conforme a arquitetura final.
+
+---
+
+# 28. VALIDAÇÃO
+
+Validar absolutamente todos os dados no backend.
+
+Exemplos:
+
+* tamanho de mensagem;
+* conteúdo obrigatório;
+* IDs válidos;
+* usuário ativo;
+* existência do setor;
+* existência da conversa;
+* autorização para participar;
+* autorização para enviar;
+* autorização para editar;
+* autorização para excluir;
+* autorização para criar canal.
+
+Frontend nunca substitui validação de backend.
+
+---
+
+# 29. SEGURANÇA
+
+Implementar:
+
+* HTTPS.
+* Firebase ID Token.
+* Firebase Admin SDK somente no servidor.
+* Variáveis de ambiente.
+* Rate limiting.
+* CORS configurado.
+* Helmet ou proteção equivalente.
+* Validação de entrada.
+* Sanitização.
+* Controle de acesso.
+* Logs de segurança.
+* Proteção contra escalação de privilégios.
+* Soft delete.
+* Auditoria.
+
+NUNCA colocar no código:
+
+* API keys privadas;
+* JWT secrets;
+* senhas;
+* service account;
+* tokens privados;
+* credenciais de banco.
+
+Nunca versionar arquivos .env.
+
+Criar .env.example.
+
+---
+
+# 30. SEGREDOS
+
+O Flutter NÃO deve possuir:
+
+FIREBASE_PRIVATE_KEY
+
+DATABASE_PASSWORD
+
+JWT_SECRET
+
+SERVICE_ACCOUNT
+
+ou qualquer segredo administrativo.
+
+Esses dados ficam exclusivamente no backend.
+
+---
+
+# 31. BANCO E MIGRAÇÕES
+
+Utilizar Prisma.
+
+Criar:
+
+* schema.prisma
+* migrations
+* seed inicial
+* índices necessários
+* relacionamentos
+* constraints
+
+Criar seed para ambiente de desenvolvimento.
+
+Nunca colocar dados reais do hospital no código.
+
+---
+
+# 32. AMBIENTES
+
+Criar separação:
+
+development
+staging
+production
+
+Configurações através de variáveis de ambiente.
+
+---
+
+# 33. TESTES
+
+Implementar:
+
+## Backend
+
+* Testes unitários.
+* Testes de autenticação.
+* Testes de autorização.
+* Testes de hierarquia.
+* Testes de setor.
+* Testes de mensagens.
+* Testes de endpoints.
+
+## Segurança
+
+Testar:
+
+* Funcionário tentando acessar outro setor.
+* Funcionário tentando alterar hierarquia.
+* Funcionário tentando acessar endpoint administrativo.
+* Usuário desativado tentando acessar sistema.
+* Usuário tentando editar mensagem de outra pessoa.
+* Usuário tentando excluir mensagem de outra pessoa.
+* Usuário tentando criar canal sem permissão.
+
+TODOS devem ser bloqueados.
+
+---
+
+# 34. ARMAZENAMENTO DE IMAGENS
+
+Fotos de perfil e outros arquivos deverão utilizar uma solução de armazenamento que permaneça dentro das possibilidades gratuitas inicialmente.
+
+Primeiro avaliar Firebase Storage dentro das cotas disponíveis.
+
+Se houver necessidade de recurso pago:
+
+substituir por solução externa adequada.
+
+O sistema não deverá ficar dependente de um único provedor.
+
+---
+
+# 35. NOTIFICAÇÕES
+
+Arquitetura:
+
+Flutter
+↓
+FCM Token
+↓
+Backend
+↓
+Firebase Admin SDK
+↓
+FCM
+↓
+Celular
+
+O backend deverá decidir quem receberá determinada notificação.
+
+Nunca permitir que o Flutter envie notificações diretamente para usuários arbitrários.
+
+---
+
+# 36. REGRA DE CUSTO
+
+Esta regra deve ser seguida durante todo o desenvolvimento:
+
+## PRIORIDADE 1
+
+Utilizar recursos gratuitos do Firebase.
+
+## PRIORIDADE 2
+
+Utilizar backend próprio.
+
+## PRIORIDADE 3
+
+Utilizar serviços gratuitos externos.
+
+## PRIORIDADE 4
+
+Somente utilizar serviço pago se for realmente indispensável e aprovado posteriormente.
+
+NÃO adicionar dependência paga sem informar claramente.
+
+Antes de implementar qualquer serviço potencialmente pago:
+
+1. Identificar o serviço.
+2. Verificar se exige Blaze.
+3. Verificar se possui alternativa gratuita.
+4. Comparar as alternativas.
+5. Escolher a alternativa sem custo quando tecnicamente viável.
+
+---
+
+# 37. ARQUITETURA FINAL ESPERADA
+
+```text
+                  ┌─────────────────────┐
+                  │    FLUTTER APP      │
+                  │       DART          │
+                  └──────────┬──────────┘
+                             │
+                  ┌──────────▼──────────┐
+                  │ FIREBASE AUTH       │
+                  │ Login               │
+                  └──────────┬──────────┘
+                             │
+                         ID TOKEN
+                             │
+                  ┌──────────▼──────────┐
+                  │    NODE.JS API      │
+                  │    TYPESCRIPT       │
+                  │                     │
+                  │ Autenticação        │
+                  │ Autorização         │
+                  │ Regras de negócio   │
+                  │ Auditoria           │
+                  └───────┬───────┬─────┘
+                          │       │
+                 ┌────────▼──┐ ┌──▼──────────┐
+                 │ PostgreSQL│ │ Firebase    │
+                 │           │ │ Admin SDK   │
+                 │ Dados     │ │             │
+                 │ Usuários  │ │ FCM         │
+                 │ Mensagens │ │             │
+                 │ Setores   │ │ Notificações│
+                 │ Auditoria │ └─────────────┘
+                 └───────────┘
+```
+
+---
+
+# 38. PRINCÍPIO DE INDEPENDÊNCIA
+
+O sistema deve ser desenvolvido de maneira que:
+
+Firebase não seja o banco principal.
+
+Firebase não seja o backend principal.
+
+Firebase seja utilizado onde oferecer vantagem, especialmente:
+
+* Authentication;
+* FCM;
+* ferramentas gratuitas de monitoramento;
+* outros recursos gratuitos úteis.
+
+O núcleo da aplicação deverá permanecer no backend próprio + PostgreSQL.
+
+Isso permitirá futuramente:
+
+* migrar de Firebase;
+* trocar PostgreSQL de provedor;
+* trocar hospedagem;
+* adicionar novos serviços;
+* escalar o sistema;
+* reduzir custos.
+
+---
+
+# 39. ORDEM DE DESENVOLVIMENTO
+
+Não tentar desenvolver tudo de uma vez.
+
+FASE 1 — BASE
+
+* Criar projeto Flutter.
+* Criar backend Node.js/TypeScript.
+* Configurar PostgreSQL.
+* Configurar Prisma.
+* Configurar Firebase Authentication.
+* Criar login.
+* Criar validação do ID Token.
+
+FASE 2 — USUÁRIOS
+
+* Cadastro administrativo.
+* Perfil.
+* Setores.
+* Hierarquia.
+* Ativação/desativação.
+
+FASE 3 — COMUNICAÇÃO
+
+* Conversas.
+* Mensagens.
+* Leitura.
+* Edição.
+* Exclusão lógica.
+* Canais.
+
+FASE 4 — INSTITUCIONAL
+
+* Comunicados.
+* Notificações.
+* Emergência.
+* FCM.
+
+FASE 5 — ADMINISTRAÇÃO
+
+* Gestão de funcionários.
+* Denúncias.
+* Auditoria.
+* Métricas.
+
+FASE 6 — SEGURANÇA
+
+* Testes de autorização.
+* Rate limiting.
+* App Check.
+* Logs.
+* Revisão de permissões.
+* Testes de escalação de privilégios.
+
+FASE 7 — POLIMENTO
+
+* UI/UX.
+* Dark Mode.
+* Responsividade.
+* Performance.
+* Acessibilidade.
+* Tratamento de erros.
+
+---
+
+# 40. PROTÓTIPO PARA APRESENTAÇÃO
+
+Antes de implementar toda a lógica, criar uma versão visual navegável com:
+
+1. Login.
+2. Dashboard.
+3. Lista de conversas.
+4. Chat.
+5. Canais.
+6. Comunicado oficial.
+7. Emergência.
+8. Perfil.
+9. Administração.
+
+A primeira versão visual deverá demonstrar claramente a proposta do sistema.
+
+Depois implementar backend e integração real progressivamente.
+
+---
+
+# 41. DOCUMENTAÇÃO
+
+Criar:
+
+README.md
+
+Documentar:
+
+* objetivo;
+* arquitetura;
+* tecnologias;
+* instalação;
+* Firebase;
+* PostgreSQL;
+* variáveis de ambiente;
+* backend;
+* Flutter;
+* migrations;
+* seed;
+* testes;
+* deploy;
+* segurança.
+
+Criar também:
+
+.env.example
+
+Nunca criar:
+
+.env
+
+com credenciais reais dentro do Git.
+
+---
+
+# 42. REGRA FINAL PARA O AGENTE
+
+Você é responsável por construir o sistema de forma profissional.
+
+NÃO simplifique a arquitetura removendo segurança.
+
+NÃO coloque regras críticas somente no frontend.
+
+NÃO utilize credenciais secretas no Flutter.
+
+NÃO presuma que um recurso Firebase é gratuito sem verificar.
+
+NÃO introduza dependências pagas sem justificar.
+
+NÃO faça o sistema depender exclusivamente do Firebase.
+
+Sempre que existir uma funcionalidade Firebase:
+
+1. verificar se pode ser usada gratuitamente;
+2. utilizar se estiver dentro da proposta;
+3. se exigir Blaze, procurar alternativa;
+4. implementar a alternativa no backend quando possível.
+
+Prioridades:
+
+1. Segurança.
+2. Privacidade.
+3. Controle de acesso.
+4. Arquitetura sustentável.
+5. Baixo custo.
+6. Organização.
+7. Experiência do usuário.
+8. Escalabilidade.
+
+O sistema deve nascer preparado para crescer sem precisar ser reconstruído do zero.

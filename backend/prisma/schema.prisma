@@ -1,0 +1,275 @@
+// Conecta Saúde — Schema Prisma
+// Banco principal: PostgreSQL
+// Firebase é usado apenas para Auth e FCM — não é o banco principal.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SETORES
+// ─────────────────────────────────────────────────────────────────────────────
+model Sector {
+  id          String   @id @default(uuid())
+  nome        String   @unique
+  descricao   String?
+  ativo       Boolean  @default(true)
+  criadoEm   DateTime @default(now()) @map("criado_em")
+  atualizadoEm DateTime @updatedAt @map("atualizado_em")
+
+  // Relacionamentos
+  users         User[]
+  conversations Conversation[]
+  channels      Channel[]
+
+  @@map("sectors")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// USUÁRIOS
+// ─────────────────────────────────────────────────────────────────────────────
+model User {
+  id            String   @id @default(uuid())
+  firebaseUid   String   @unique @map("firebase_uid")
+  nome          String
+  email         String   @unique
+  cargo         String
+  /// 1=Direção 2=Coordenação 3=Supervisão 4=Funcionário
+  hierarquiaNivel Int    @map("hierarquia_nivel")
+  setorId       String   @map("setor_id")
+  fotoUrl       String?  @map("foto_url")
+  ativo         Boolean  @default(true)
+  fcmToken      String?  @map("fcm_token")
+  criadoEm     DateTime @default(now()) @map("criado_em")
+  atualizadoEm DateTime @updatedAt @map("atualizado_em")
+
+  // Relacionamentos
+  setor                  Sector                @relation(fields: [setorId], references: [id])
+  sentMessages           Message[]             @relation("MessageRemetente")
+  conversationMemberships ConversationMember[]
+  channelMemberships     ChannelMember[]
+  announcementReads      AnnouncementRead[]
+  messageReads           MessageRead[]
+  reportsFeitos          Report[]              @relation("ReportReporter")
+  reportsSofridos        Report[]              @relation("ReportReported")
+  announcementsCreated   Announcement[]
+  conversationsCreated   Conversation[]
+  channelsCreated        Channel[]
+  auditLogs              AuditLog[]
+
+  @@index([firebaseUid])
+  @@index([email])
+  @@index([setorId])
+  @@index([hierarquiaNivel])
+  @@index([ativo])
+  @@map("users")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CONVERSAS
+// ─────────────────────────────────────────────────────────────────────────────
+model Conversation {
+  id          String           @id @default(uuid())
+  /// individual | grupo | setor
+  tipo        String
+  nome        String?
+  criadoPor   String           @map("criado_por")
+  setorId     String?          @map("setor_id")
+  ativo       Boolean          @default(true)
+  criadoEm   DateTime         @default(now()) @map("criado_em")
+  atualizadoEm DateTime       @updatedAt @map("atualizado_em")
+
+  // Relacionamentos
+  criador  User               @relation(fields: [criadoPor], references: [id])
+  setor    Sector?            @relation(fields: [setorId], references: [id])
+  members  ConversationMember[]
+  messages Message[]
+
+  @@index([criadoPor])
+  @@index([setorId])
+  @@index([atualizadoEm])
+  @@map("conversations")
+}
+
+model ConversationMember {
+  id             String       @id @default(uuid())
+  conversationId String       @map("conversation_id")
+  userId         String       @map("user_id")
+  criadoEm      DateTime     @default(now()) @map("criado_em")
+
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@unique([conversationId, userId])
+  @@index([userId])
+  @@map("conversation_members")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MENSAGENS
+// ─────────────────────────────────────────────────────────────────────────────
+model Message {
+  id             String    @id @default(uuid())
+  conversationId String    @map("conversation_id")
+  remetenteId    String    @map("remetente_id")
+  texto          String
+  editado        Boolean   @default(false)
+  editadoEm     DateTime? @map("editado_em")
+  excluido       Boolean   @default(false)
+  excluidoEm    DateTime? @map("excluido_em")
+  criadoEm      DateTime  @default(now()) @map("criado_em")
+  atualizadoEm  DateTime  @updatedAt @map("atualizado_em")
+
+  // Relacionamentos
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  remetente    User         @relation("MessageRemetente", fields: [remetenteId], references: [id])
+  reads        MessageRead[]
+
+  @@index([conversationId, criadoEm])
+  @@index([remetenteId])
+  @@map("messages")
+}
+
+model MessageRead {
+  id        String   @id @default(uuid())
+  messageId String   @map("message_id")
+  userId    String   @map("user_id")
+  lidoEm   DateTime @default(now()) @map("lido_em")
+
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@unique([messageId, userId])
+  @@index([userId])
+  @@map("message_reads")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CANAIS
+// ─────────────────────────────────────────────────────────────────────────────
+model Channel {
+  id          String   @id @default(uuid())
+  nome        String
+  descricao   String?
+  /// institucional | setor | emergencia | geral
+  tipo        String
+  setorId     String?  @map("setor_id")
+  criadoPor   String   @map("criado_por")
+  ativo       Boolean  @default(true)
+  criadoEm   DateTime @default(now()) @map("criado_em")
+  atualizadoEm DateTime @updatedAt @map("atualizado_em")
+
+  // Relacionamentos
+  setor   Sector?       @relation(fields: [setorId], references: [id])
+  criador User          @relation(fields: [criadoPor], references: [id])
+  members ChannelMember[]
+
+  @@index([setorId])
+  @@index([tipo])
+  @@map("channels")
+}
+
+model ChannelMember {
+  id        String   @id @default(uuid())
+  channelId String   @map("channel_id")
+  userId    String   @map("user_id")
+  criadoEm DateTime @default(now()) @map("criado_em")
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@unique([channelId, userId])
+  @@index([userId])
+  @@map("channel_members")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMUNICADOS
+// ─────────────────────────────────────────────────────────────────────────────
+model Announcement {
+  id          String   @id @default(uuid())
+  titulo      String
+  mensagem    String
+  criadoPor   String   @map("criado_por")
+  /// normal | alta | urgente
+  prioridade  String   @default("normal")
+  publicadoEm DateTime @default(now()) @map("publicado_em")
+  ativo       Boolean  @default(true)
+
+  // Relacionamentos
+  criador User               @relation(fields: [criadoPor], references: [id])
+  reads   AnnouncementRead[]
+
+  @@index([publicadoEm])
+  @@index([ativo])
+  @@map("announcements")
+}
+
+model AnnouncementRead {
+  id             String   @id @default(uuid())
+  announcementId String   @map("announcement_id")
+  userId         String   @map("user_id")
+  lidoEm        DateTime @default(now()) @map("lido_em")
+
+  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@unique([announcementId, userId])
+  @@index([userId])
+  @@map("announcement_reads")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DENÚNCIAS
+// ─────────────────────────────────────────────────────────────────────────────
+model Report {
+  id             String   @id @default(uuid())
+  reporterId     String   @map("reporter_id")
+  reportedUserId String?  @map("reported_user_id")
+  messageId      String?  @map("message_id")
+  /// assedio | ofensa | conteudo_inadequado | comunicacao_impropria | outro
+  motivo         String
+  descricao      String?
+  /// pendente | em_analise | resolvido | arquivado
+  status         String   @default("pendente")
+  criadoEm      DateTime @default(now()) @map("criado_em")
+  atualizadoEm  DateTime @updatedAt @map("atualizado_em")
+
+  // Relacionamentos
+  reporter     User  @relation("ReportReporter", fields: [reporterId], references: [id])
+  reportedUser User? @relation("ReportReported", fields: [reportedUserId], references: [id])
+
+  @@index([status])
+  @@index([reporterId])
+  @@map("reports")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AUDITORIA
+// ─────────────────────────────────────────────────────────────────────────────
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")
+  acao       String
+  entidade   String
+  entidadeId String?  @map("entidade_id")
+  /// JSON serializado — nunca contém senhas ou tokens
+  detalhes   String?
+  ip         String?
+  userAgent  String?  @map("user_agent")
+  criadoEm  DateTime @default(now()) @map("criado_em")
+
+  // Relacionamentos
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([acao])
+  @@index([entidade, entidadeId])
+  @@index([criadoEm])
+  @@map("audit_logs")
+}

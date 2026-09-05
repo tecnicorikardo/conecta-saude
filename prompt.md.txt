@@ -1,0 +1,809 @@
+# PROMPT COMPLETO — APLICATIVO DE COMUNICAÇÃO INTERNA CORPORATIVA
+
+Crie um aplicativo **Flutter para comunicação interna corporativa**, utilizando **Firebase Authentication, Cloud Firestore e Firebase Cloud Messaging (FCM)**.
+
+O aplicativo deve possuir uma arquitetura organizada, segura, escalável e preparada para produção.
+
+## 1. OBJETIVO DO SISTEMA
+
+O sistema será utilizado para comunicação interna entre funcionários de uma empresa.
+
+Os funcionários serão organizados em três níveis hierárquicos:
+
+* **Nível 1 — Diretoria**
+* **Nível 2 — Gerência**
+* **Nível 3 — Operacional**
+
+Cada funcionário também pertence a um **setor**.
+
+O sistema deve controlar rigorosamente quem pode visualizar, iniciar conversas, enviar mensagens, criar canais, adicionar membros, editar mensagens e excluir mensagens.
+
+**IMPORTANTE:** nenhuma permissão pode depender somente da interface do aplicativo. Todas as permissões devem ser obrigatoriamente validadas no backend através das **Firestore Security Rules** e/ou Cloud Functions.
+
+A UI deve apenas esconder opções que o usuário não possui permissão para utilizar.
+
+---
+
+# 2. TECNOLOGIAS
+
+Utilizar:
+
+* Flutter
+* Dart
+* Firebase Authentication
+* Cloud Firestore
+* Firebase Cloud Messaging (FCM)
+* Firebase Cloud Functions quando necessário
+* Firebase Storage para fotos de perfil
+* Riverpod para gerenciamento de estado
+
+Organizar o projeto seguindo boas práticas de arquitetura e separação de responsabilidades.
+
+---
+
+# 3. AUTENTICAÇÃO
+
+Criar tela de login.
+
+Campos:
+
+* E-mail
+* Senha
+
+Utilizar Firebase Authentication.
+
+Após o login:
+
+1. Identificar o UID do usuário autenticado.
+2. Buscar o documento correspondente em `users`.
+3. Verificar se o usuário está ativo.
+4. Carregar seu nível hierárquico e setor.
+5. Direcionar para a tela principal.
+
+Se `ativo == false`, impedir acesso ao sistema.
+
+---
+
+# 4. MODELO DE USUÁRIO
+
+Coleção:
+
+`users/{uid}`
+
+Campos:
+
+```text
+uid
+nome
+email
+cargo
+hierarquia_nivel
+setor_id
+foto_url
+fcm_token
+ativo
+criado_em
+atualizado_em
+```
+
+Valores:
+
+```text
+hierarquia_nivel = 1 → Diretoria
+hierarquia_nivel = 2 → Gerência
+hierarquia_nivel = 3 → Operacional
+```
+
+O campo `setor_id` será utilizado para relacionar funcionários com seus respectivos setores.
+
+---
+
+# 5. HIERARQUIA E PERMISSÕES
+
+## NÍVEL 1 — DIRETORIA
+
+Diretoria possui acesso administrativo completo.
+
+Pode:
+
+* Iniciar conversa com qualquer usuário.
+* Conversar com qualquer nível hierárquico.
+* Visualizar canais permitidos à Diretoria.
+* Criar canais.
+* Criar canais restritos.
+* Postar em qualquer canal onde possuir acesso.
+* Excluir suas próprias mensagens.
+* Editar suas próprias mensagens.
+* Excluir mensagens de qualquer usuário.
+* Criar funcionários.
+* Excluir/desativar qualquer funcionário.
+* Editar dados dos funcionários.
+* Alterar setor do funcionário.
+* Alterar cargo.
+* Alterar nível hierárquico.
+* Administrar membros dos canais.
+* Gerenciar canais.
+
+A Diretoria pode inclusive excluir/desativar outro usuário que também seja Diretoria.
+
+---
+
+# 6. NÍVEL 2 — GERÊNCIA
+
+A Gerência possui acesso limitado ao próprio setor.
+
+Pode:
+
+* Conversar com Diretoria.
+* Conversar com outros usuários de Gerência.
+* Conversar com Operacionais do mesmo `setor_id`.
+* Participar dos canais permitidos.
+* Criar canais restritos ao próprio setor.
+* Adicionar membros do próprio setor aos canais que administra.
+* Remover membros do próprio setor dos canais que administra.
+* Editar suas próprias mensagens.
+* Excluir suas próprias mensagens.
+
+Não pode:
+
+* Iniciar conversa direta com Operacional de outro setor.
+* Administrar funcionários.
+* Criar canais gerais da empresa.
+* Alterar hierarquia de usuários.
+* Excluir funcionários.
+* Excluir mensagens de outros usuários, salvo se futuramente for concedida essa permissão explicitamente.
+
+---
+
+# 7. NÍVEL 3 — OPERACIONAL
+
+O Operacional possui acesso mais restrito.
+
+Pode:
+
+* Conversar com sua Gerência direta.
+* Conversar com colegas do mesmo setor.
+* Participar dos canais aos quais foi adicionado.
+* Responder mensagens nos canais permitidos.
+* Editar suas próprias mensagens.
+* Excluir suas próprias mensagens.
+
+Não pode:
+
+* Iniciar conversa direta com Diretoria.
+* Iniciar conversa direta com Gerência de outro setor.
+* Criar canais.
+* Administrar canais.
+* Adicionar usuários aos canais.
+* Remover usuários dos canais.
+* Criar funcionários.
+* Excluir funcionários.
+* Alterar dados de outros usuários.
+
+---
+
+# 8. REGRA DE SETOR
+
+O sistema deve utilizar `setor_id`.
+
+Exemplo:
+
+```text
+Diretoria
+   ↓
+Gerência
+   setor_id = manutencao
+   ↓
+Operacionais
+   setor_id = manutencao
+```
+
+Um Gerente de `manutencao` pode conversar com os Operacionais de `manutencao`.
+
+Ele não pode iniciar conversa direta com Operacionais de outro setor.
+
+Exemplo:
+
+```text
+Gerente Manutenção
+     ↓ permitido
+Operacional Manutenção
+
+Gerente Manutenção
+     ↓ bloqueado
+Operacional Enfermagem
+```
+
+A Diretoria não possui essa restrição.
+
+---
+
+# 9. CONVERSAS PRIVADAS
+
+Criar sistema de conversas individuais.
+
+Cada conversa deve possuir:
+
+```text
+chat_id
+tipo
+participantes
+criado_em
+atualizado_em
+```
+
+Antes de permitir iniciar uma conversa, verificar:
+
+* nível hierárquico do usuário;
+* setor do usuário;
+* nível hierárquico do destinatário;
+* setor do destinatário;
+* regra de comunicação correspondente.
+
+Não confiar em informações enviadas pelo aplicativo.
+
+As informações de permissão devem ser verificadas no backend.
+
+---
+
+# 10. CANAIS
+
+Criar sistema de canais.
+
+Exemplos:
+
+```text
+#avisos-diretoria
+#comunicados-gerais
+#equipe-manutencao
+#equipe-enfermagem
+#equipe-ti
+```
+
+Modelo:
+
+```text
+channels/{channelId}
+```
+
+Campos:
+
+```text
+id
+nome
+descricao
+criado_por
+setor_id
+hierarquia_minima_post
+hierarquia_minima_visualizar
+ativo
+criado_em
+```
+
+---
+
+# 11. PERMISSÕES DOS CANAIS
+
+Cada canal deve possuir regras próprias.
+
+Exemplo:
+
+```text
+hierarquia_minima_visualizar
+hierarquia_minima_post
+```
+
+Essas informações serão utilizadas para determinar quem pode visualizar e quem pode enviar mensagens.
+
+Porém, canais restritos também devem possuir controle de membros.
+
+Criar:
+
+```text
+channel_members/{channelId}/members/{uid}
+```
+
+Assim, um usuário só poderá acessar canais para os quais possui autorização.
+
+---
+
+# 12. CRIAÇÃO DE CANAIS
+
+Diretoria:
+
+* Pode criar qualquer tipo de canal.
+
+Gerência:
+
+* Pode criar canais restritos ao próprio setor.
+
+Operacional:
+
+* Não pode criar canais.
+
+Ao criar um canal, validar essa permissão no backend.
+
+---
+
+# 13. MENSAGENS
+
+Coleção:
+
+```text
+messages/{messageId}
+```
+
+Campos:
+
+```text
+id
+chat_id
+remetente_id
+texto
+criado_em
+editado_em
+editado
+excluido
+excluido_em
+lido_por
+```
+
+---
+
+# 14. ENVIO DE MENSAGENS
+
+Antes de enviar uma mensagem:
+
+1. Verificar usuário autenticado.
+2. Verificar se o usuário está ativo.
+3. Verificar se pertence à conversa/canal.
+4. Verificar se possui permissão para postar.
+5. Somente então permitir a gravação no Firestore.
+
+Nunca confiar apenas na UI.
+
+---
+
+# 15. EDIÇÃO DE MENSAGENS
+
+O usuário poderá editar apenas suas próprias mensagens.
+
+Ao editar:
+
+```text
+editado = true
+editado_em = timestamp
+```
+
+Mostrar visualmente:
+
+```text
+Mensagem original...
+(editado)
+```
+
+Criar uma janela configurável para edição, inicialmente entre **5 e 15 minutos**.
+
+Deixar esse valor facilmente configurável.
+
+A regra deve ser validada no backend.
+
+---
+
+# 16. EXCLUSÃO DE MENSAGENS
+
+Utilizar **soft delete**.
+
+Nunca apagar definitivamente a mensagem do banco apenas para ocultá-la da conversa.
+
+Ao excluir:
+
+```text
+excluido = true
+excluido_em = timestamp
+```
+
+Na interface mostrar:
+
+```text
+Mensagem apagada
+```
+
+## Permissões
+
+Usuário comum:
+
+* Pode excluir apenas suas próprias mensagens.
+
+Diretoria:
+
+* Pode excluir qualquer mensagem para fins de moderação.
+
+Essa regra deve obrigatoriamente ser validada nas Firestore Security Rules/backend.
+
+---
+
+# 17. GESTÃO DE FUNCIONÁRIOS
+
+Criar uma tela:
+
+**Gestão de Funcionários**
+
+Essa tela será acessível somente pela Diretoria.
+
+A Diretoria poderá:
+
+### Criar funcionário
+
+Campos:
+
+```text
+Nome
+E-mail
+Cargo
+Nível hierárquico
+Setor
+Foto
+```
+
+### Editar funcionário
+
+Permitir alterar:
+
+* Nome
+* Cargo
+* Nível
+* Setor
+* Foto
+* Status
+
+### Desativar funcionário
+
+Não apagar definitivamente o usuário do banco.
+
+Utilizar:
+
+```text
+ativo = false
+```
+
+Isso preserva o histórico das mensagens enviadas anteriormente.
+
+---
+
+# 18. EXCLUSÃO DE FUNCIONÁRIOS
+
+Somente Diretoria poderá desativar funcionários.
+
+Pode desativar:
+
+* Operacional
+* Gerência
+* Diretoria
+
+Inclusive outro usuário que também seja Diretoria.
+
+Após `ativo = false`:
+
+* impedir login/acesso;
+* impedir envio de mensagens;
+* impedir criação de novas conversas;
+* manter histórico das mensagens antigas.
+
+---
+
+# 19. SEGURANÇA
+
+Esta é uma parte crítica do projeto.
+
+Não implementar segurança somente no Flutter.
+
+As permissões devem ser protegidas no backend.
+
+Implementar regras para verificar:
+
+```text
+request.auth.uid
+```
+
+e buscar informações do usuário autenticado.
+
+Validar:
+
+```text
+hierarquia_nivel
+setor_id
+ativo
+participação no chat
+participação no canal
+propriedade da mensagem
+```
+
+Exemplo conceitual:
+
+```text
+Usuário pode editar mensagem?
+↓
+Usuário autenticado?
+↓
+Usuário ativo?
+↓
+Mensagem pertence ao usuário?
+↓
+Está dentro do prazo de edição?
+↓
+SIM → permitir
+NÃO → bloquear
+```
+
+Nunca permitir que o aplicativo altere diretamente seu próprio:
+
+```text
+hierarquia_nivel
+setor_id
+ativo
+```
+
+sem autorização adequada.
+
+---
+
+# 20. NOTIFICAÇÕES
+
+Implementar Firebase Cloud Messaging.
+
+Quando receber mensagem:
+
+* Mostrar notificação push.
+* Mostrar nome do remetente.
+* Mostrar prévia da mensagem.
+* Reproduzir som.
+* Atualizar contador de não lidas.
+* Funcionar com aplicativo em segundo plano.
+* Funcionar quando o aplicativo estiver fechado, respeitando as limitações do sistema operacional.
+
+Adicionar controle de mensagens lidas.
+
+---
+
+# 21. STATUS DA MENSAGEM
+
+Mostrar:
+
+```text
+Enviando
+✓ Enviada
+✓✓ Entregue
+✓✓ Lida
+```
+
+Utilizar `lido_por` para controlar leitura.
+
+---
+
+# 22. TELAS DO APLICATIVO
+
+Criar pelo menos:
+
+### 1. Login
+
+* E-mail
+* Senha
+* Entrar
+
+### 2. Tela inicial
+
+Mostrar:
+
+* Conversas recentes
+* Canais
+* Mensagens não lidas
+* Notificações
+
+### 3. Conversas
+
+Lista de conversas permitidas de acordo com a hierarquia.
+
+### 4. Chat
+
+Mostrar:
+
+* Mensagens
+* Campo de texto
+* Enviar
+* Editar
+* Excluir
+* Status da mensagem
+
+### 5. Canais
+
+Mostrar somente canais que o usuário possui autorização para visualizar.
+
+### 6. Gestão de Funcionários
+
+Somente Diretoria.
+
+Permitir:
+
+* Listar funcionários
+* Pesquisar
+* Criar
+* Editar
+* Desativar
+* Filtrar por setor
+* Filtrar por hierarquia
+
+### 7. Perfil
+
+Mostrar:
+
+* Foto
+* Nome
+* Cargo
+* Setor
+* Hierarquia
+
+---
+
+# 23. INTERFACE
+
+Criar uma interface profissional, moderna e simples.
+
+Priorizar:
+
+* boa legibilidade;
+* navegação simples;
+* responsividade;
+* acessibilidade;
+* feedback visual;
+* indicadores de mensagens não lidas;
+* confirmação antes de ações destrutivas.
+
+Utilizar componentes reutilizáveis.
+
+---
+
+# 24. REGRAS IMPORTANTES
+
+Não criar regras de segurança somente no frontend.
+
+Não confiar em:
+
+```text
+hierarquia_nivel
+setor_id
+ativo
+```
+
+enviados pelo cliente.
+
+Esses dados devem ser obtidos/validados no backend.
+
+Não permitir que um usuário altere seu próprio nível hierárquico através do aplicativo.
+
+Não permitir que um usuário modifique o `setor_id` para conseguir acesso a outro setor.
+
+Não permitir acesso direto a documentos Firestore sem autorização.
+
+---
+
+# 25. ESTRUTURA SUGERIDA DO FIRESTORE
+
+Utilizar uma estrutura semelhante a:
+
+```text
+users/
+  {uid}
+
+chats/
+  {chatId}
+
+messages/
+  {messageId}
+
+channels/
+  {channelId}
+
+channel_members/
+  {channelId}/members/{uid}
+
+sectors/
+  {sectorId}
+```
+
+Pode adaptar a estrutura caso exista uma solução tecnicamente melhor, mas preserve todas as regras funcionais.
+
+---
+
+# 26. RESULTADO ESPERADO
+
+Entregar um aplicativo funcional de comunicação corporativa onde:
+
+**Diretoria**
+
+→ possui acesso administrativo completo.
+
+**Gerência**
+
+→ possui comunicação com Diretoria, Gerências e Operacionais do próprio setor.
+
+**Operacional**
+
+→ possui comunicação com sua Gerência e colegas autorizados do próprio setor.
+
+Além disso:
+
+* mensagens podem ser editadas;
+* mensagens podem ser excluídas via soft delete;
+* Diretoria pode moderar mensagens;
+* Diretoria pode criar funcionários;
+* Diretoria pode editar funcionários;
+* Diretoria pode desativar qualquer funcionário;
+* canais possuem controle de acesso;
+* notificações funcionam via FCM;
+* mensagens possuem status de envio/entrega/leitura;
+* todas as permissões críticas são protegidas no backend.
+
+---
+
+# 27. FORMA DE DESENVOLVIMENTO
+
+Não tente criar tudo de uma vez sem validar as partes.
+
+Desenvolva em etapas:
+
+### Fase 1
+
+Configuração Flutter + Firebase + Authentication.
+
+### Fase 2
+
+Modelo de usuários, setores e hierarquia.
+
+### Fase 3
+
+Firestore Security Rules.
+
+### Fase 4
+
+Conversas privadas.
+
+### Fase 5
+
+Mensagens.
+
+### Fase 6
+
+Edição e exclusão de mensagens.
+
+### Fase 7
+
+Canais e membros.
+
+### Fase 8
+
+Gestão de funcionários.
+
+### Fase 9
+
+FCM e notificações.
+
+### Fase 10
+
+Testes completos de segurança.
+
+Criar testes para garantir que:
+
+* Operacional não consiga acessar outro setor.
+* Operacional não consiga criar canal.
+* Operacional não consiga excluir funcionário.
+* Gerência não consiga administrar outro setor.
+* Gerência não consiga alterar sua própria hierarquia.
+* Usuário não consiga editar mensagem de outra pessoa.
+* Usuário não consiga excluir mensagem de outra pessoa.
+* Diretoria consiga moderar mensagens.
+* Diretoria consiga desativar qualquer funcionário.
+
+**Prioridade máxima: segurança, controle de acesso e integridade dos dados.**
+
+Antes de finalizar, revisar toda a aplicação procurando brechas de autorização que possam ser exploradas através de chamadas diretas ao Firebase, mesmo que a interface esconda os respectivos botões.

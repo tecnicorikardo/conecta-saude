@@ -1,0 +1,758 @@
+Agora quero que você trabalhe na concepção visual e experiência de usuário (UI/UX) do projeto de Comunicação Institucional Hospitalar definido anteriormente.
+
+Neste momento, o foco principal NÃO é criar novas funcionalidades.
+
+O objetivo é definir e apresentar como o sistema deverá ser visualmente, criando exemplos concretos de layout, telas, componentes, cores, navegação e estilo.
+
+1. CONCEITO VISUAL
+
+O sistema deve transmitir visualmente:
+
+Segurança
+Profissionalismo
+Organização
+Confiança
+Ambiente hospitalar
+Comunicação institucional
+Tecnologia
+Seriedade
+Facilidade de uso
+
+Evitar uma aparência que pareça uma simples cópia do WhatsApp, Telegram ou Messenger.
+
+O sistema deve possuir uma identidade própria.
+
+A interface deve parecer um sistema institucional profissional, e não uma rede social.
+
+2. IDENTIDADE VISUAL
+
+Crie uma proposta de identidade visual para o sistema.
+
+Defina:
+
+cor principal;
+cor secundária;
+cores de destaque;
+cor de sucesso;
+cor de alerta;
+cor de emergência;
+cores neutras;
+cor de fundo;
+cor dos cartões;
+cor dos textos;
+cor dos textos secundários;
+cores para mensagens enviadas e recebidas.
+
+Apresente os códigos HEX das cores.
+
+Exemplo:
+
+Cor principal: #XXXXXX
+Cor secundária: #XXXXXX
+Sucesso: #XXXXXX
+Alerta: #XXXXXX
+Emergência: #XXXXXX
+Fundo: #XXXXXX
+
+A escolha das cores deve considerar psicologia visual aplicada a ambientes hospitalares.
+
+Evitar excesso de cores.
+
+A interface deve parecer limpa e elegante.
+
+3. LOGOTIPO / MARCA
+
+Criar uma proposta conceitual de marca para:
+
+Comunicação Institucional
+
+A marca pode utilizar elementos relacionados a:
+
+hospital;
+comunicação;
+conexão;
+pessoas;
+segurança;
+instituição.
+
+Não utilizar símbolos médicos de maneira exagerada.
+
+Criar uma identidade simples que funcione:
+
+no aplicativo;
+no navegador;
+em favicon;
+em tela de login;
+em documentos;
+em apresentações institucionais.
+4. TIPOGRAFIA
+
+Definir:
+
+fonte principal;
+fonte secundária, se necessário;
+tamanho de títulos;
+tamanho de subtítulos;
+tamanho de textos;
+tamanho de informações secundárias;
+peso das fontes.
+
+Priorizar fontes modernas, profissionais e de excelente legibilidade.
+
+Exemplo:
+
+Título
+32px / Bold
+
+Subtítulo
+20px / SemiBold
+
+Texto
+16px / Regular
+
+Texto secundário
+14px / Regular
+
+Os valores podem ser adaptados conforme a melhor experiência visual.
+
+5. LAYOUT GERAL
+
+Criar uma estrutura visual consistente.
+
+Para a versão Web/Desktop, considerar:
+
+┌───────────────────────────────────────────────┐
+│ LOGO        Busca             Notificações 👤 │
+├──────────────┬────────────────────────────────┤
+│              │                                │
+│  Início      │                                │
+│  Conversas   │       CONTEÚDO PRINCIPAL      │
+│  Canais      │                                │
+│  Comunicados │                                │
+│  Meu Setor   │                                │
+│              │                                │
+│  ─────────   │                                │
+│  Administração│                               │
+│              │                                │
+└──────────────┴────────────────────────────────┘
+
+Criar uma navegação clara.
+
+No celular, adaptar para uma navegação mobile adequada.
+
+6. TELA DE LOGIN
+
+Criar um exemplo visual da tela de login institucional.
+
+Deve conter:
+
+logo;
+nome do sistema;
+subtítulo;
+campo e-mail institucional;
+campo senha;
+botão Entrar;
+opção de recuperar senha;
+informações institucionais discretas.
+
+Exemplo conceitual:
+
+             🏥
+     COMUNICAÇÃO INSTITUCIONAL
+
+     Comunicação profissional,
+       organizada e segura.
+
+     ┌─────────────────────────┐
+     │ E-mail institucional    │
+     └─────────────────────────┘
+
+     ┌─────────────────────────┐
+     │ Senha              👁   │
+     └─────────────────────────┘
+
+     ┌─────────────────────────┐
+     │         ENTRAR          │
+     └─────────────────────────┘
+
+          Esqueci minha senha
+
+Não precisa seguir exatamente esse desenho.
+
+Crie uma versão visual profissional.
+
+7. DASHBOARD / PÁGINA INICIAL
+
+Criar uma tela inicial institucional.
+
+Mostrar de forma visual:
+
+Saudação
+Bom dia, Ricardo.
+Veja os comunicados e informações importantes.
+Resumo
+
+Cards como:
+
+💬 Conversas
+📢 Comunicados
+🔔 Notificações
+📋 Pendências
+Comunicados recentes
+
+Exibir cartões:
+
+📢 COMUNICADO — DIREÇÃO
+
+Reunião geral amanhã às 14h.
+
+Publicado hoje às 10:32
+
+87% visualizaram
+Avisos importantes
+
+Criar uma área visual para informações prioritárias.
+
+8. TELA DE CONVERSAS
+
+Criar uma tela moderna para conversas.
+
+Cada conversa deve apresentar:
+
+foto/avatar;
+nome;
+cargo;
+setor;
+última mensagem;
+horário;
+quantidade de mensagens não lidas;
+indicador de prioridade, quando aplicável.
+
+Exemplo:
+
+👤 Ana Souza
+Supervisão • Enfermagem
+
+"Precisamos conversar sobre a escala..."
+
+Hoje, 14:32                         3
+
+Não copiar visualmente o WhatsApp.
+
+Criar uma abordagem institucional.
+
+9. TELA DE CHAT
+
+Criar o layout da conversa.
+
+Mostrar:
+
+nome;
+cargo;
+setor;
+status online, se essa informação for realmente necessária;
+mensagens;
+horário;
+status de envio;
+status de leitura;
+campo de texto;
+botão enviar;
+opções permitidas.
+
+Mensagem enviada:
+
+Precisamos verificar o equipamento da sala 3.
+
+14:32                    ✓✓
+
+Mensagem recebida:
+
+Vou verificar agora.
+
+14:35
+
+Mensagem editada:
+
+Vou verificar agora mesmo.
+
+14:35 • editado
+
+Mensagem excluída:
+
+Mensagem apagada
+10. CANAIS E SETORES
+
+Criar uma tela para canais.
+
+Separar visualmente:
+
+Canais institucionais
+📢 Comunicados da Direção
+🚨 Emergências
+📣 Avisos Gerais
+Meu setor
+👥 Enfermagem
+👥 Supervisão
+👥 Equipe
+
+Mostrar claramente quando um canal é:
+
+institucional;
+restrito;
+exclusivo de determinado setor;
+somente leitura;
+canal de emergência.
+11. COMUNICADO OFICIAL
+
+Esta é uma das telas mais importantes do projeto.
+
+Criar uma apresentação visual para um comunicado da Direção.
+
+Exemplo:
+
+┌─────────────────────────────────────────┐
+│ 📢 COMUNICADO OFICIAL                   │
+│                                         │
+│ DIREÇÃO                                 │
+│                                         │
+│ Reunião Geral                           │
+│                                         │
+│ Informamos que haverá reunião geral     │
+│ amanhã às 14h.                          │
+│                                         │
+│ 📅 04/09/2026                           │
+│ 🕑 14:00                                │
+│                                         │
+│ ─────────────────────────────────────   │
+│                                         │
+│ ✓ Publicado                             │
+│ ✓ 87% visualizaram                     │
+│ ⚠ 13% ainda não visualizaram           │
+│                                         │
+│        [ CONFIRMAR LEITURA ]            │
+└─────────────────────────────────────────┘
+
+Criar um design elegante e institucional.
+
+12. CANAL DE EMERGÊNCIA
+
+Criar uma identidade visual específica para comunicações de emergência.
+
+O design deve chamar atenção sem causar poluição visual.
+
+Exemplo:
+
+🚨 COMUNICAÇÃO DE EMERGÊNCIA
+
+ATENÇÃO
+
+Informação importante para os setores
+envolvidos.
+
+Publicado pela Supervisão
+19:42
+
+Utilizar uma linguagem visual diferente dos comunicados normais.
+
+13. PAINEL ADMINISTRATIVO
+
+Criar um dashboard administrativo.
+
+Mostrar:
+
+Funcionários
+1.248
+Funcionários ativos
+Comunicação
+86%
+Taxa média de leitura
+Comunicados
+24
+Este mês
+Denúncias
+03
+Pendentes
+Estrutura
+
+Criar gráficos simples:
+
+funcionários por setor;
+funcionários por nível hierárquico;
+taxa de leitura dos comunicados;
+atividade da plataforma.
+
+O painel deve parecer um sistema administrativo profissional.
+
+14. HIERARQUIA VISUAL
+
+A interface deve deixar claro o nível institucional do usuário.
+
+Exemplo:
+
+👤 Ricardo Martins
+Supervisor
+Enfermagem
+
+Utilizar pequenas etiquetas/badges:
+
+DIREÇÃO
+COORDENAÇÃO
+SUPERVISÃO
+FUNCIONÁRIO
+
+Esses elementos devem ser discretos e elegantes.
+
+Não transformar a hierarquia em algo que pareça uma competição de status.
+
+Ela existe para representar responsabilidade e permissões.
+
+15. PERFIL DO FUNCIONÁRIO
+
+Criar uma tela de perfil institucional.
+
+Mostrar:
+
+       FOTO
+
+Ricardo Martins
+Supervisor
+
+🏥 Enfermagem
+🏢 Unidade X
+
+E-mail institucional
+
+────────────────
+
+Informações profissionais
+
+Não exibir informações pessoais desnecessárias.
+
+16. GESTÃO DE FUNCIONÁRIOS
+
+Criar layout para administração.
+
+Tela com:
+
+Funcionários
+
+[ 🔎 Pesquisar funcionário ]
+
+Todos | Ativos | Inativos
+
+┌────────────────────────────────────┐
+│ 👤 Ana Souza                       │
+│ Supervisão • Enfermagem            │
+│ ● Ativo                            │
+│                          [Editar]  │
+└────────────────────────────────────┘
+
+Criar também uma tela/modal para:
+
+Novo funcionário
+
+Campos:
+
+nome;
+e-mail;
+cargo;
+setor;
+nível hierárquico;
+foto;
+status.
+17. DENÚNCIA
+
+Criar uma interface discreta para denunciar uma mensagem.
+
+Exemplo:
+
+Denunciar mensagem
+
+Qual é o motivo?
+
+○ Assédio
+○ Ofensa
+○ Conteúdo inadequado
+○ Comunicação imprópria
+○ Outro
+
+Descrição:
+
+[________________________]
+
+        [Cancelar] [Enviar denúncia]
+
+A experiência deve transmitir segurança e privacidade.
+
+18. NOTIFICAÇÕES
+
+Criar uma central de notificações.
+
+Separar:
+
+🔴 Urgente
+
+🚨 Comunicação de emergência
+
+📢 Comunicado
+
+Nova mensagem da Supervisão
+
+💬 Mensagem
+
+Ana Souza enviou uma mensagem
+
+Utilizar diferentes níveis visuais de prioridade.
+
+19. RESPONSIVIDADE
+
+Criar o design pensando em:
+
+Desktop
+sidebar;
+dashboard;
+painel de conversas;
+área principal.
+Tablet
+
+Adaptar menus e espaçamentos.
+
+Smartphone
+
+Utilizar:
+
+navegação inferior ou menu apropriado;
+cards adaptados;
+chat em tela cheia;
+botões acessíveis;
+textos legíveis.
+
+O aplicativo deve funcionar bem em diferentes tamanhos de tela.
+
+20. DARK MODE
+
+Criar também uma proposta de modo escuro.
+
+O Dark Mode deve manter:
+
+contraste adequado;
+legibilidade;
+aparência institucional;
+diferenciação entre mensagens;
+destaque para alertas e emergências.
+
+Não simplesmente inverter todas as cores.
+
+Criar uma paleta Dark Mode própria.
+
+21. COMPONENTES
+
+Criar exemplos visuais dos principais componentes:
+
+Botões;
+Inputs;
+Cards;
+Badges;
+Avatares;
+Menus;
+Modal;
+Alertas;
+Toast;
+Indicadores de leitura;
+Indicadores de prioridade;
+Skeleton loading;
+Empty states;
+Tela de erro;
+Confirmação de ação;
+Paginação ou carregamento.
+22. ESTADOS DA INTERFACE
+
+Não criar apenas o estado "bonito".
+
+Demonstrar também:
+
+Carregando
+Skeleton / Loading
+Sem mensagens
+Você ainda não possui conversas.
+Sem comunicados
+Nenhum comunicado disponível.
+Erro
+Não foi possível carregar as informações.
+[ Tentar novamente ]
+Sem permissão
+Você não possui autorização para acessar este conteúdo.
+23. EXPERIÊNCIA DO USUÁRIO
+
+A navegação deve ser simples.
+
+Um funcionário comum deve conseguir:
+
+Entrar;
+Ver comunicados;
+Ver mensagens;
+Entrar no canal do setor;
+Responder;
+Confirmar leitura;
+Encontrar informações.
+
+Sem precisar entender como o sistema funciona tecnicamente.
+
+Para administradores, disponibilizar ferramentas adicionais sem poluir a interface dos funcionários comuns.
+
+24. DIFERENCIAÇÃO ENTRE FUNCIONÁRIO E ADMINISTRADOR
+
+Não criar interfaces completamente diferentes.
+
+Utilizar a mesma identidade visual.
+
+Porém:
+
+Funcionário
+
+Mostrar:
+
+Início;
+Conversas;
+Canais;
+Comunicados;
+Perfil.
+Supervisão/Coordenação
+
+Adicionar recursos administrativos permitidos.
+
+Direção
+
+Adicionar:
+
+Gestão de funcionários;
+Painel;
+Auditoria;
+Administração de canais;
+Relatórios.
+25. MICROINTERAÇÕES
+
+Criar pequenas animações quando fizer sentido:
+
+envio de mensagem;
+mensagem recebida;
+confirmação de leitura;
+comunicado confirmado;
+notificação;
+abertura de painel;
+carregamento.
+
+As animações devem ser discretas e profissionais.
+
+Evitar excesso de efeitos.
+
+26. ACESSIBILIDADE
+
+Considerar:
+
+contraste;
+tamanho de fonte;
+áreas de toque adequadas;
+leitura fácil;
+ícones acompanhados de texto quando necessário;
+navegação intuitiva;
+suporte a leitores de tela quando possível.
+
+O sistema deve poder ser utilizado por funcionários com diferentes níveis de familiaridade tecnológica.
+
+27. RESULTADO VISUAL ESPERADO
+
+Antes de implementar definitivamente as telas, apresente uma proposta visual completa contendo:
+
+Identidade visual;
+Paleta de cores;
+Tipografia;
+Logo conceitual;
+Dashboard;
+Login;
+Conversas;
+Chat;
+Canais;
+Comunicado oficial;
+Emergência;
+Perfil;
+Gestão de funcionários;
+Painel administrativo;
+Denúncia;
+Dark Mode.
+
+Sempre que possível, apresentar exemplos visuais concretos em vez de apenas descrever.
+
+28. REGRAS DE DESIGN
+
+Não copiar diretamente:
+
+WhatsApp;
+Telegram;
+Messenger;
+Slack.
+
+Pode utilizar conceitos conhecidos de UX, mas a identidade visual deve ser própria.
+
+Evitar:
+
+excesso de verde;
+excesso de azul hospitalar;
+interface infantil;
+excesso de emojis;
+excesso de sombras;
+excesso de bordas;
+excesso de animações;
+visual de rede social.
+
+Priorizar:
+
+limpeza + profissionalismo + segurança + simplicidade.
+
+29. PRIMEIRO PASSO
+
+Antes de começar a implementar todas as telas, faça uma proposta visual inicial.
+
+Apresente:
+
+OPÇÃO A
+
+Estilo institucional moderno.
+
+OPÇÃO B
+
+Estilo tecnológico e sofisticado.
+
+OPÇÃO C
+
+Estilo hospitalar minimalista.
+
+Para cada opção apresentar:
+
+paleta;
+tipografia;
+estilo dos cards;
+estilo dos botões;
+aparência do menu;
+aparência do chat;
+aparência dos comunicados.
+
+Depois escolha a opção que considerar mais adequada para um hospital público/institucional e justifique brevemente a escolha.
+
+Somente depois dessa definição avance para a implementação visual.
+
+30. PRINCÍPIO FINAL
+
+O usuário deve abrir o sistema e imediatamente perceber:
+
+"Isso é uma ferramenta oficial de trabalho."
+
+A interface deve transmitir:
+
+Profissionalismo.
+Organização.
+Segurança.
+Confiança.
+Comunicação institucional.
+
+O resultado deve ser moderno o suficiente para parecer uma plataforma atual, mas sóbrio o suficiente para ser apresentado à direção de um hospital.

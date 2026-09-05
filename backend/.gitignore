@@ -1,0 +1,32 @@
+# Dependências
+node_modules/
+
+# Build
+dist/
+
+# Variáveis de ambiente — NUNCA versionar
+.env
+.env.local
+.env.production
+.env.staging
+
+# Prisma
+prisma/migrations/dev.db
+prisma/*.db
+
+# Logs
+*.log
+logs/
+
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Firebase service account — NUNCA versionar
+*serviceAccount*.json
+*service-account*.json
+firebase-admin*.json
