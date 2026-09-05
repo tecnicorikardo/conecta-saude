@@ -34,3 +34,4 @@ Thumbs.db
 *.iml
 *.log
 logs/
+.neon
