@@ -6,12 +6,20 @@ let app: admin.app.App | null = null;
  * Inicializa o Firebase Admin SDK.
  * As credenciais NUNCA ficam no código — vêm de variáveis de ambiente.
  */
+function getEnvCaseInsensitive(key: string): string | undefined {
+  if (process.env[key]) return process.env[key];
+  const found = Object.entries(process.env).find(
+    ([k]) => k.toLowerCase() === key.toLowerCase(),
+  );
+  return found ? found[1] : undefined;
+}
+
 export function initializeFirebase(): void {
   if (app) return;
 
-  const projectId = process.env.FIREBASE_PROJECT_ID?.trim();
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL?.trim();
-  let rawKey = process.env.FIREBASE_PRIVATE_KEY?.trim() ?? '';
+  const projectId = getEnvCaseInsensitive('FIREBASE_PROJECT_ID')?.trim();
+  const clientEmail = getEnvCaseInsensitive('FIREBASE_CLIENT_EMAIL')?.trim();
+  let rawKey = getEnvCaseInsensitive('FIREBASE_PRIVATE_KEY')?.trim() ?? '';
 
   // Remove aspas caso o usuário tenha colado com aspas duplas no painel
   if (rawKey.startsWith('"') && rawKey.endsWith('"')) {
