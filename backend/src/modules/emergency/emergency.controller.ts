@@ -1,0 +1,248 @@
+import { Request, Response } from 'express';
+import { prisma } from '../../config/database';
+import { HierarquiaNivel } from '../../types';
+import { AppError } from '../../middleware/errorHandler';
+import { auditLog } from '../../utils/auditLogger';
+import { createEmergencySchema, resolveEmergencySchema } from './emergency.schema';
+
+/**
+ * GET /api/emergency/active
+ * Retorna o chamado de emergência ativo no momento (se houver).
+ */
+export async function getActiveEmergency(_req: Request, res: Response): Promise<void> {
+  const alert = await prisma.emergencyAlert.findFirst({
+    where: { status: 'ativo' },
+    orderBy: { criadoEm: 'desc' },
+    include: {
+      criador: {
+        select: {
+          id: true,
+          nome: true,
+          cargo: true,
+          fotoUrl: true,
+          hierarquiaNivel: true,
+          setor: { select: { nome: true } },
+        },
+      },
+      setor: { select: { id: true, nome: true } },
+    },
+  });
+
+  res.json({
+    success: true,
+    data: alert
+      ? {
+          id: alert.id,
+          tipo: alert.tipo,
+          titulo: alert.titulo,
+          descricao: alert.descricao,
+          localizacao: alert.localizacao,
+          status: alert.status,
+          criadoEm: alert.criadoEm,
+          criador: {
+            id: alert.criador.id,
+            nome: alert.criador.nome,
+            cargo: alert.criador.cargo,
+            fotoUrl: alert.criador.fotoUrl,
+            setorNome: alert.criador.setor?.nome ?? '',
+          },
+        }
+      : null,
+  });
+}
+
+/**
+ * POST /api/emergency
+ * Dispara um novo chamado de emergência / Protocolo Vermelho.
+ * Qualquer servidor de plantão pode acionar para resposta rápida.
+ */
+export async function createEmergencyAlert(req: Request, res: Response): Promise<void> {
+  const actor = req.user!;
+  const data = createEmergencySchema.parse(req.body);
+
+  const alert = await prisma.emergencyAlert.create({
+    data: {
+      tipo: data.tipo,
+      titulo: data.titulo,
+      descricao: data.descricao ?? null,
+      localizacao: data.localizacao,
+      setorId: actor.setorId,
+      criadoPor: actor.id,
+      status: 'ativo',
+    },
+    include: {
+      criador: {
+        select: {
+          id: true,
+          nome: true,
+          cargo: true,
+          fotoUrl: true,
+          hierarquiaNivel: true,
+          setor: { select: { nome: true } },
+        },
+      },
+    },
+  });
+
+  await auditLog({
+    userId: actor.id,
+    acao: 'disparar_alerta_emergencia',
+    entidade: 'emergency_alert',
+    entidadeId: alert.id,
+    detalhes: { tipo: data.tipo, localizacao: data.localizacao },
+    req,
+  });
+
+  res.status(201).json({
+    success: true,
+    message: 'Alerta de emergência emitido com sucesso.',
+    data: {
+      id: alert.id,
+      tipo: alert.tipo,
+      titulo: alert.titulo,
+      descricao: alert.descricao,
+      localizacao: alert.localizacao,
+      status: alert.status,
+      criadoEm: alert.criadoEm,
+      criador: {
+        id: alert.criador.id,
+        nome: alert.criador.nome,
+        cargo: alert.criador.cargo,
+        fotoUrl: alert.criador.fotoUrl,
+        setorNome: alert.criador.setor?.nome ?? '',
+      },
+    },
+  });
+}
+
+/**
+ * PATCH /api/emergency/:id/resolve
+ * Encerra o chamado e finaliza o protocolo de emergência.
+ * Restrito à Coordenação e Direção Geral.
+ */
+export async function resolveEmergencyAlert(req: Request, res: Response): Promise<void> {
+  const actor = req.user!;
+  const { id } = req.params;
+  const data = resolveEmergencySchema.parse(req.body ?? {});
+
+  if (actor.hierarquiaNivel > HierarquiaNivel.COORDENACAO) {
+    throw new AppError(
+      'Apenas a Coordenação e a Direção Geral têm permissão para encerrar o protocolo de emergência.',
+      403,
+    );
+  }
+
+  const existing = await prisma.emergencyAlert.findUnique({ where: { id } });
+  if (!existing) {
+    throw new AppError('Chamado de emergência não encontrado.', 404);
+  }
+
+  const updated = await prisma.emergencyAlert.update({
+    where: { id },
+    data: {
+      status: 'resolvido',
+      descricao: data.observacao ? `${existing.descricao ?? ''}\n[Resolução: ${data.observacao}]`.trim() : existing.descricao,
+      resolvidoEm: new Date(),
+      resolvidoPor: actor.id,
+    },
+    include: {
+      criador: {
+        select: {
+          id: true,
+          nome: true,
+          cargo: true,
+          setor: { select: { nome: true } },
+        },
+      },
+      resolvido: {
+        select: {
+          id: true,
+          nome: true,
+          cargo: true,
+        },
+      },
+    },
+  });
+
+  await auditLog({
+    userId: actor.id,
+    acao: 'encerrar_alerta_emergencia',
+    entidade: 'emergency_alert',
+    entidadeId: id,
+    req,
+  });
+
+  res.json({
+    success: true,
+    message: 'Protocolo de emergência encerrado com sucesso.',
+    data: {
+      id: updated.id,
+      tipo: updated.tipo,
+      titulo: updated.titulo,
+      localizacao: updated.localizacao,
+      status: updated.status,
+      criadoEm: updated.criadoEm,
+      resolvidoEm: updated.resolvidoEm,
+      resolvidoPorNome: updated.resolvido?.nome ?? null,
+    },
+  });
+}
+
+/**
+ * GET /api/emergency/history
+ * Lista histórico de ocorrências de emergência.
+ */
+export async function listEmergencyHistory(req: Request, res: Response): Promise<void> {
+  const page = Number(req.query.page ?? 1);
+  const limit = Number(req.query.limit ?? 20);
+  const skip = (page - 1) * limit;
+
+  const [items, total] = await Promise.all([
+    prisma.emergencyAlert.findMany({
+      orderBy: { criadoEm: 'desc' },
+      skip,
+      take: limit,
+      include: {
+        criador: {
+          select: {
+            id: true,
+            nome: true,
+            cargo: true,
+            fotoUrl: true,
+            setor: { select: { nome: true } },
+          },
+        },
+        resolvido: {
+          select: {
+            id: true,
+            nome: true,
+            cargo: true,
+          },
+        },
+      },
+    }),
+    prisma.emergencyAlert.count(),
+  ]);
+
+  res.json({
+    success: true,
+    data: {
+      items: items.map((a) => ({
+        id: a.id,
+        tipo: a.tipo,
+        titulo: a.titulo,
+        descricao: a.descricao,
+        localizacao: a.localizacao,
+        status: a.status,
+        criadoEm: a.criadoEm,
+        resolvidoEm: a.resolvidoEm,
+        criadorNome: a.criador.nome,
+        criadorCargo: a.criador.cargo,
+        criadorSetor: a.criador.setor?.nome ?? '',
+        resolvidoPorNome: a.resolvido?.nome ?? null,
+      })),
+      total,
+      hasMore: skip + items.length < total,
+    },
+  });
+}

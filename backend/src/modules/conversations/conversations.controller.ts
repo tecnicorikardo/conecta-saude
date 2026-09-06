@@ -23,12 +23,22 @@ export async function listConversations(req: Request, res: Response): Promise<vo
       ativo: true,
       members: { some: { userId: actor.id } },
     },
-    orderBy: { atualizadoEm: 'desc' },
+    orderBy: [
+      { atualizadoEm: 'desc' },
+      { id: 'desc' },
+    ],
     include: {
       members: {
         include: {
           user: {
-            select: { id: true, nome: true, fotoUrl: true, cargo: true },
+            select: {
+              id: true,
+              nome: true,
+              fotoUrl: true,
+              cargo: true,
+              hierarquiaNivel: true,
+              setor: { select: { nome: true } },
+            },
           },
         },
       },
@@ -40,7 +50,7 @@ export async function listConversations(req: Request, res: Response): Promise<vo
           texto: true,
           excluido: true,
           criadoEm: true,
-          remetente: { select: { nome: true } },
+          remetente: { select: { id: true, nome: true, cargo: true } },
         },
       },
       _count: {
@@ -63,7 +73,14 @@ export async function listConversations(req: Request, res: Response): Promise<vo
       id: c.id,
       tipo: c.tipo,
       nome: c.nome,
-      members: c.members.map((m) => m.user),
+      members: c.members.map((m) => ({
+        id: m.user.id,
+        nome: m.user.nome,
+        fotoUrl: m.user.fotoUrl,
+        cargo: m.user.cargo,
+        hierarquiaNivel: m.user.hierarquiaNivel,
+        setorNome: m.user.setor?.nome ?? '',
+      })),
       lastMessage: c.messages[0] ?? null,
       unreadCount: c._count.messages,
       atualizadoEm: c.atualizadoEm,
@@ -79,23 +96,36 @@ export async function createConversation(req: Request, res: Response): Promise<v
   const actor = req.user!;
   const data = createConversationSchema.parse(req.body);
 
+  // Filtrar o próprio criador dos participantes e remover duplicatas
+  const uniqueParticipantIds = Array.from(
+    new Set(data.participantIds.filter((id) => id !== actor.id))
+  );
+
+  if (uniqueParticipantIds.length === 0) {
+    throw new AppError('Selecione ao menos um participante diferente de você.', 400);
+  }
+
   // Buscar dados dos participantes para validação
   const participants = await prisma.user.findMany({
-    where: { id: { in: data.participantIds }, ativo: true },
+    where: { id: { in: uniqueParticipantIds }, ativo: true },
     select: { id: true, hierarquiaNivel: true, setorId: true, nome: true },
   });
 
-  if (participants.length !== data.participantIds.length) {
+  if (participants.length !== uniqueParticipantIds.length) {
     throw new AppError('Um ou mais participantes não foram encontrados ou estão inativos.', 400);
   }
 
-  // Validar regras de comunicação para conversa individual
+  // Validar regras de comunicação para conversa individual ou grupo
   if (data.tipo === ConversationTipo.INDIVIDUAL) {
     if (participants.length !== 1) {
       throw new AppError('Conversa individual deve ter exatamente 1 participante.', 400);
     }
 
     const target = participants[0];
+    if (target.id === actor.id) {
+      throw new AppError('Não é possível criar uma conversa individual consigo mesmo.', 400);
+    }
+
     _validateCommunicationRules(actor, target);
 
     // Verificar se já existe conversa individual entre esses dois
@@ -103,14 +133,55 @@ export async function createConversation(req: Request, res: Response): Promise<v
       where: {
         tipo: ConversationTipo.INDIVIDUAL,
         ativo: true,
-        members: { every: { userId: { in: [actor.id, target.id] } } },
+        AND: [
+          { members: { some: { userId: actor.id } } },
+          { members: { some: { userId: target.id } } },
+        ],
       },
-      include: { members: true },
+      include: {
+        members: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                nome: true,
+                fotoUrl: true,
+                cargo: true,
+                hierarquiaNivel: true,
+                setor: { select: { nome: true } },
+              },
+            },
+          },
+        },
+      },
     });
 
-    if (existing && existing.members.length === 2) {
-      res.json({ success: true, data: existing });
+    if (existing) {
+      res.json({
+        success: true,
+        data: {
+          id: existing.id,
+          tipo: existing.tipo,
+          nome: existing.nome,
+          members: existing.members.map((m) => ({
+            id: m.user.id,
+            nome: m.user.nome,
+            fotoUrl: m.user.fotoUrl,
+            cargo: m.user.cargo,
+            hierarquiaNivel: m.user.hierarquiaNivel,
+            setorNome: m.user.setor?.nome ?? '',
+          })),
+          lastMessage: null,
+          unreadCount: 0,
+          atualizadoEm: existing.atualizadoEm,
+        },
+      });
       return;
+    }
+  } else {
+    // Validar regras de comunicação para todos os membros do grupo
+    for (const participant of participants) {
+      _validateCommunicationRules(actor, participant);
     }
   }
 
@@ -132,13 +203,40 @@ export async function createConversation(req: Request, res: Response): Promise<v
     include: {
       members: {
         include: {
-          user: { select: { id: true, nome: true, fotoUrl: true } },
+          user: {
+            select: {
+              id: true,
+              nome: true,
+              fotoUrl: true,
+              cargo: true,
+              hierarquiaNivel: true,
+              setor: { select: { nome: true } },
+            },
+          },
         },
       },
     },
   });
 
-  res.status(201).json({ success: true, data: conversation });
+  res.status(201).json({
+    success: true,
+    data: {
+      id: conversation.id,
+      tipo: conversation.tipo,
+      nome: conversation.nome,
+      members: conversation.members.map((m) => ({
+        id: m.user.id,
+        nome: m.user.nome,
+        fotoUrl: m.user.fotoUrl,
+        cargo: m.user.cargo,
+        hierarquiaNivel: m.user.hierarquiaNivel,
+        setorNome: m.user.setor?.nome ?? '',
+      })),
+      lastMessage: null,
+      unreadCount: 0,
+      atualizadoEm: conversation.atualizadoEm,
+    },
+  });
 }
 
 /**

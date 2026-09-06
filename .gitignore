@@ -37,3 +37,8 @@ Thumbs.db
 *.log
 logs/
 .neon
+
+*.apk
+build/
+.firebase/
+

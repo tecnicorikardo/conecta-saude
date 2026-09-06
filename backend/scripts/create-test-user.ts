@@ -24,12 +24,16 @@ async function main() {
 
   const testUsers = [
     { email: 'direcao@conectasaude.dev',    password: 'ConectaSUS@2026', displayName: 'Carlos Eduardo Mendes' },
-    { email: 'coord.ccdti@conectasaude.dev', password: 'ConectaSUS@2026', displayName: 'Fernanda Lima Santos' },
-    { email: 'coord.cco@conectasaude.dev',   password: 'ConectaSUS@2026', displayName: 'Ana Paula Ferreira' },
-    { email: 'coord.cce@conectasaude.dev',   password: 'ConectaSUS@2026', displayName: 'Roberto Alves Costa' },
-    { email: 'lucas.ccdti@conectasaude.dev', password: 'ConectaSUS@2026', displayName: 'Lucas Oliveira' },
+    { email: 'coord.ccdti@conectasaude.dev', password: 'ConectaSUS@2026', displayName: 'Dra. Juliana Moreira' },
+    { email: 'lucas.ccdti@conectasaude.dev', password: 'ConectaSUS@2026', displayName: 'Lucas Ribeiro' },
+    { email: 'mariana.ccdti@conectasaude.dev', password: 'ConectaSUS@2026', displayName: 'Mariana Lima' },
+    { email: 'coord.cco@conectasaude.dev',   password: 'ConectaSUS@2026', displayName: 'Dr. Roberto Vasconcelos' },
     { email: 'paula.cco@conectasaude.dev',   password: 'ConectaSUS@2026', displayName: 'Paula Souza' },
-    { email: 'gabriel.cce@conectasaude.dev', password: 'ConectaSUS@2026', displayName: 'Gabriel Martins' },
+    { email: 'thiago.cco@conectasaude.dev',  password: 'ConectaSUS@2026', displayName: 'Thiago Duarte' },
+    { email: 'coord.cce@conectasaude.dev',   password: 'ConectaSUS@2026', displayName: 'Dra. Beatriz Castro' },
+    { email: 'gabriel.cce@conectasaude.dev', password: 'ConectaSUS@2026', displayName: 'Gabriel Mendes' },
+    { email: 'larissa.cce@conectasaude.dev', password: 'ConectaSUS@2026', displayName: 'Larissa Nogueira' },
+    { email: 'inativo@conectasaude.dev',     password: 'ConectaSUS@2026', displayName: 'Colaborador Desligado' },
   ];
 
   console.log('🔑 Criando usuários no Firebase Auth...\n');
@@ -40,7 +44,12 @@ async function main() {
       let firebaseUser: admin.auth.UserRecord;
       try {
         firebaseUser = await auth.getUserByEmail(u.email);
-        console.log(`⚠️  Já existe: ${u.email}`);
+        await auth.updateUser(firebaseUser.uid, {
+          password: u.password,
+          displayName: u.displayName,
+          emailVerified: true,
+        });
+        console.log(`🔄 Atualizado: ${u.email}`);
       } catch {
         firebaseUser = await auth.createUser({
           email: u.email,

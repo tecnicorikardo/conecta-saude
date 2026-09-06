@@ -26,6 +26,7 @@ model Sector {
   users         User[]
   conversations Conversation[]
   channels      Channel[]
+  emergencyAlerts EmergencyAlert[]
 
   @@map("sectors")
 }
@@ -43,23 +44,33 @@ model User {
   hierarquiaNivel Int    @map("hierarquia_nivel")
   setorId       String   @map("setor_id")
   fotoUrl       String?  @map("foto_url")
+  matricula     String?
   ativo         Boolean  @default(true)
+  aprovadoPor   String?  @map("aprovado_por")
+  aprovadoEm    DateTime? @map("aprovado_em")
   fcmToken      String?  @map("fcm_token")
   criadoEm     DateTime @default(now()) @map("criado_em")
   atualizadoEm DateTime @updatedAt @map("atualizado_em")
 
   // Relacionamentos
   setor                  Sector                @relation(fields: [setorId], references: [id])
+  aprovador              User?                 @relation("UserApprovals", fields: [aprovadoPor], references: [id])
+  usuariosAprovados      User[]                @relation("UserApprovals")
   sentMessages           Message[]             @relation("MessageRemetente")
   conversationMemberships ConversationMember[]
   channelMemberships     ChannelMember[]
+  channelMessagesSent    ChannelMessage[]      @relation("ChannelMessageRemetente")
+  channelMessageReads    ChannelMessageRead[]
   announcementReads      AnnouncementRead[]
   messageReads           MessageRead[]
   reportsFeitos          Report[]              @relation("ReportReporter")
   reportsSofridos        Report[]              @relation("ReportReported")
+  reportsResolved        Report[]              @relation("ReportResolved")
   announcementsCreated   Announcement[]
   conversationsCreated   Conversation[]
   channelsCreated        Channel[]
+  emergenciesCreated     EmergencyAlert[]      @relation("EmergencyCreated")
+  emergenciesResolved    EmergencyAlert[]      @relation("EmergencyResolved")
   auditLogs              AuditLog[]
 
   @@index([firebaseUid])
@@ -165,9 +176,10 @@ model Channel {
   atualizadoEm DateTime @updatedAt @map("atualizado_em")
 
   // Relacionamentos
-  setor   Sector?       @relation(fields: [setorId], references: [id])
-  criador User          @relation(fields: [criadoPor], references: [id])
+  setor   Sector?          @relation(fields: [setorId], references: [id])
+  criador User             @relation(fields: [criadoPor], references: [id])
   members ChannelMember[]
+  messages ChannelMessage[]
 
   @@index([setorId])
   @@index([tipo])
@@ -186,6 +198,38 @@ model ChannelMember {
   @@unique([channelId, userId])
   @@index([userId])
   @@map("channel_members")
+}
+
+model ChannelMessage {
+  id          String   @id @default(uuid())
+  channelId   String   @map("channel_id")
+  remetenteId String   @map("remetente_id")
+  texto       String
+  criadoEm    DateTime @default(now()) @map("criado_em")
+  atualizadoEm DateTime @updatedAt @map("atualizado_em")
+
+  // Relacionamentos
+  channel   Channel              @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  remetente User                 @relation("ChannelMessageRemetente", fields: [remetenteId], references: [id])
+  reads     ChannelMessageRead[]
+
+  @@index([channelId, criadoEm])
+  @@index([remetenteId])
+  @@map("channel_messages")
+}
+
+model ChannelMessageRead {
+  id               String   @id @default(uuid())
+  channelMessageId String   @map("channel_message_id")
+  userId           String   @map("user_id")
+  lidoEm           DateTime @default(now()) @map("lido_em")
+
+  channelMessage ChannelMessage @relation(fields: [channelMessageId], references: [id], onDelete: Cascade)
+  user           User           @relation(fields: [userId], references: [id])
+
+  @@unique([channelMessageId, userId])
+  @@index([userId])
+  @@map("channel_message_reads")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -228,21 +272,27 @@ model AnnouncementRead {
 // DENÚNCIAS
 // ─────────────────────────────────────────────────────────────────────────────
 model Report {
-  id             String   @id @default(uuid())
-  reporterId     String   @map("reporter_id")
-  reportedUserId String?  @map("reported_user_id")
-  messageId      String?  @map("message_id")
-  /// assedio | ofensa | conteudo_inadequado | comunicacao_impropria | outro
+  id             String    @id @default(uuid())
+  reporterId     String?   @map("reporter_id")
+  reportedUserId String?   @map("reported_user_id")
+  messageId      String?   @map("message_id")
+  anonimo        Boolean   @default(false)
+  titulo         String?
+  /// assedio | desvio_conduta | infraestrutura_risco | fraude_recursos | outro
   motivo         String
   descricao      String?
   /// pendente | em_analise | resolvido | arquivado
-  status         String   @default("pendente")
-  criadoEm      DateTime @default(now()) @map("criado_em")
-  atualizadoEm  DateTime @updatedAt @map("atualizado_em")
+  status         String    @default("pendente")
+  resposta       String?
+  resolvidoPor   String?   @map("resolvido_por")
+  resolvidoEm    DateTime? @map("resolvido_em")
+  criadoEm       DateTime  @default(now()) @map("criado_em")
+  atualizadoEm   DateTime  @updatedAt @map("atualizado_em")
 
   // Relacionamentos
-  reporter     User  @relation("ReportReporter", fields: [reporterId], references: [id])
+  reporter     User? @relation("ReportReporter", fields: [reporterId], references: [id])
   reportedUser User? @relation("ReportReported", fields: [reportedUserId], references: [id])
+  resolvido    User? @relation("ReportResolved", fields: [resolvidoPor], references: [id])
 
   @@index([status])
   @@index([reporterId])
@@ -272,4 +322,32 @@ model AuditLog {
   @@index([entidade, entidadeId])
   @@index([criadoEm])
   @@map("audit_logs")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EMERGÊNCIAS / PROTOCOLO VERMELHO
+// ─────────────────────────────────────────────────────────────────────────────
+model EmergencyAlert {
+  id           String    @id @default(uuid())
+  /// pcr | o2_energia | trauma | seguranca | geral
+  tipo         String
+  titulo       String
+  descricao    String?
+  localizacao  String    @map("localizacao")
+  setorId      String?   @map("setor_id")
+  criadoPor    String    @map("criado_por")
+  /// ativo | resolvido | cancelado
+  status       String    @default("ativo")
+  criadoEm     DateTime  @default(now()) @map("criado_em")
+  resolvidoEm  DateTime? @map("resolvido_em")
+  resolvidoPor String?   @map("resolvido_por")
+
+  // Relacionamentos
+  criador   User    @relation("EmergencyCreated", fields: [criadoPor], references: [id])
+  resolvido User?   @relation("EmergencyResolved", fields: [resolvidoPor], references: [id])
+  setor     Sector? @relation(fields: [setorId], references: [id])
+
+  @@index([status])
+  @@index([criadoEm])
+  @@map("emergency_alerts")
 }

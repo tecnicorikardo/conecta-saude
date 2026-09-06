@@ -37,6 +37,7 @@ export function errorHandler(
     res.status(err.statusCode).json({
       success: false,
       error: err.message,
+      message: err.message,
       code: err.code,
     });
     return;

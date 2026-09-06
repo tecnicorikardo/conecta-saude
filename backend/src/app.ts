@@ -12,8 +12,11 @@ import announcementsRoutes from './modules/announcements/announcements.routes';
 import reportsRoutes from './modules/reports/reports.routes';
 import auditRoutes from './modules/audit/audit.routes';
 import channelsRoutes from './modules/channels/channels.routes';
+import { emergencyRouter } from './modules/emergency/emergency.routes';
 
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
+import { authenticate } from './middleware/authenticate';
+import { getMe } from './modules/auth/auth.controller';
 
 export function createApp(): express.Application {
   const app = express();
@@ -22,7 +25,6 @@ export function createApp(): express.Application {
   app.use(helmet());
 
   // ─── CORS ─────────────────────────────────────────────────────────────────
-  // Em desenvolvimento aceita qualquer localhost para facilitar testes
   const allowedOrigins = (process.env.CORS_ORIGINS ?? 'http://localhost:8080')
     .split(',')
     .map((o) => o.trim());
@@ -30,9 +32,18 @@ export function createApp(): express.Application {
   app.use(
     cors({
       origin: (origin, callback) => {
-        // Sem origin (mobile/Postman) ou localhost sempre permitido em dev
+        // Sem origin (mobile/Postman) ou origens confiáveis
         if (!origin) return callback(null, true);
-        if (process.env.NODE_ENV === 'development' && origin.startsWith('http://localhost')) {
+        if (
+          origin.startsWith('http://localhost') ||
+          origin.startsWith('http://127.0.0.1') ||
+          origin.startsWith('http://192.168.') ||
+          origin.startsWith('http://10.') ||
+          origin.startsWith('http://172.') ||
+          origin.includes('web.app') ||
+          origin.includes('firebaseapp.com') ||
+          origin.includes('loca.lt')
+        ) {
           return callback(null, true);
         }
         if (allowedOrigins.includes(origin)) {
@@ -48,17 +59,19 @@ export function createApp(): express.Application {
   app.use(
     rateLimit({
       windowMs: 15 * 60 * 1000, // 15 minutos
-      max: 200,
+      max: process.env.NODE_ENV === 'development' ? 50000 : 2000,
+      skip: () => process.env.NODE_ENV === 'development',
       standardHeaders: true,
       legacyHeaders: false,
       message: { success: false, error: 'Muitas requisições. Tente novamente em instantes.' },
     }),
   );
 
-  // Rate limit mais restrito para autenticação
+  // Rate limit para autenticação
   const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 20,
+    max: process.env.NODE_ENV === 'development' ? 1000 : 20,
+    skip: () => process.env.NODE_ENV === 'development',
     message: { success: false, error: 'Muitas tentativas de autenticação.' },
   });
 
@@ -77,12 +90,14 @@ export function createApp(): express.Application {
 
   // ─── Rotas da API ─────────────────────────────────────────────────────────
   app.use('/api/auth', authLimiter, authRoutes);
+  app.get('/api/me', authenticate, getMe);
   app.use('/api/users', usersRoutes);
   app.use('/api/sectors', sectorsRoutes);
   app.use('/api/conversations', conversationsRoutes);
   app.use('/api/messages', messagesRoutes);
   app.use('/api/announcements', announcementsRoutes);
   app.use('/api/channels', channelsRoutes);
+  app.use('/api/emergency', emergencyRouter);
   app.use('/api/reports', reportsRoutes);
   app.use('/api/admin/audit-logs', auditRoutes);
 

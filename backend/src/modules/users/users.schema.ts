@@ -29,4 +29,5 @@ export const listUsersSchema = z.object({
   setorId: z.string().uuid().optional(),
   hierarquiaNivel: z.coerce.number().int().min(1).max(4).optional(),
   ativo: z.enum(['true', 'false']).optional(),
+  excludeSelf: z.enum(['true', 'false']).optional(),
 });

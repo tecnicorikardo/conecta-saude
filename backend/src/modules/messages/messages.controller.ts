@@ -39,15 +39,14 @@ export async function listMessages(req: Request, res: Response): Promise<void> {
         select: { id: true, nome: true, fotoUrl: true, cargo: true },
       },
       reads: {
-        where: { userId: actor.id },
-        select: { lidoEm: true },
+        select: { userId: true, lidoEm: true },
       },
     },
   });
 
-  // Marcar como lido as não lidas
+  // Marcar como lido as não lidas pelo usuário atual
   const unreadIds = messages
-    .filter((m) => m.reads.length === 0 && m.remetenteId !== actor.id)
+    .filter((m) => !m.reads.some((r) => r.userId === actor.id) && m.remetenteId !== actor.id)
     .map((m) => m.id);
 
   if (unreadIds.length > 0) {
@@ -71,7 +70,7 @@ export async function listMessages(req: Request, res: Response): Promise<void> {
         criadoEm: m.criadoEm,
         editadoEm: m.editadoEm,
         remetente: m.remetente,
-        lido: m.reads.length > 0,
+        lido: m.reads.some((r) => r.userId !== m.remetenteId),
       })),
       hasMore: messages.length === query.limit,
       nextCursor: messages.length > 0 ? messages[0].id : null,

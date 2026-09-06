@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../../config/database';
 import { getFirebaseAuth } from '../../config/firebase';
 import { HierarquiaNivel } from '../../types';
-import { verifyTokenSchema, updateFcmTokenSchema } from './auth.schema';
+import { verifyTokenSchema, updateFcmTokenSchema, registerUserSchema } from './auth.schema';
 import { AppError } from '../../middleware/errorHandler';
 
 /**
@@ -34,8 +34,14 @@ export async function verifyToken(req: Request, res: Response): Promise<void> {
   }
 
   if (!user.ativo) {
+    if (!user.aprovadoEm) {
+      throw new AppError(
+        'Cadastro em análise. Seu acesso está aguardando aprovação pelo RH ou Coordenação da unidade.',
+        403,
+      );
+    }
     throw new AppError(
-      'Seu acesso foi desativado. Entre em contato com o RH.',
+      'Seu acesso foi desativado. Entre em contato com o RH da unidade.',
       403,
     );
   }
@@ -126,3 +132,88 @@ function getHierarquiaNome(nivel: number): string {
     default: return 'Desconhecido';
   }
 }
+
+/**
+ * POST /api/auth/register
+ * Auto-cadastro de novos servidores públicos.
+ * Cria a conta no Firebase Auth e no PostgreSQL com status ativo = false (pendente de aprovação).
+ */
+export async function registerUser(req: Request, res: Response): Promise<void> {
+  const data = registerUserSchema.parse(req.body);
+
+  // 1. Validar setor
+  const setor = await prisma.sector.findUnique({ where: { id: data.setorId } });
+  if (!setor) throw new AppError('Unidade/Setor selecionado não encontrado.', 404);
+
+  // 2. Validar e-mail duplicado
+  const existingUser = await prisma.user.findUnique({ where: { email: data.email } });
+  if (existingUser) {
+    throw new AppError('Este e-mail já está cadastrado no sistema.', 409);
+  }
+
+  // 3. Criar no Firebase Auth
+  let firebaseUser: { uid: string };
+  try {
+    firebaseUser = await getFirebaseAuth().createUser({
+      email: data.email,
+      password: data.password,
+      displayName: data.nome,
+    });
+  } catch (err: unknown) {
+    const error = err as { code?: string; message?: string };
+    if (error.code === 'auth/email-already-exists') {
+      throw new AppError('Este e-mail já está cadastrado.', 409);
+    }
+    throw new AppError('Falha ao registrar credenciais no Firebase.', 500);
+  }
+
+  // 4. Criar no banco de dados como PENDENTE (ativo: false)
+  const user = await prisma.user.create({
+    data: {
+      firebaseUid: firebaseUser.uid,
+      nome: data.nome,
+      email: data.email,
+      cargo: data.cargo,
+      matricula: data.matricula ?? null,
+      hierarquiaNivel: HierarquiaNivel.FUNCIONARIO,
+      setorId: data.setorId,
+      ativo: false,
+    },
+    include: {
+      setor: { select: { nome: true } },
+    },
+  });
+
+  // 5. Auditoria de novo auto-cadastro
+  await prisma.auditLog.create({
+    data: {
+      userId: user.id,
+      acao: 'auto_cadastro_solicitado',
+      entidade: 'user',
+      entidadeId: user.id,
+      detalhes: JSON.stringify({
+        nome: user.nome,
+        email: user.email,
+        cargo: user.cargo,
+        setor: user.setor.nome,
+        matricula: user.matricula,
+      }),
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+    },
+  });
+
+  res.status(201).json({
+    success: true,
+    message: 'Cadastro realizado com sucesso! Seu acesso está aguardando liberação pelo RH ou Coordenação da unidade.',
+    data: {
+      id: user.id,
+      nome: user.nome,
+      email: user.email,
+      cargo: user.cargo,
+      setorNome: user.setor.nome,
+      status: 'pendente_aprovacao',
+    },
+  });
+}
+
