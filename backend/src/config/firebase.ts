@@ -9,14 +9,25 @@ let app: admin.app.App | null = null;
 export function initializeFirebase(): void {
   if (app) return;
 
-  const projectId = process.env.FIREBASE_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+  const projectId = process.env.FIREBASE_PROJECT_ID?.trim();
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL?.trim();
+  let rawKey = process.env.FIREBASE_PRIVATE_KEY?.trim() ?? '';
 
-  if (!projectId || !clientEmail || !privateKey) {
+  // Remove aspas caso o usuário tenha colado com aspas duplas no painel
+  if (rawKey.startsWith('"') && rawKey.endsWith('"')) {
+    rawKey = rawKey.substring(1, rawKey.length - 1);
+  }
+
+  const privateKey = rawKey.replace(/\\n/g, '\n');
+
+  const missing: string[] = [];
+  if (!projectId) missing.push('FIREBASE_PROJECT_ID');
+  if (!clientEmail) missing.push('FIREBASE_CLIENT_EMAIL');
+  if (!privateKey) missing.push('FIREBASE_PRIVATE_KEY');
+
+  if (missing.length > 0) {
     throw new Error(
-      'Variáveis de ambiente do Firebase não configuradas: ' +
-        'FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY',
+      `Variáveis de ambiente do Firebase ausentes no Render/Ambiente: ${missing.join(', ')}`,
     );
   }
 
