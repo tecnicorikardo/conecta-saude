@@ -28,10 +28,7 @@ import '../widgets/main_shell.dart';
 import '../auth/permissions_provider.dart';
 import 'app_routes.dart';
 
-part 'app_router.g.dart';
-
-@riverpod
-GoRouter appRouter(Ref ref) {
+final appRouterProvider = Provider<GoRouter>((ref) {
   // Observar permissões para redirecionar quando mudar
   final perms = ref.watch(permissionsProvider);
 
@@ -227,4 +224,4 @@ GoRouter appRouter(Ref ref) {
       ),
     ),
   );
-}
+});

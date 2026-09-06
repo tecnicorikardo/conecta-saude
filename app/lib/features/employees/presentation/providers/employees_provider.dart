@@ -255,6 +255,58 @@ class EmployeesNotifier extends StateNotifier<EmployeesState> {
     );
   }
 
+  Future<UserEntity?> createUser({
+    required String nome,
+    required String email,
+    required String password,
+    required String cargo,
+    required int hierarquiaNivel,
+    required String setorId,
+    String? fotoUrl,
+  }) async {
+    final result = await _repository.createUser(
+      nome: nome,
+      email: email,
+      password: password,
+      cargo: cargo,
+      hierarquiaNivel: hierarquiaNivel,
+      setorId: setorId,
+      fotoUrl: fotoUrl,
+    );
+    return result.fold(
+      (failure) => throw Exception(failure.message),
+      (user) {
+        updateOrAddUserLocally(user);
+        return user;
+      },
+    );
+  }
+
+  Future<UserEntity?> updateUser({
+    required String id,
+    String? nome,
+    String? cargo,
+    int? hierarquiaNivel,
+    String? setorId,
+    String? fotoUrl,
+  }) async {
+    final result = await _repository.updateUser(
+      id: id,
+      nome: nome,
+      cargo: cargo,
+      hierarquiaNivel: hierarquiaNivel,
+      setorId: setorId,
+      fotoUrl: fotoUrl,
+    );
+    return result.fold(
+      (failure) => throw Exception(failure.message),
+      (user) {
+        updateOrAddUserLocally(user);
+        return user;
+      },
+    );
+  }
+
   void updateOrAddUserLocally(UserEntity user) {
     final index = state.users.indexWhere((u) => u.id == user.id);
     if (index >= 0) {

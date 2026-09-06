@@ -3,19 +3,15 @@ import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// URL base do backend com resolução dinâmica (Web, PWA e Mobile)
+/// URL base do backend na nuvem (Render) para Web, PWA e Mobile
 String get kApiBaseUrl {
   if (kIsWeb) {
     final host = Uri.base.host;
-    if (host.contains('web.app') || host.contains('firebaseapp.com')) {
-      return 'https://conecta-saude-sus.loca.lt/api';
-    }
-    final scheme = Uri.base.scheme.isNotEmpty ? Uri.base.scheme : 'http';
-    if (host.isNotEmpty) {
-      return '$scheme://$host:3000/api';
+    if (host == 'localhost' || host == '127.0.0.1') {
+      return 'http://localhost:3000/api';
     }
   }
-  return 'http://192.168.1.21:3000/api';
+  return 'https://conecta-saude-backende.onrender.com/api';
 }
 
 /// HttpService — cliente Dio com interceptor que injeta o

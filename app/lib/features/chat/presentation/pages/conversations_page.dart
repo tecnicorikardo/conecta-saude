@@ -449,6 +449,8 @@ class _StatusIcon extends StatelessWidget {
         return Icon(Icons.done_all, size: size, color: AppColors.neutral400);
       case MessageStatus.read:
         return Icon(Icons.done_all, size: size, color: AppColors.primaryLight);
+      case MessageStatus.error:
+        return Icon(Icons.error_outline, size: size, color: AppColors.error);
     }
   }
 }

@@ -1,17 +1,13 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
+﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/entities/user_entity.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../data/repositories/auth_repository_impl.dart';
 
-part 'auth_provider.g.dart';
-
 // ─── Repository provider ─────────────────────────────────────────────────────
-@riverpod
-AuthRepository authRepository(Ref ref) {
+final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepositoryImpl(ref);
-}
+});
 
 // ─── Estado do login ─────────────────────────────────────────────────────────
 sealed class LoginState {
@@ -37,10 +33,9 @@ class LoginError extends LoginState {
 }
 
 // ─── LoginNotifier ────────────────────────────────────────────────────────────
-@riverpod
-class LoginNotifier extends _$LoginNotifier {
-  @override
-  LoginState build() => const LoginInitial();
+class LoginNotifier extends StateNotifier<LoginState> {
+  final Ref _ref;
+  LoginNotifier(this._ref) : super(const LoginInitial());
 
   Future<void> signIn({
     required String email,
@@ -48,7 +43,7 @@ class LoginNotifier extends _$LoginNotifier {
   }) async {
     state = const LoginLoading();
 
-    final repository = ref.read(authRepositoryProvider);
+    final repository = _ref.read(authRepositoryProvider);
     final result = await repository.signInWithEmailAndPassword(
       email: email.trim(),
       password: password,
@@ -62,6 +57,11 @@ class LoginNotifier extends _$LoginNotifier {
 
   void reset() => state = const LoginInitial();
 }
+
+final loginNotifierProvider =
+    StateNotifierProvider.autoDispose<LoginNotifier, LoginState>((ref) {
+  return LoginNotifier(ref);
+});
 
 // ─── ForgotPasswordNotifier ───────────────────────────────────────────────────
 sealed class ForgotPasswordState {
@@ -85,15 +85,14 @@ class ForgotPasswordError extends ForgotPasswordState {
   const ForgotPasswordError(this.message);
 }
 
-@riverpod
-class ForgotPasswordNotifier extends _$ForgotPasswordNotifier {
-  @override
-  ForgotPasswordState build() => const ForgotPasswordInitial();
+class ForgotPasswordNotifier extends StateNotifier<ForgotPasswordState> {
+  final Ref _ref;
+  ForgotPasswordNotifier(this._ref) : super(const ForgotPasswordInitial());
 
   Future<void> sendResetEmail(String email) async {
     state = const ForgotPasswordLoading();
 
-    final repository = ref.read(authRepositoryProvider);
+    final repository = _ref.read(authRepositoryProvider);
     final result = await repository.sendPasswordResetEmail(email: email.trim());
 
     result.fold(
@@ -104,6 +103,11 @@ class ForgotPasswordNotifier extends _$ForgotPasswordNotifier {
 
   void reset() => state = const ForgotPasswordInitial();
 }
+
+final forgotPasswordNotifierProvider = StateNotifierProvider.autoDispose<
+    ForgotPasswordNotifier, ForgotPasswordState>((ref) {
+  return ForgotPasswordNotifier(ref);
+});
 
 // ─── RegisterNotifier ────────────────────────────────────────────────────────
 sealed class RegisterState {
@@ -136,9 +140,9 @@ class RegisterError extends RegisterState {
   const RegisterError(this.message);
 }
 
-class RegisterNotifier extends AutoDisposeNotifier<RegisterState> {
-  @override
-  RegisterState build() => const RegisterInitial();
+class RegisterNotifier extends StateNotifier<RegisterState> {
+  final Ref _ref;
+  RegisterNotifier(this._ref) : super(const RegisterInitial());
 
   Future<void> register({
     required String nome,
@@ -149,7 +153,7 @@ class RegisterNotifier extends AutoDisposeNotifier<RegisterState> {
     String? matricula,
   }) async {
     state = const RegisterLoading();
-    final repository = ref.read(authRepositoryProvider);
+    final repository = _ref.read(authRepositoryProvider);
     final result = await repository.register(
       nome: nome,
       email: email,
@@ -177,11 +181,12 @@ class RegisterNotifier extends AutoDisposeNotifier<RegisterState> {
 }
 
 final registerNotifierProvider =
-    NotifierProvider.autoDispose<RegisterNotifier, RegisterState>(RegisterNotifier.new);
+    StateNotifierProvider.autoDispose<RegisterNotifier, RegisterState>((ref) {
+  return RegisterNotifier(ref);
+});
 
 // ─── Usuário atual ────────────────────────────────────────────────────────────
-@riverpod
-Stream<UserEntity?> authState(Ref ref) {
+final authStateProvider = StreamProvider<UserEntity?>((ref) {
   final repository = ref.watch(authRepositoryProvider);
   return repository.authStateChanges;
-}
+});
