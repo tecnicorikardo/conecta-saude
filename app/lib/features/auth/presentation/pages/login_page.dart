@@ -27,14 +27,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       statusBarColor: Colors.transparent,
       statusBarIconBrightness: Brightness.dark,
     ));
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(loginNotifierProvider.notifier).reset();
-    });
   }
 
   @override
   Widget build(BuildContext context) {
     ref.listen<LoginState>(loginNotifierProvider, (_, next) {
+      if (!mounted) return;
       if (next is LoginSuccess) {
         context.go(AppRoutes.home);
       } else if (next is LoginError) {
@@ -116,6 +114,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   void _showError(BuildContext context, String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(

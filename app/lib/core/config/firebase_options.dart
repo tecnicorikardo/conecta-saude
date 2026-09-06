@@ -16,19 +16,21 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyDummyKeyForConectaHospitalSus',
-    appId: '1:1029384756:web:abcdef123456',
-    messagingSenderId: '1029384756',
+    apiKey: 'AIzaSyCfahJx22q7Be42eNAOW7xV3hWTLmemWII',
+    appId: '1:779815545602:web:dfb3580daef5888122701b',
+    messagingSenderId: '779815545602',
     projectId: 'conecta-hospital',
     authDomain: 'conecta-hospital.firebaseapp.com',
-    storageBucket: 'conecta-hospital.appspot.com',
+    storageBucket: 'conecta-hospital.firebasestorage.app',
+    measurementId: 'G-RVYFQW2HQH',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyDummyKeyForConectaHospitalSus',
-    appId: '1:1029384756:android:abcdef123456',
-    messagingSenderId: '1029384756',
+    apiKey: 'AIzaSyCfahJx22q7Be42eNAOW7xV3hWTLmemWII',
+    appId: '1:779815545602:web:dfb3580daef5888122701b',
+    messagingSenderId: '779815545602',
     projectId: 'conecta-hospital',
-    storageBucket: 'conecta-hospital.appspot.com',
+    authDomain: 'conecta-hospital.firebaseapp.com',
+    storageBucket: 'conecta-hospital.firebasestorage.app',
   );
 }

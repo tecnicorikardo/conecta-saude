@@ -22,12 +22,54 @@ export async function verifyToken(req: Request, res: Response): Promise<void> {
   }
 
   // Buscar usuário no banco
-  const user = await prisma.user.findUnique({
+  let user = await prisma.user.findUnique({
     where: { firebaseUid: decodedToken.uid },
     include: {
       setor: { select: { id: true, nome: true } },
     },
   });
+
+  if (!user && decodedToken.email) {
+    user = await prisma.user.findUnique({
+      where: { email: decodedToken.email },
+      include: {
+        setor: { select: { id: true, nome: true } },
+      },
+    });
+
+    if (user) {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { firebaseUid: decodedToken.uid },
+        include: {
+          setor: { select: { id: true, nome: true } },
+        },
+      });
+    } else if (decodedToken.email.toLowerCase() === 'tecnicorikardo@gmail.com') {
+      let defaultSetor = await prisma.sector.findFirst({
+        where: { nome: { contains: 'Direção', mode: 'insensitive' } },
+      });
+      if (!defaultSetor) {
+        defaultSetor = await prisma.sector.findFirst();
+      }
+      if (defaultSetor) {
+        user = await prisma.user.create({
+          data: {
+            firebaseUid: decodedToken.uid,
+            nome: 'Ricardo (Admin / Direção Geral)',
+            email: decodedToken.email,
+            cargo: 'Diretor Geral / Administrador de TI',
+            hierarquiaNivel: HierarquiaNivel.DIRECAO,
+            setorId: defaultSetor.id,
+            ativo: true,
+          },
+          include: {
+            setor: { select: { id: true, nome: true } },
+          },
+        });
+      }
+    }
+  }
 
   if (!user) {
     throw new AppError('Usuário não cadastrado no sistema.', 404);

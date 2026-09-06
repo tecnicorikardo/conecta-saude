@@ -1,4 +1,4 @@
-﻿import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/entities/user_entity.dart';
 import '../../domain/repositories/auth_repository.dart';
@@ -49,13 +49,16 @@ class LoginNotifier extends StateNotifier<LoginState> {
       password: password,
     );
 
+    if (!mounted) return;
     result.fold(
       (failure) => state = LoginError(failure.message),
       (user) => state = LoginSuccess(user),
     );
   }
 
-  void reset() => state = const LoginInitial();
+  void reset() {
+    if (mounted) state = const LoginInitial();
+  }
 }
 
 final loginNotifierProvider =
@@ -95,13 +98,16 @@ class ForgotPasswordNotifier extends StateNotifier<ForgotPasswordState> {
     final repository = _ref.read(authRepositoryProvider);
     final result = await repository.sendPasswordResetEmail(email: email.trim());
 
+    if (!mounted) return;
     result.fold(
       (failure) => state = ForgotPasswordError(failure.message),
       (_) => state = const ForgotPasswordSuccess(),
     );
   }
 
-  void reset() => state = const ForgotPasswordInitial();
+  void reset() {
+    if (mounted) state = const ForgotPasswordInitial();
+  }
 }
 
 final forgotPasswordNotifierProvider = StateNotifierProvider.autoDispose<
@@ -163,6 +169,7 @@ class RegisterNotifier extends StateNotifier<RegisterState> {
       matricula: matricula,
     );
 
+    if (!mounted) return;
     result.fold(
       (failure) => state = RegisterError(failure.message),
       (data) {
@@ -177,7 +184,9 @@ class RegisterNotifier extends StateNotifier<RegisterState> {
     );
   }
 
-  void reset() => state = const RegisterInitial();
+  void reset() {
+    if (mounted) state = const RegisterInitial();
+  }
 }
 
 final registerNotifierProvider =
