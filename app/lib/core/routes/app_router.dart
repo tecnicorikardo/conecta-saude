@@ -26,6 +26,7 @@ import '../../features/channels/domain/entities/channel_entity.dart';
 import '../widgets/splash_screen.dart';
 import '../widgets/main_shell.dart';
 import '../auth/permissions_provider.dart';
+import '../../features/auth/presentation/providers/current_user_provider.dart';
 import 'app_routes.dart';
 
 class RouterNotifier extends ChangeNotifier {
@@ -52,9 +53,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
     // ─── Guard de rotas ─────────────────────────────────────────────────
     redirect: (context, state) {
+      final userAsync = ref.read(currentUserProvider);
       final perms = ref.read(permissionsProvider);
       final path = state.matchedLocation;
       final loggedIn = perms.isLoggedIn;
+
+      // 1. Enquanto a autenticação estiver restaurando a sessão local:
+      // Não redireciona prematuramente para /login! Mantém a rota solicitada (ex: /chat/:id).
+      if (userAsync.isLoading) {
+        return null;
+      }
 
       // Rotas públicas
       final isPublic = path == AppRoutes.splash ||
@@ -66,6 +74,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       if (!loggedIn && !isPublic) return AppRoutes.login;
 
       // Logado tentando acessar login, registro ou splash → home
+      // (Rotas protegidas diretas como /chat/:id passam direto sem ir para home!)
       if (loggedIn && (path == AppRoutes.login || path == AppRoutes.register || path == AppRoutes.splash)) {
         return AppRoutes.home;
       }

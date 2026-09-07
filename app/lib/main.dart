@@ -7,10 +7,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/config/firebase_options.dart';
 import 'core/routes/app_router.dart';
+import 'core/routes/url_strategy.dart';
 import 'core/theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // URL limpa sem '#' para deep linking direto de notificações push
+  configureAppUrlStrategy();
 
   // Inicializar suporte a formatação de data e hora pt_BR
   await initializeDateFormatting('pt_BR', null);
