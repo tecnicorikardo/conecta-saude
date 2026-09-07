@@ -1,11 +1,11 @@
 {
-    "name": "conecta_saude",
-    "short_name": "conecta_saude",
-    "start_url": ".",
+    "name": "Conecta Saúde - SUS",
+    "short_name": "Conecta Saúde",
+    "start_url": "./",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#1565C0",
+    "theme_color": "#1565C0",
+    "description": "Comunicação e Gestão Hospitalar Integrada do SUS",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

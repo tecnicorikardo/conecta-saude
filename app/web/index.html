@@ -29,25 +29,213 @@
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>conecta_saude</title>
-  <link rel="manifest" href="manifest.json">
+  <style>
+    /* ─── Banner de Instalação PWA Mobile ─────────────────────────────────── */
+    #pwa-install-banner {
+      display: none;
+      position: fixed;
+      bottom: 16px;
+      left: 16px;
+      right: 16px;
+      max-width: 480px;
+      margin: 0 auto;
+      background: #ffffff;
+      border: 1.5px solid #1565C0;
+      border-radius: 16px;
+      box-shadow: 0 8px 30px rgba(21, 101, 192, 0.25), 0 2px 8px rgba(0, 0, 0, 0.08);
+      padding: 16px;
+      z-index: 999999;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .pwa-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .pwa-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .pwa-icon {
+      width: 40px;
+      height: 40px;
+      background: #1565C0;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 20px;
+      box-shadow: 0 2px 6px rgba(21, 101, 192, 0.3);
+    }
+    .pwa-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #1a202c;
+      line-height: 1.2;
+    }
+    .pwa-badge {
+      font-size: 10px;
+      background: #E3F2FD;
+      color: #1565C0;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: 600;
+      margin-top: 2px;
+      display: inline-block;
+    }
+    .pwa-close {
+      background: none;
+      border: none;
+      font-size: 22px;
+      color: #94a3b8;
+      cursor: pointer;
+      padding: 0 4px;
+      line-height: 1;
+    }
+    .pwa-desc {
+      font-size: 12.5px;
+      color: #475569;
+      line-height: 1.4;
+      margin-bottom: 12px;
+    }
+    .pwa-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .pwa-btn-install {
+      flex: 1;
+      background: #1565C0;
+      color: #ffffff;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 13.5px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      box-shadow: 0 4px 12px rgba(21, 101, 192, 0.3);
+    }
+    .pwa-btn-later {
+      background: #F1F5F9;
+      color: #64748B;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    /* Modal de instruções para iOS */
+    #ios-instructions {
+      display: none;
+      background: #F8FAFC;
+      border: 1px dashed #90CAF9;
+      border-radius: 8px;
+      padding: 10px;
+      margin-top: 10px;
+      font-size: 12px;
+      color: #1E293B;
+      line-height: 1.4;
+    }
+  </style>
 </head>
 <body>
+  <!-- ─── Banner de Instalação Mobile PWA ──────────────────────────────── -->
+  <div id="pwa-install-banner">
+    <div class="pwa-header">
+      <div class="pwa-brand">
+        <div class="pwa-icon">🏥</div>
+        <div>
+          <div class="pwa-title">Instalar Conecta Saúde</div>
+          <span class="pwa-badge">SUS • Notificações Ativas</span>
+        </div>
+      </div>
+      <button class="pwa-close" onclick="dismissPwaBanner()">×</button>
+    </div>
+    <div class="pwa-desc">
+      Instale o aplicativo na sua tela de início para receber <strong>alertas de emergência e comunicados em tempo real</strong> como um app real.
+    </div>
+    <div class="pwa-actions">
+      <button id="pwa-install-btn" class="pwa-btn-install" onclick="triggerPwaInstall()">
+        <span>📲</span> INSTALAR APLICATIVO
+      </button>
+      <button class="pwa-btn-later" onclick="dismissPwaBanner()">Agora não</button>
+    </div>
+    <div id="ios-instructions">
+      👉 No iPhone: Toque no botão <strong>Compartilhar (ícone <span style="font-size: 14px;">⎋ / ⬆</span>)</strong> na barra do Safari e selecione <strong>"Adicionar à Tela de Início"</strong>.
+    </div>
+  </div>
+
   <script>
-    // Limpar Service Workers e Caches antigos para impedir execução de scripts obsoletos
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function(registrations) {
-        for (var i = 0; i < registrations.length; i++) {
-          registrations[i].unregister();
+    var deferredPrompt = null;
+    var isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+
+    // Detectar solicitação de instalação no Android
+    window.addEventListener('beforeinstallprompt', function(e) {
+      e.preventDefault();
+      deferredPrompt = e;
+      if (isMobile && !isStandalone && !sessionStorage.getItem('pwa_dismissed')) {
+        showPwaBanner();
+      }
+    });
+
+    // Se for iOS ou navegador móvel que não dispara beforeinstallprompt
+    window.addEventListener('load', function() {
+      setTimeout(function() {
+        if (isMobile && !isStandalone && !sessionStorage.getItem('pwa_dismissed')) {
+          showPwaBanner();
         }
-      });
+      }, 1800);
+    });
+
+    function showPwaBanner() {
+      var banner = document.getElementById('pwa-install-banner');
+      if (banner) banner.style.display = 'block';
     }
-    if ('caches' in window) {
-      caches.keys().then(function(cacheNames) {
-        cacheNames.forEach(function(cacheName) {
-          caches.delete(cacheName);
+
+    function dismissPwaBanner() {
+      var banner = document.getElementById('pwa-install-banner');
+      if (banner) banner.style.display = 'none';
+      sessionStorage.setItem('pwa_dismissed', 'true');
+    }
+
+    function triggerPwaInstall() {
+      // Solicitar permissão de notificação push
+      if ('Notification' in window && Notification.permission !== 'granted') {
+        Notification.requestPermission();
+      }
+
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(function(choiceResult) {
+          if (choiceResult.outcome === 'accepted') {
+            dismissPwaBanner();
+          }
+          deferredPrompt = null;
         });
-      });
+      } else {
+        // Se for iOS ou navegador sem suporte direto a prompt
+        var isIos = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+        if (isIos) {
+          var iosBox = document.getElementById('ios-instructions');
+          if (iosBox) iosBox.style.display = 'block';
+        } else {
+          alert('Para instalar, toque nos 3 pontinhos do menu do navegador e selecione "Instalar Aplicativo" ou "Adicionar à tela inicial".');
+        }
+      }
     }
   </script>
   <script src="flutter_bootstrap.js" async></script>
