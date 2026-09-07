@@ -13,6 +13,19 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
+// Instalação imediata do Service Worker sem aguardar fechamento de abas
+self.addEventListener('install', function(event) {
+  console.log('[firebase-messaging-sw.js] Instalando Service Worker...');
+  self.skipWaiting();
+});
+
+// Ativação e controle imediato sobre todas as abas e janelas abertas
+self.addEventListener('activate', function(event) {
+  console.log('[firebase-messaging-sw.js] Ativando Service Worker e reivindicando controle...');
+  event.waitUntil(self.clients.claim());
+});
+
+// Recepção de mensagens em background / push notifications
 messaging.onBackgroundMessage(function(payload) {
   console.log('[firebase-messaging-sw.js] Mensagem recebida em segundo plano: ', payload);
   const notificationTitle = payload.notification?.title || payload.data?.title || 'Conecta Saúde - SUS';
@@ -29,6 +42,7 @@ messaging.onBackgroundMessage(function(payload) {
   return self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
+// Manipulador de clique na notificação do sistema operacional
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
   var urlToOpen = '/';

@@ -6,7 +6,7 @@ export const verifyTokenSchema = z.object({
 });
 
 export const updateFcmTokenSchema = z.object({
-  fcmToken: z.string().min(1, 'FCM token é obrigatório.'),
+  fcmToken: z.string().nullable().optional(),
 });
 
 export const registerUserSchema = z.object({

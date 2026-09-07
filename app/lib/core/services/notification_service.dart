@@ -6,6 +6,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'http_service.dart';
 
+/// Provedor reativo do status de autorização de notificações
+final pushPermissionStatusProvider = StateProvider<AuthorizationStatus>((ref) {
+  return AuthorizationStatus.notDetermined;
+});
+
+/// Provedor do token FCM atual
+final currentFcmTokenProvider = StateProvider<String?>((ref) => null);
+
 /// Serviço unificado de Notificações Push (Firebase Cloud Messaging)
 /// Funciona em Web, PWA Standalone (Android/iOS) e Flutter Mobile.
 class NotificationService {
@@ -24,7 +32,48 @@ class NotificationService {
     _initialized = true;
 
     try {
-      // 1. Solicitar permissão de notificação (Web / iOS / Android 13+)
+      // 1. Verificar permissões atuais
+      final currentSettings = await _fcm.getNotificationSettings();
+      _ref.read(pushPermissionStatusProvider.notifier).state = currentSettings.authorizationStatus;
+      debugPrint('[FCM] Status de permissão inicial: ${currentSettings.authorizationStatus}');
+
+      // Se já autorizado ou provisório, sincroniza token automaticamente
+      if (currentSettings.authorizationStatus == AuthorizationStatus.authorized ||
+          currentSettings.authorizationStatus == AuthorizationStatus.provisional) {
+        await syncToken();
+      }
+
+      // 2. Configurar apresentação em primeiro plano
+      await _fcm.setForegroundNotificationPresentationOptions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+
+      // 3. Escutar renovação periódica de token
+      _fcm.onTokenRefresh.listen((newToken) {
+        _fcmToken = newToken;
+        _ref.read(currentFcmTokenProvider.notifier).state = newToken;
+        _sendTokenToBackend(newToken);
+      });
+
+      // 4. Escutar mensagens recebidas com o app em primeiro plano
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        debugPrint('[FCM Foreground] Push recebido: ${message.notification?.title} - ${message.notification?.body}');
+      });
+
+      // 5. Escutar abertura do app ao tocar na notificação push (background)
+      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+        debugPrint('[FCM Background Click] Notificação clicada: ${message.data}');
+      });
+    } catch (e) {
+      debugPrint('[FCM] Falha ao inicializar NotificationService: $e');
+    }
+  }
+
+  /// Solicita permissão explicitamente via clique de botão do usuário
+  Future<NotificationSettings> requestPermissionExplicitly() async {
+    try {
       final settings = await _fcm.requestPermission(
         alert: true,
         announcement: false,
@@ -35,35 +84,18 @@ class NotificationService {
         sound: true,
       );
 
-      debugPrint('[FCM] Status de autorização: ${settings.authorizationStatus}');
+      _ref.read(pushPermissionStatusProvider.notifier).state = settings.authorizationStatus;
+      debugPrint('[FCM] Permissão solicitada pelo usuário: ${settings.authorizationStatus}');
 
-      // 2. Configurar apresentação em primeiro plano
-      await _fcm.setForegroundNotificationPresentationOptions(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
+      if (settings.authorizationStatus == AuthorizationStatus.authorized ||
+          settings.authorizationStatus == AuthorizationStatus.provisional) {
+        await syncToken();
+      }
 
-      // 3. Obter e sincronizar token com backend
-      await syncToken();
-
-      // 4. Escutar renovação periódica de token
-      _fcm.onTokenRefresh.listen((newToken) {
-        _fcmToken = newToken;
-        _sendTokenToBackend(newToken);
-      });
-
-      // 5. Escutar mensagens recebidas com o app em primeiro plano
-      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        debugPrint('[FCM Foreground] Push recebido: ${message.notification?.title} - ${message.notification?.body}');
-      });
-
-      // 6. Escutar abertura do app ao tocar na notificação push (background)
-      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-        debugPrint('[FCM Background Click] Notificação clicada: ${message.data}');
-      });
+      return settings;
     } catch (e) {
-      debugPrint('[FCM] Falha ao inicializar NotificationService: $e');
+      debugPrint('[FCM] Erro ao solicitar permissão de notificação: $e');
+      rethrow;
     }
   }
 
@@ -82,6 +114,7 @@ class NotificationService {
 
       if (token != null && token.isNotEmpty) {
         _fcmToken = token;
+        _ref.read(currentFcmTokenProvider.notifier).state = token;
         debugPrint('[FCM] Token obtido com sucesso: $token');
         await _sendTokenToBackend(token);
         return token;
@@ -92,8 +125,24 @@ class NotificationService {
     return null;
   }
 
+  /// Desinscreve o token no logout para evitar notificações para usuário deslogado
+  Future<void> unregisterToken() async {
+    try {
+      if (_fcmToken != null) {
+        final http = _ref.read(httpServiceProvider);
+        await http.patch('/auth/fcm-token', data: {'fcmToken': null});
+        await _fcm.deleteToken();
+        _fcmToken = null;
+        _ref.read(currentFcmTokenProvider.notifier).state = null;
+        debugPrint('[FCM] Token removido com sucesso no logout.');
+      }
+    } catch (e) {
+      debugPrint('[FCM] Erro ao remover token no logout: $e');
+    }
+  }
+
   /// Envia o token FCM para o endpoint PATCH /api/auth/fcm-token
-  Future<void> _sendTokenToBackend(String token) async {
+  Future<void> _sendTokenToBackend(String? token) async {
     try {
       final http = _ref.read(httpServiceProvider);
       await http.patch('/auth/fcm-token', data: {'fcmToken': token});

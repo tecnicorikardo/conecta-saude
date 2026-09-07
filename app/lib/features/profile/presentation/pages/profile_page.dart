@@ -1,7 +1,9 @@
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/services/http_service.dart';
+import '../../../../core/services/notification_service.dart';
 import '../../../../core/auth/permissions_provider.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -16,6 +18,7 @@ class ProfilePage extends ConsumerStatefulWidget {
 
 class _ProfilePageState extends ConsumerState<ProfilePage> {
   bool _isSaving = false;
+  bool _isRequestingPush = false;
 
   void _showEditProfileDialog(UserEntity user) {
     final nomeCtrl = TextEditingController(text: user.nome);
@@ -82,6 +85,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   : () async {
                       if (!formKey.currentState!.validate()) return;
                       setDialogState(() => _isSaving = true);
+                      final nav = Navigator.of(dialogCtx);
+                      final messenger = ScaffoldMessenger.of(context);
                       try {
                         final resp = await HttpService.instance.put(
                           '/users/${user.id}',
@@ -102,27 +107,23 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                             matricula: data['matricula'] as String? ?? matriculaCtrl.text.trim(),
                           );
                           ref.read(currentUserProvider.notifier).setUser(updatedUser);
-                          if (mounted) {
-                            Navigator.of(dialogCtx).pop();
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Dados atualizados com sucesso!'),
-                                backgroundColor: AppColors.success,
-                              ),
-                            );
-                          }
-                        }
-                      } catch (e) {
-                        if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Erro ao salvar: $e'),
-                              backgroundColor: AppColors.error,
+                          nav.pop();
+                          messenger.showSnackBar(
+                            const SnackBar(
+                              content: Text('Dados atualizados com sucesso!'),
+                              backgroundColor: AppColors.success,
                             ),
                           );
                         }
+                      } catch (e) {
+                        messenger.showSnackBar(
+                          SnackBar(
+                            content: Text('Erro ao salvar: $e'),
+                            backgroundColor: AppColors.error,
+                          ),
+                        );
                       } finally {
-                        if (mounted) setDialogState(() => _isSaving = false);
+                        setDialogState(() => _isSaving = false);
                       }
                     },
               style: ElevatedButton.styleFrom(
@@ -139,10 +140,46 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     );
   }
 
+  Future<void> _handleEnablePushNotifications() async {
+    setState(() => _isRequestingPush = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final notifService = ref.read(notificationServiceProvider);
+      final settings = await notifService.requestPermissionExplicitly();
+      if (settings.authorizationStatus == AuthorizationStatus.authorized ||
+          settings.authorizationStatus == AuthorizationStatus.provisional) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('✅ Notificações Push ativadas com sucesso neste dispositivo!'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      } else {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('⚠️ Permissão de notificações não foi concedida pelo navegador.'),
+            backgroundColor: AppColors.warning,
+          ),
+        );
+      }
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Erro ao ativar notificações: $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isRequestingPush = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = ref.watch(currentUserProvider).valueOrNull;
     final perms = ref.watch(permissionsProvider);
+    final pushStatus = ref.watch(pushPermissionStatusProvider);
+    final hasPush = pushStatus == AuthorizationStatus.authorized || pushStatus == AuthorizationStatus.provisional;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -276,7 +313,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         _buildInfoTile(
                           icon: Icons.local_hospital_outlined,
                           label: 'Unidade / Setor de Lotação',
-                          value: user.setorNome.isNotEmpty ? user.setorNome : 'Direção Geral',
+                          value: user.setorNome.isNotEmpty ? user.setorNome : 'Centro Carioca do Olho (CCO)',
                         ),
                         const Divider(height: 20, color: Color(0xFFF1F5F9)),
                         _buildInfoTile(
@@ -293,6 +330,82 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           value: user.ativo ? 'Ativo e Liberado' : 'Aguardando Aprovação',
                           valueColor: user.ativo ? AppColors.success : AppColors.warning,
                         ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ─── Status das Notificações Push ─────────────────────────
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.04),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'NOTIFICAÇÕES PUSH DO SISTEMA',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.primary,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: hasPush
+                                    ? AppColors.success.withValues(alpha: 0.15)
+                                    : const Color(0xFFFFF3E0),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                hasPush ? 'Ativado' : 'Não Ativado',
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: hasPush ? AppColors.success : const Color(0xFFE65100),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          hasPush
+                              ? 'Este dispositivo está registrado para receber alertas em segundo plano e com o aplicativo fechado.'
+                              : 'Ative as notificações para receber avisos de plantão, mensagens institucionais e alertas de emergência.',
+                          style: const TextStyle(fontSize: 12.5, color: AppColors.neutral600),
+                        ),
+                        const SizedBox(height: 14),
+                        if (!hasPush)
+                          ElevatedButton.icon(
+                            onPressed: _isRequestingPush ? null : _handleEnablePushNotifications,
+                            icon: const Icon(Icons.notifications_active_outlined, size: 18),
+                            label: _isRequestingPush
+                                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                : const Text('Ativar Notificações Push'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              minimumSize: const Size.fromHeight(42),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                          ),
                       ],
                     ),
                   ),

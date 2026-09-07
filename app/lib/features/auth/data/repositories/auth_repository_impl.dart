@@ -10,7 +10,8 @@ import '../../domain/entities/user_entity.dart';
 import '../../domain/repositories/auth_repository.dart';
 
 class AuthRepositoryImpl implements AuthRepository {
-  AuthRepositoryImpl([Ref? _]);
+  final Ref? _ref;
+  AuthRepositoryImpl([this._ref]);
 
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
 
@@ -159,6 +160,14 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Either<Failure, void>> signOut() async {
     try {
+      try {
+        final idToken = await _firebaseAuth.currentUser?.getIdToken();
+        if (idToken != null) {
+          await _buildDio(idToken).patch('/auth/fcm-token', data: {'fcmToken': null});
+        }
+        await FirebaseMessaging.instance.deleteToken();
+      } catch (_) {}
+
       await _firebaseAuth.signOut();
       return const Right(null);
     } catch (e) {
