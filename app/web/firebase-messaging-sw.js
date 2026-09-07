@@ -28,15 +28,29 @@ self.addEventListener('activate', function(event) {
 // Recepção de mensagens em background via Firebase SDK
 messaging.onBackgroundMessage(function(payload) {
   console.log('[firebase-messaging-sw.js] Mensagem recebida em segundo plano (FCM): ', payload);
-  const notificationTitle = payload.notification?.title || payload.data?.title || 'Conecta Saúde - SUS';
-  const notificationOptions = {
-    body: payload.notification?.body || payload.data?.body || 'Nova mensagem recebida no hospital.',
+
+  var notificationTitle = payload.notification?.title || payload.data?.title || 'Conecta Saúde - SUS';
+  var body = payload.notification?.body || payload.data?.body || 'Nova mensagem recebida no hospital.';
+  var conversationId = payload.data?.conversationId;
+  var channelId = payload.data?.channelId;
+
+  var notificationOptions = {
+    body: body,
     icon: '/icons/Icon-192.png',
     badge: '/icons/Icon-192.png',
-    data: payload.data,
+    data: {
+      url: conversationId
+        ? '/chat/' + conversationId
+        : channelId
+          ? '/channels/' + channelId
+          : '/conversations',
+      conversationId: conversationId,
+      channelId: channelId,
+    },
     vibrate: [200, 100, 200],
-    tag: payload.data?.conversationId ? 'chat_' + payload.data.conversationId : 'conecta_saude',
-    renotify: true
+    tag: conversationId ? 'chat_' + conversationId : channelId ? 'channel_' + channelId : 'conecta_saude',
+    renotify: true,
+    requireInteraction: false,
   };
 
   return self.registration.showNotification(notificationTitle, notificationOptions);
@@ -50,19 +64,40 @@ self.addEventListener('push', function(event) {
     try {
       data = event.data.json();
     } catch (e) {
-      data = { body: event.data.text() };
+      data = { notification: { body: event.data.text() } };
     }
   }
 
-  var notificationTitle = data.notification?.title || data.title || data.data?.title || 'Conecta Saúde - SUS';
+  var notificationTitle = (data.notification && data.notification.title)
+    || (data.data && data.data.title)
+    || data.title
+    || 'Conecta Saúde - SUS';
+
+  var body = (data.notification && data.notification.body)
+    || (data.data && data.data.body)
+    || data.body
+    || 'Nova notificação de plantão.';
+
+  var conversationId = data.data && data.data.conversationId;
+  var channelId = data.data && data.data.channelId;
+
   var notificationOptions = {
-    body: data.notification?.body || data.body || data.data?.body || 'Nova notificação de plantão.',
+    body: body,
     icon: '/icons/Icon-192.png',
     badge: '/icons/Icon-192.png',
-    data: data.data || data,
+    data: {
+      url: conversationId
+        ? '/chat/' + conversationId
+        : channelId
+          ? '/channels/' + channelId
+          : '/conversations',
+      conversationId: conversationId,
+      channelId: channelId,
+    },
     vibrate: [200, 100, 200],
-    tag: data.data?.conversationId ? 'chat_' + data.data.conversationId : 'conecta_saude',
-    renotify: true
+    tag: conversationId ? 'chat_' + conversationId : channelId ? 'channel_' + channelId : 'conecta_saude',
+    renotify: true,
+    requireInteraction: false,
   };
 
   event.waitUntil(
@@ -73,26 +108,32 @@ self.addEventListener('push', function(event) {
 // Manipulador de clique na notificação do sistema operacional
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
-  var urlToOpen = '/';
-  if (event.notification.data && event.notification.data.conversationId) {
-    urlToOpen = '/#/chat/' + event.notification.data.conversationId;
-  } else if (event.notification.data && event.notification.data.channelId) {
-    urlToOpen = '/#/channels/' + event.notification.data.channelId;
+
+  var targetUrl = 'https://conecta-hospital.web.app/conversations';
+  if (event.notification.data) {
+    var d = event.notification.data;
+    if (d.url) {
+      targetUrl = 'https://conecta-hospital.web.app' + d.url;
+    } else if (d.conversationId) {
+      targetUrl = 'https://conecta-hospital.web.app/chat/' + d.conversationId;
+    } else if (d.channelId) {
+      targetUrl = 'https://conecta-hospital.web.app/channels/' + d.channelId;
+    }
   }
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
+      // Verificar se há uma janela aberta com a URL alvo ou a raiz do app
       for (var i = 0; i < clientList.length; i++) {
         var client = clientList[i];
-        if (client.url && 'focus' in client) {
-          if (urlToOpen !== '/') {
-            client.navigate(urlToOpen);
-          }
+        if (client.url.startsWith('https://conecta-hospital.web.app') && 'focus' in client) {
+          client.navigate(targetUrl);
           return client.focus();
         }
       }
+      // Nenhuma aba aberta: abrir nova janela
       if (clients.openWindow) {
-        return clients.openWindow(urlToOpen);
+        return clients.openWindow(targetUrl);
       }
     })
   );

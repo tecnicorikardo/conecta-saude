@@ -1,6 +1,14 @@
-﻿import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
+import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
+
+/// VAPID key para Firebase Web Push (Web Push Certificate).
+/// Obtida em: Firebase Console → Project Settings → Cloud Messaging
+///             → Web configuration → Web Push certificates
+/// IMPORTANTE: Esta chave deve ser preenchida com a chave do projeto real.
+/// A VAPID key é obrigatória para receber notificações push no navegador Web e PWA.
+const String kFirebaseWebVapidKey =
+    'BMQUpfbg_qto7ISLf4OLd5MVn7pscrHlmX5EYk6GXslBPI32hbUQipuMN7b6g9-o4l8NvI5nZ0fLNzUjARIdC-M';
 
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {

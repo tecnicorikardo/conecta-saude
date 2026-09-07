@@ -2,12 +2,15 @@ import 'package:dartz/dartz.dart';
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/config/firebase_options.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/services/http_service.dart';
 import '../../domain/entities/user_entity.dart';
 import '../../domain/repositories/auth_repository.dart';
+
 
 class AuthRepositoryImpl implements AuthRepository {
   final Ref? _ref;
@@ -52,10 +55,22 @@ class AuthRepositoryImpl implements AuthRepository {
       }
 
       // 3. Tentar obter FCM token para notificações push
+      // vapidKey é OBRIGATÓRIA para Web Push — sem ela getToken() retorna null
       String? fcmToken;
       try {
-        fcmToken = await FirebaseMessaging.instance.getToken();
-      } catch (_) {}
+        if (kIsWeb) {
+          fcmToken = await FirebaseMessaging.instance
+              .getToken(vapidKey: kFirebaseWebVapidKey)
+              .timeout(const Duration(seconds: 8));
+        } else {
+          fcmToken = await FirebaseMessaging.instance
+              .getToken()
+              .timeout(const Duration(seconds: 8));
+        }
+        debugPrint('[FCM] Token no login: ${fcmToken != null ? '${fcmToken.substring(0, 20)}...' : 'null'}');
+      } catch (e) {
+        debugPrint('[FCM] Não foi possível obter token no login: $e');
+      }
 
       // 4. Chamar backend para validar e obter dados reais do banco
       try {

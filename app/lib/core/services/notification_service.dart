@@ -4,6 +4,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../config/firebase_options.dart';
 import 'http_service.dart';
 
 /// Provedor reativo do status de autorização de notificações
@@ -63,6 +64,7 @@ class NotificationService {
 
       // 3. Escutar renovação periódica de token
       _fcm.onTokenRefresh.listen((newToken) {
+        debugPrint('[FCM] Token renovado automaticamente: $newToken');
         _fcmToken = newToken;
         _ref.read(currentFcmTokenProvider.notifier).state = newToken;
         _sendTokenToBackend(newToken);
@@ -84,7 +86,7 @@ class NotificationService {
     }
   }
 
-  /// Solicita permissão explicitamente via clique de botão do usuário com proteção contra travamento
+  /// Solicita permissão explicitamente via clique de botão do usuário e obtém token FCM
   Future<AuthorizationStatus> requestPermissionExplicitly() async {
     try {
       final settings = await _fcm
@@ -106,7 +108,8 @@ class NotificationService {
 
       if (settings.authorizationStatus == AuthorizationStatus.authorized ||
           settings.authorizationStatus == AuthorizationStatus.provisional) {
-        unawaited(syncToken());
+        // Sincroniza token imediatamente após concessão da permissão
+        await syncToken();
       }
 
       return settings.authorizationStatus;
@@ -125,20 +128,37 @@ class NotificationService {
     }
   }
 
-  /// Obtém o FCM token atual do dispositivo e envia para o Postgres via backend com timeout
+  /// Obtém o FCM token atual do dispositivo e envia para o Postgres via backend com timeout.
+  /// Para Web/PWA, a vapidKey é obrigatória para que o PushManager crie a subscription.
   Future<String?> syncToken() async {
     try {
       final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return null;
+      if (user == null) {
+        debugPrint('[FCM] syncToken ignorado: usuário não autenticado.');
+        return null;
+      }
 
       String? token;
       try {
-        token = await _fcm
-            .getToken()
-            .timeout(const Duration(seconds: 5), onTimeout: () {
-          debugPrint('[FCM] getToken timeout após 5s.');
-          return null;
-        });
+        // vapidKey é OBRIGATÓRIA para Web Push no navegador.
+        // Sem ela, getToken() retorna null silenciosamente no Flutter Web.
+        if (kIsWeb) {
+          debugPrint('[FCM] Chamando getToken() com vapidKey para Web/PWA...');
+          token = await _fcm
+              .getToken(vapidKey: kFirebaseWebVapidKey)
+              .timeout(const Duration(seconds: 10), onTimeout: () {
+            debugPrint('[FCM] getToken timeout após 10s (Web).');
+            return null;
+          });
+        } else {
+          debugPrint('[FCM] Chamando getToken() para Android/iOS nativo...');
+          token = await _fcm
+              .getToken()
+              .timeout(const Duration(seconds: 10), onTimeout: () {
+            debugPrint('[FCM] getToken timeout após 10s (Native).');
+            return null;
+          });
+        }
       } catch (tokenErr) {
         debugPrint('[FCM] Erro ao recuperar token FCM: $tokenErr');
       }
@@ -146,9 +166,11 @@ class NotificationService {
       if (token != null && token.isNotEmpty) {
         _fcmToken = token;
         _ref.read(currentFcmTokenProvider.notifier).state = token;
-        debugPrint('[FCM] Token obtido com sucesso: $token');
+        debugPrint('[FCM] ✅ Token FCM obtido com sucesso: ${token.substring(0, 20)}...');
         await _sendTokenToBackend(token);
         return token;
+      } else {
+        debugPrint('[FCM] ⚠️ Token FCM nulo. Verifique: (1) vapidKey no Firebase Console → Cloud Messaging → Web Push certificates, (2) permissão do navegador concedida.');
       }
     } catch (e) {
       debugPrint('[FCM] Erro durante sincronização do token: $e');
@@ -179,9 +201,9 @@ class NotificationService {
     try {
       final http = _ref.read(httpServiceProvider);
       await http.patch('/auth/fcm-token', data: {'fcmToken': token});
-      debugPrint('[FCM] Token salvo no PostgreSQL com sucesso.');
+      debugPrint('[FCM] ✅ Token salvo no PostgreSQL com sucesso.');
     } catch (e) {
-      debugPrint('[FCM] Não foi possível registrar token no backend: $e');
+      debugPrint('[FCM] ❌ Não foi possível registrar token no backend: $e');
     }
   }
 }
