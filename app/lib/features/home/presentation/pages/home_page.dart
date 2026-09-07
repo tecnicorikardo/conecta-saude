@@ -248,7 +248,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                     descricao: item.mensagem,
                     prioridade: item.prioridade.name,
                     tempo: _formatDate(item.publicadoEm),
-                    onTap: () => context.push(AppRoutes.announcements),
+                    onTap: () => context.push('/announcements/${item.id}'),
                   ),
                 ),
               ),

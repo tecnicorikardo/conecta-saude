@@ -56,7 +56,7 @@ class AnnouncementsPage extends ConsumerWidget {
                     ],
                   ),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () => context.push('/announcements/'),
+                  onTap: () => context.push('/announcements/${a.id}'),
                 ),
               );
             },
