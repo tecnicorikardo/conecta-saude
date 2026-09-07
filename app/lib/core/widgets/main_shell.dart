@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../theme/app_colors.dart';
 import '../auth/permissions_provider.dart';
+import '../../features/chat/domain/entities/conversation_entity.dart';
 import '../../features/chat/presentation/providers/chat_provider.dart';
 import '../../features/channels/presentation/providers/channels_provider.dart';
 import '../../features/announcements/presentation/providers/announcements_provider.dart';
@@ -35,8 +36,8 @@ class _MainShellState extends ConsumerState<MainShell> {
     ref.listen<AsyncValue<List<ConversationEntity>>>(conversationsProvider, (prev, next) {
       final prevList = prev?.valueOrNull ?? [];
       final nextList = next.valueOrNull ?? [];
-      final prevUnread = prevList.fold<int>(0, (sum, c) => sum + c.unreadCount);
-      final nextUnread = nextList.fold<int>(0, (sum, c) => sum + c.unreadCount);
+      final prevUnread = prevList.fold<int>(0, (sum, c) => sum + c.unreadCount.toInt());
+      final nextUnread = nextList.fold<int>(0, (sum, c) => sum + c.unreadCount.toInt());
 
       if (nextUnread > prevUnread && nextList.isNotEmpty) {
         final convWithNewMsg = nextList.firstWhere(
@@ -45,7 +46,7 @@ class _MainShellState extends ConsumerState<MainShell> {
         );
 
         final senderName = convWithNewMsg.displayName(currentUserId);
-        final lastMsg = convWithNewMsg.ultimaMensagem?.texto ?? 'Nova mensagem recebida';
+        final lastMsg = convWithNewMsg.lastMessage?.texto ?? 'Nova mensagem recebida';
 
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
@@ -215,9 +216,9 @@ class _MainShellState extends ConsumerState<MainShell> {
   }
 
   void _goBranch(int index) {
-    navigationShell.goBranch(
+    widget.navigationShell.goBranch(
       index,
-      initialLocation: index == navigationShell.currentIndex,
+      initialLocation: index == widget.navigationShell.currentIndex,
     );
   }
 }

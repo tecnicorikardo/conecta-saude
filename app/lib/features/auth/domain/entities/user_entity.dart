@@ -54,6 +54,40 @@ class UserEntity extends Equatable {
     }
   }
 
+  UserEntity copyWith({
+    String? id,
+    String? firebaseUid,
+    String? nome,
+    String? email,
+    String? cargo,
+    int? hierarquiaNivel,
+    String? setorId,
+    String? setorNome,
+    String? fotoUrl,
+    String? matricula,
+    bool? ativo,
+    String? aprovadoPor,
+    DateTime? aprovadoEm,
+    DateTime? criadoEm,
+  }) {
+    return UserEntity(
+      id: id ?? this.id,
+      firebaseUid: firebaseUid ?? this.firebaseUid,
+      nome: nome ?? this.nome,
+      email: email ?? this.email,
+      cargo: cargo ?? this.cargo,
+      hierarquiaNivel: hierarquiaNivel ?? this.hierarquiaNivel,
+      setorId: setorId ?? this.setorId,
+      setorNome: setorNome ?? this.setorNome,
+      fotoUrl: fotoUrl ?? this.fotoUrl,
+      matricula: matricula ?? this.matricula,
+      ativo: ativo ?? this.ativo,
+      aprovadoPor: aprovadoPor ?? this.aprovadoPor,
+      aprovadoEm: aprovadoEm ?? this.aprovadoEm,
+      criadoEm: criadoEm ?? this.criadoEm,
+    );
+  }
+
   @override
   List<Object?> get props => [
         id,
