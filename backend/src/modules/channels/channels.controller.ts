@@ -448,61 +448,7 @@ export async function postChannelMessage(req: Request, res: Response): Promise<v
     req,
   });
 
-  // Disparar Web Push Notification para membros do canal
-  try {
-    const channelMembers = await prisma.channelMember.findMany({
-      where: {
-        channelId,
-        userId: { not: actor.id },
-      },
-      include: {
-        user: {
-          select: { id: true, fcmToken: true },
-        },
-      },
-    });
-
-    const targetTokens = channelMembers
-      .map((m) => m.user.fcmToken)
-      .filter((t): t is string => Boolean(t && t.trim().length > 0));
-
-    if (targetTokens.length > 0) {
-      const messaging = getFirebaseMessaging();
-      const channelTitle = `${channel.nome} • ${actor.nome}`;
-      const previewText = data.texto.length > 100 ? `${data.texto.substring(0, 97)}...` : data.texto;
-
-      await messaging.sendEachForMulticast({
-        tokens: targetTokens,
-        notification: {
-          title: channelTitle,
-          body: previewText,
-        },
-        data: {
-          type: 'channel_message',
-          channelId,
-          senderId: actor.id,
-          senderName: actor.nome,
-        },
-        webpush: {
-          fcmOptions: {
-            link: `https://conecta-hospital.web.app/#/channels/${channelId}`,
-          },
-          notification: {
-            title: channelTitle,
-            body: previewText,
-            icon: 'https://conecta-hospital.web.app/icons/Icon-192.png',
-            badge: 'https://conecta-hospital.web.app/icons/Icon-192.png',
-            tag: `channel_${channelId}`,
-            renotify: true,
-          },
-        },
-      });
-      console.log(`[FCM Push] Canal push enviado para ${targetTokens.length} dispositivo(s).`);
-    }
-  } catch (pushErr) {
-    console.warn('[FCM Push] Falha ao enviar notificação push de canal:', pushErr);
-  }
-
+  // Retornar resposta HTTP 201 imediatamente
   res.status(201).json({
     success: true,
     data: {
@@ -518,6 +464,63 @@ export async function postChannelMessage(req: Request, res: Response): Promise<v
       readsCount: 1,
       lidoPorMim: true,
     },
+  });
+
+  // Disparar Web Push Notification para membros do canal em background
+  setImmediate(async () => {
+    try {
+      const channelMembers = await prisma.channelMember.findMany({
+        where: {
+          channelId,
+          userId: { not: actor.id },
+        },
+        include: {
+          user: {
+            select: { id: true, fcmToken: true },
+          },
+        },
+      });
+
+      const targetTokens = channelMembers
+        .map((m) => m.user.fcmToken)
+        .filter((t): t is string => Boolean(t && t.trim().length > 0));
+
+      if (targetTokens.length > 0) {
+        const messaging = getFirebaseMessaging();
+        const channelTitle = `${channel.nome} • ${actor.nome}`;
+        const previewText = data.texto.length > 100 ? `${data.texto.substring(0, 97)}...` : data.texto;
+
+        await messaging.sendEachForMulticast({
+          tokens: targetTokens,
+          notification: {
+            title: channelTitle,
+            body: previewText,
+          },
+          data: {
+            type: 'channel_message',
+            channelId,
+            senderId: actor.id,
+            senderName: actor.nome,
+          },
+          webpush: {
+            fcmOptions: {
+              link: `https://conecta-hospital.web.app/#/channels/${channelId}`,
+            },
+            notification: {
+              title: channelTitle,
+              body: previewText,
+              icon: 'https://conecta-hospital.web.app/icons/Icon-192.png',
+              badge: 'https://conecta-hospital.web.app/icons/Icon-192.png',
+              tag: `channel_${channelId}`,
+              renotify: true,
+            },
+          },
+        });
+        console.log(`[FCM Push] Canal push enviado para ${targetTokens.length} dispositivo(s).`);
+      }
+    } catch (pushErr) {
+      console.warn('[FCM Push] Falha ao enviar notificação push de canal:', pushErr);
+    }
   });
 }
 

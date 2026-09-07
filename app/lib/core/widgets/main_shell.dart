@@ -146,6 +146,19 @@ class _MainShellState extends ConsumerState<MainShell>
           orElse: () => nextList.first,
         );
 
+        // Se a mensagem foi enviada pelo próprio usuário logado, não exibe alerta
+        if (convWithNewMsg.lastMessage?.remetente.id == currentUserId) {
+          return;
+        }
+
+        // Se o usuário já está com essa conversa aberta na tela, não exibe alerta sobreposto
+        try {
+          final currentUri = GoRouterState.of(context).uri.toString();
+          if (currentUri.contains(convWithNewMsg.id)) {
+            return;
+          }
+        } catch (_) {}
+
         final senderName = convWithNewMsg.displayName(currentUserId);
         final lastMsg =
             convWithNewMsg.lastMessage?.texto ?? 'Nova mensagem institucional';

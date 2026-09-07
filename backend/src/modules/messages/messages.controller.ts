@@ -115,66 +115,7 @@ export async function sendMessage(req: Request, res: Response): Promise<void> {
     data: { atualizadoEm: new Date() },
   });
 
-  // Disparar Web Push Notification via Firebase Cloud Messaging para os outros participantes
-  try {
-    const recipientMembers = await prisma.conversationMember.findMany({
-      where: {
-        conversationId,
-        userId: { not: actor.id },
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            nome: true,
-            fcmToken: true,
-          },
-        },
-      },
-    });
-
-    const targetTokens = recipientMembers
-      .map((m) => m.user.fcmToken)
-      .filter((token): token is string => Boolean(token && token.trim().length > 0));
-
-    if (targetTokens.length > 0) {
-      const messaging = getFirebaseMessaging();
-      const senderName = actor.nome || 'Novo recado';
-      const previewText = texto.length > 100 ? `${texto.substring(0, 97)}...` : texto;
-
-      await messaging.sendEachForMulticast({
-        tokens: targetTokens,
-        notification: {
-          title: senderName,
-          body: previewText,
-        },
-        data: {
-          type: 'chat_message',
-          conversationId,
-          senderId: actor.id,
-          senderName,
-          messageId: message.id,
-        },
-        webpush: {
-          fcmOptions: {
-            link: `https://conecta-hospital.web.app/#/chat/${conversationId}`,
-          },
-          notification: {
-            title: senderName,
-            body: previewText,
-            icon: 'https://conecta-hospital.web.app/icons/Icon-192.png',
-            badge: 'https://conecta-hospital.web.app/icons/Icon-192.png',
-            tag: `chat_${conversationId}`,
-            renotify: true,
-          },
-        },
-      });
-      console.log(`[FCM Push] Mensagem enviada para ${targetTokens.length} dispositivo(s).`);
-    }
-  } catch (pushErr) {
-    console.warn('[FCM Push] Falha ao enviar notificação push (ignorado):', pushErr);
-  }
-
+  // Retornar resposta HTTP 201 imediatamente (envio instantâneo)
   res.status(201).json({
     success: true,
     data: {
@@ -183,6 +124,68 @@ export async function sendMessage(req: Request, res: Response): Promise<void> {
       criadoEm: message.criadoEm,
       remetente: message.remetente,
     },
+  });
+
+  // Disparar Web Push Notification via Firebase Cloud Messaging em background assíncrono
+  setImmediate(async () => {
+    try {
+      const recipientMembers = await prisma.conversationMember.findMany({
+        where: {
+          conversationId,
+          userId: { not: actor.id },
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              nome: true,
+              fcmToken: true,
+            },
+          },
+        },
+      });
+
+      const targetTokens = recipientMembers
+        .map((m) => m.user.fcmToken)
+        .filter((token): token is string => Boolean(token && token.trim().length > 0));
+
+      if (targetTokens.length > 0) {
+        const messaging = getFirebaseMessaging();
+        const senderName = actor.nome || 'Novo recado';
+        const previewText = texto.length > 100 ? `${texto.substring(0, 97)}...` : texto;
+
+        await messaging.sendEachForMulticast({
+          tokens: targetTokens,
+          notification: {
+            title: senderName,
+            body: previewText,
+          },
+          data: {
+            type: 'chat_message',
+            conversationId,
+            senderId: actor.id,
+            senderName,
+            messageId: message.id,
+          },
+          webpush: {
+            fcmOptions: {
+              link: `https://conecta-hospital.web.app/#/chat/${conversationId}`,
+            },
+            notification: {
+              title: senderName,
+              body: previewText,
+              icon: 'https://conecta-hospital.web.app/icons/Icon-192.png',
+              badge: 'https://conecta-hospital.web.app/icons/Icon-192.png',
+              tag: `chat_${conversationId}`,
+              renotify: true,
+            },
+          },
+        });
+        console.log(`[FCM Push] Mensagem enviada para ${targetTokens.length} dispositivo(s).`);
+      }
+    } catch (pushErr) {
+      console.warn('[FCM Push] Falha ao enviar notificação push (ignorado):', pushErr);
+    }
   });
 }
 

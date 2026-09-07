@@ -13,21 +13,21 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Instalação imediata do Service Worker sem aguardar fechamento de abas
+// Instalação imediata do Service Worker
 self.addEventListener('install', function(event) {
   console.log('[firebase-messaging-sw.js] Instalando Service Worker...');
   self.skipWaiting();
 });
 
-// Ativação e controle imediato sobre todas as abas e janelas abertas
+// Ativação e controle imediato sobre todas as abas e janelas
 self.addEventListener('activate', function(event) {
   console.log('[firebase-messaging-sw.js] Ativando Service Worker e reivindicando controle...');
   event.waitUntil(self.clients.claim());
 });
 
-// Recepção de mensagens em background / push notifications
+// Recepção de mensagens em background via Firebase SDK
 messaging.onBackgroundMessage(function(payload) {
-  console.log('[firebase-messaging-sw.js] Mensagem recebida em segundo plano: ', payload);
+  console.log('[firebase-messaging-sw.js] Mensagem recebida em segundo plano (FCM): ', payload);
   const notificationTitle = payload.notification?.title || payload.data?.title || 'Conecta Saúde - SUS';
   const notificationOptions = {
     body: payload.notification?.body || payload.data?.body || 'Nova mensagem recebida no hospital.',
@@ -40,6 +40,34 @@ messaging.onBackgroundMessage(function(payload) {
   };
 
   return self.registration.showNotification(notificationTitle, notificationOptions);
+});
+
+// Receptor nativo de eventos Push (garante exibição em todos os navegadores)
+self.addEventListener('push', function(event) {
+  console.log('[firebase-messaging-sw.js] Evento push nativo recebido:', event);
+  var data = {};
+  if (event.data) {
+    try {
+      data = event.data.json();
+    } catch (e) {
+      data = { body: event.data.text() };
+    }
+  }
+
+  var notificationTitle = data.notification?.title || data.title || data.data?.title || 'Conecta Saúde - SUS';
+  var notificationOptions = {
+    body: data.notification?.body || data.body || data.data?.body || 'Nova notificação de plantão.',
+    icon: '/icons/Icon-192.png',
+    badge: '/icons/Icon-192.png',
+    data: data.data || data,
+    vibrate: [200, 100, 200],
+    tag: data.data?.conversationId ? 'chat_' + data.data.conversationId : 'conecta_saude',
+    renotify: true
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(notificationTitle, notificationOptions)
+  );
 });
 
 // Manipulador de clique na notificação do sistema operacional
