@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 
@@ -80,11 +81,17 @@ class _AudioMessagePlayerState extends State<AudioMessagePlayer> {
     } else {
       final raw = widget.audioSource.trim();
       if (raw.startsWith('data:audio') || raw.startsWith('data:application')) {
-        try {
-          final b64 = raw.contains(',') ? raw.split(',')[1] : raw;
-          final bytes = base64Decode(b64);
-          await _player.play(BytesSource(bytes));
-        } catch (_) {}
+        if (kIsWeb) {
+          await _player.play(UrlSource(raw));
+        } else {
+          try {
+            final b64 = raw.contains(',') ? raw.split(',')[1] : raw;
+            final bytes = base64Decode(b64);
+            await _player.play(BytesSource(bytes));
+          } catch (_) {
+            await _player.play(UrlSource(raw));
+          }
+        }
       } else if (raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('blob:')) {
         await _player.play(UrlSource(raw));
       } else {
