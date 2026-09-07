@@ -28,16 +28,31 @@ import '../widgets/main_shell.dart';
 import '../auth/permissions_provider.dart';
 import 'app_routes.dart';
 
+class RouterNotifier extends ChangeNotifier {
+  final Ref _ref;
+
+  RouterNotifier(this._ref) {
+    _ref.listen<UserPermissions>(permissionsProvider, (_, __) {
+      notifyListeners();
+    });
+  }
+}
+
+final routerNotifierProvider = Provider<RouterNotifier>((ref) {
+  return RouterNotifier(ref);
+});
+
 final appRouterProvider = Provider<GoRouter>((ref) {
-  // Observar permissões para redirecionar quando mudar
-  final perms = ref.watch(permissionsProvider);
+  final notifier = ref.read(routerNotifierProvider);
 
   return GoRouter(
     initialLocation: AppRoutes.splash,
+    refreshListenable: notifier,
     debugLogDiagnostics: false,
 
     // ─── Guard de rotas ─────────────────────────────────────────────────
     redirect: (context, state) {
+      final perms = ref.read(permissionsProvider);
       final path = state.matchedLocation;
       final loggedIn = perms.isLoggedIn;
 
@@ -50,8 +65,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // Não logado tentando acessar rota protegida → login
       if (!loggedIn && !isPublic) return AppRoutes.login;
 
-      // Logado tentando acessar login ou registro → home
-      if (loggedIn && (path == AppRoutes.login || path == AppRoutes.register)) return AppRoutes.home;
+      // Logado tentando acessar login, registro ou splash → home
+      if (loggedIn && (path == AppRoutes.login || path == AppRoutes.register || path == AppRoutes.splash)) {
+        return AppRoutes.home;
+      }
 
       // Rotas exclusivas da Direção
       if (path.startsWith('/admin') || path == AppRoutes.administration) {
