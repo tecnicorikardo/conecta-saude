@@ -42,14 +42,14 @@ export function createApp(): express.Application {
           origin.startsWith('http://172.') ||
           origin.includes('web.app') ||
           origin.includes('firebaseapp.com') ||
-          origin.includes('loca.lt')
+          origin.includes('onrender.com') ||
+          origin.includes('loca.lt') ||
+          allowedOrigins.includes(origin)
         ) {
           return callback(null, true);
         }
-        if (allowedOrigins.includes(origin)) {
-          return callback(null, true);
-        }
-        callback(new Error(`Origem não permitida: ${origin}`));
+        // Permitir qualquer origem web por padrão para evitar bloqueios no Flutter Web
+        return callback(null, true);
       },
       credentials: true,
     }),
@@ -59,7 +59,7 @@ export function createApp(): express.Application {
   app.use(
     rateLimit({
       windowMs: 15 * 60 * 1000, // 15 minutos
-      max: process.env.NODE_ENV === 'development' ? 50000 : 2000,
+      max: process.env.NODE_ENV === 'development' ? 50000 : 10000,
       skip: () => process.env.NODE_ENV === 'development',
       standardHeaders: true,
       legacyHeaders: false,
@@ -70,7 +70,7 @@ export function createApp(): express.Application {
   // Rate limit para autenticação
   const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: process.env.NODE_ENV === 'development' ? 1000 : 20,
+    max: process.env.NODE_ENV === 'development' ? 5000 : 500,
     skip: () => process.env.NODE_ENV === 'development',
     message: { success: false, error: 'Muitas tentativas de autenticação.' },
   });

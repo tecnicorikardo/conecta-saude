@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/user_entity.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../data/repositories/auth_repository_impl.dart';
+import 'current_user_provider.dart';
 
 // ─── Repository provider ─────────────────────────────────────────────────────
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
@@ -52,7 +53,10 @@ class LoginNotifier extends StateNotifier<LoginState> {
     if (!mounted) return;
     result.fold(
       (failure) => state = LoginError(failure.message),
-      (user) => state = LoginSuccess(user),
+      (user) {
+        _ref.read(currentUserProvider.notifier).setUser(user);
+        state = LoginSuccess(user);
+      },
     );
   }
 

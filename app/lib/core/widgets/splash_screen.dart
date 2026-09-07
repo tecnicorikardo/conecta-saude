@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../routes/app_routes.dart';
@@ -16,15 +16,18 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    Future.delayed(const Duration(milliseconds: 600), () {
-      if (!mounted) return;
-      final perms = ref.read(permissionsProvider);
-      if (perms.isLoggedIn) {
-        context.go(AppRoutes.home);
-      } else {
-        context.go(AppRoutes.login);
-      }
-    });
+    _checkNavigation();
+  }
+
+  Future<void> _checkNavigation() async {
+    await Future.delayed(const Duration(milliseconds: 600));
+    if (!mounted) return;
+    final perms = ref.read(permissionsProvider);
+    if (perms.isLoggedIn) {
+      context.go(AppRoutes.home);
+    } else {
+      context.go(AppRoutes.login);
+    }
   }
 
   @override
