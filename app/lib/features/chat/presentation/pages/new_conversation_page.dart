@@ -7,6 +7,7 @@ import '../../data/models/conversation_model.dart';
 import '../../data/repositories/conversation_repository.dart';
 import '../providers/chat_provider.dart';
 import '../widgets/conversation_avatar.dart';
+import '../../domain/entities/conversation_entity.dart';
 
 /// Tela que agrupa Nova Conversa (individual) e Novo Grupo em abas.
 class NewConversationPage extends ConsumerStatefulWidget {
@@ -71,7 +72,7 @@ class _IndividualTab extends ConsumerStatefulWidget {
 
 class _IndividualTabState extends ConsumerState<_IndividualTab> {
   final _searchCtrl = TextEditingController();
-  bool _loading = false;
+  String? _loadingUserId;
 
   @override
   void dispose() {
@@ -81,7 +82,24 @@ class _IndividualTabState extends ConsumerState<_IndividualTab> {
 
   Future<void> _startConversation(
       BuildContext context, UserSummary user) async {
-    setState(() => _loading = true);
+    // 1. Otimização Instantânea: Se a conversa individual já existe localmente, abre na hora (0ms delay)
+    final allConvs = ref.read(conversationsProvider).valueOrNull ?? [];
+    final existing = allConvs.cast<ConversationEntity?>().firstWhere(
+      (c) =>
+          c != null &&
+          c.tipo == 'individual' &&
+          c.participantes.any((p) => p.id == user.id),
+      orElse: () => null,
+    );
+
+    if (existing != null) {
+      context.pop();
+      context.push('/chat/${existing.id}', extra: existing);
+      return;
+    }
+
+    // 2. Caso precise criar no servidor, ativa o loading APENAS para este usuário selecionado
+    setState(() => _loadingUserId = user.id);
     try {
       final repo = ref.read(conversationRepositoryProvider);
       final conv = await repo.createConversation(
@@ -102,7 +120,7 @@ class _IndividualTabState extends ConsumerState<_IndividualTab> {
         _showError(context, e.toString());
       }
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) setState(() => _loadingUserId = null);
     }
   }
 
@@ -156,20 +174,23 @@ class _IndividualTabState extends ConsumerState<_IndividualTab> {
                 itemCount: users.length,
                 separatorBuilder: (_, __) =>
                     const Divider(height: 1, indent: 70),
-                itemBuilder: (context, i) => _UserTile(
-                  user: users[i],
-                  trailing: _loading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.chevron_right,
-                          color: AppColors.neutral400),
-                  onTap: _loading
-                      ? null
-                      : () => _startConversation(context, users[i]),
-                ),
+                itemBuilder: (context, i) {
+                  final isThisUserLoading = _loadingUserId == users[i].id;
+                  return _UserTile(
+                    user: users[i],
+                    trailing: isThisUserLoading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.chevron_right,
+                            color: AppColors.neutral400),
+                    onTap: _loadingUserId != null
+                        ? null
+                        : () => _startConversation(context, users[i]),
+                  );
+                },
               );
             },
           ),
