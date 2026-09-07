@@ -77,6 +77,18 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     final isGroup = conv?.tipo == 'grupo' || conv?.tipo == 'setor';
     final subtitle = conv?.displaySubtitle(currentUserId) ?? '';
 
+    // Rolar automaticamente quando novas mensagens chegarem ou forem enviadas
+    ref.listen<AsyncValue<List<MessageEntity>>>(
+      messagesProvider(widget.conversationId),
+      (prev, next) {
+        final prevLen = prev?.value?.length ?? 0;
+        final nextLen = next.value?.length ?? 0;
+        if (nextLen > prevLen) {
+          _scrollToBottom(animated: true);
+        }
+      },
+    );
+
     return Scaffold(
       backgroundColor:
           isDark ? const Color(0xFF0D1B2A) : const Color(0xFFECEFF1),
@@ -91,7 +103,6 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                   const Center(child: CircularProgressIndicator()),
               error: (e, _) => Center(child: Text('Erro: $e')),
               data: (messages) {
-                _scrollToBottom(animated: false);
                 return _MessageList(
                   messages: messages,
                   currentUserId: currentUserId,

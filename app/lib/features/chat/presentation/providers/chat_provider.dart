@@ -137,10 +137,12 @@ class MessagesNotifier
   final Ref _ref;
   final _uuid = const Uuid();
   Timer? _pollTimer;
+  final Map<String, MessageEntity> _pendingOutgoing = {};
 
   @override
   void dispose() {
     _pollTimer?.cancel();
+    _pendingOutgoing.clear();
     super.dispose();
   }
 
@@ -162,7 +164,7 @@ class MessagesNotifier
     }
   }
 
-  /// Polling — busca mensagens novas sem apagar as locais
+  /// Polling — busca mensagens novas sem apagar mensagens enviadas localmente
   Future<void> _pollNewMessages() async {
     final current = state.value;
     if (current == null) return;
@@ -173,27 +175,22 @@ class MessagesNotifier
 
       if (!mounted) return;
 
-      final now = DateTime.now();
-      // Filtrar mensagens "sending" locais:
-      // Remove se a mensagem já foi salva no backend (mesmo texto, mesmo remetente recente)
-      final stillSending = current.where((m) {
-        if (m.status != MessageStatus.sending) return false;
-        final alreadyInFresh = fresh.any((f) =>
-            f.id == m.id ||
-            (f.remetente.id == m.remetente.id &&
-                f.texto == m.texto &&
-                now.difference(f.criadoEm).inSeconds.abs() < 15));
-        return !alreadyInFresh;
-      }).toList();
+      // Limpa de _pendingOutgoing as mensagens que já chegaram do backend no polling
+      _pendingOutgoing.removeWhere((tempId, pending) {
+        return fresh.any((f) =>
+            f.id == tempId ||
+            (f.remetente.id == pending.remetente.id && f.texto == pending.texto));
+      });
 
-      final seenIds = <String>{};
-      final merged = <MessageEntity>[];
-      for (final m in [...fresh, ...stillSending]) {
-        if (seenIds.add(m.id)) {
-          merged.add(m);
+      final freshIds = fresh.map((m) => m.id).toSet();
+      final merged = <MessageEntity>[...fresh];
+      for (final pending in _pendingOutgoing.values) {
+        if (!freshIds.contains(pending.id)) {
+          merged.add(pending);
         }
       }
 
+      merged.sort((a, b) => a.criadoEm.compareTo(b.criadoEm));
       state = AsyncValue.data(merged);
 
       // Atualizar última mensagem da conversa
@@ -209,21 +206,22 @@ class MessagesNotifier
 
   // ─── Enviar mensagem de texto ───────────────────────────────────────────
   Future<void> sendTextMessage(String texto) async {
-    if (texto.trim().isEmpty) return;
+    final cleanText = texto.trim();
+    if (cleanText.isEmpty) return;
 
     final currentUserId = _ref.read(currentUserIdProvider);
     final currentUserNome = _ref.read(currentUserNomeProvider);
     final currentUser = _ref.read(currentUserProvider).value;
 
-    // Adicionar localmente como "sending" imediatamente (UX responsiva)
+    // Adicionar localmente com status "sending" IMEDIATAMENTE (zero delay na UI)
     final tempId = 'temp_${_uuid.v4()}';
     final tempMsg = MessageEntity(
       id: tempId,
       conversationId: conversationId,
-      texto: texto.trim(),
+      texto: cleanText,
       remetente: MessageSender(
-        id: currentUserId,
-        nome: currentUserNome,
+        id: currentUserId.isNotEmpty ? currentUserId : (currentUser?.id ?? ''),
+        nome: currentUserNome.isNotEmpty ? currentUserNome : (currentUser?.nome ?? 'Você'),
         cargo: currentUser?.cargo ?? '',
         fotoUrl: currentUser?.fotoUrl,
       ),
@@ -231,40 +229,46 @@ class MessagesNotifier
       status: MessageStatus.sending,
     );
 
+    // Registra no mapa de pendentes para blindar contra o polling
+    _pendingOutgoing[tempId] = tempMsg;
+
     final current = state.value ?? [];
     state = AsyncValue.data([...current, tempMsg]);
 
     try {
       final repo = _ref.read(conversationRepositoryProvider);
-      final realMsg = await repo.sendMessage(conversationId, texto.trim());
+      final realMsg = await repo.sendMessage(conversationId, cleanText);
 
-      // Substituir a mensagem temporária pela real sem duplicar
+      _pendingOutgoing.remove(tempId);
+
+      // Substitui a mensagem temporária pela real confirmada pelo servidor
       if (mounted) {
-        final updated = state.value ?? [];
-        if (updated.any((m) => m.id == realMsg.id)) {
-          // Já foi inserida pelo polling
+        final currentList = state.value ?? [];
+        if (currentList.any((m) => m.id == realMsg.id)) {
+          // Se já foi incluída por um polling simultâneo, remove a temporária
           state = AsyncValue.data(
-            updated.where((m) => m.id != tempId).toList(),
+            currentList.where((m) => m.id != tempId).toList(),
           );
         } else {
+          // Substituição in-place limpa (sem sumir da tela)
           state = AsyncValue.data(
-            updated.map((m) => m.id == tempId ? realMsg : m).toList(),
+            currentList.map((m) => m.id == tempId ? realMsg : m).toList(),
           );
         }
 
-        // Atualizar lista de conversas
+        // Atualizar lista de conversas com a nova mensagem
         _ref
             .read(conversationsProvider.notifier)
             .updateLastMessage(conversationId, realMsg);
       }
     } catch (e) {
-      // Marcar como erro
+      _pendingOutgoing.remove(tempId);
       if (mounted) {
-        final updated = state.value ?? [];
+        final currentList = state.value ?? [];
         state = AsyncValue.data(
-          updated
+          currentList
               .map((m) => m.id == tempId
-                  ? m.copyWith(status: MessageStatus.sent)
+                  ? m.copyWith(status: MessageStatus.error)
                   : m)
               .toList(),
         );

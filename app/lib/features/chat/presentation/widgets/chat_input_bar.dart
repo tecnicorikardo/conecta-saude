@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/message_entity.dart';
@@ -61,17 +61,18 @@ class _ChatInputBarState extends ConsumerState<ChatInputBar> {
     _textCtrl.clear();
     setState(() => _isComposing = false);
 
+    // Notifica imediatamente para rolar e limpar estado de resposta/edição sem delay
+    widget.onSent();
+
     if (widget.editingMessage != null) {
       await ref
           .read(messagesProvider(widget.conversationId).notifier)
           .editMessage(widget.editingMessage!.id, text);
     } else {
-      await ref
+      ref
           .read(messagesProvider(widget.conversationId).notifier)
           .sendTextMessage(text);
     }
-
-    widget.onSent();
   }
 
   @override
