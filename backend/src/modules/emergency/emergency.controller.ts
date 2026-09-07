@@ -3,6 +3,7 @@ import { prisma } from '../../config/database';
 import { HierarquiaNivel } from '../../types';
 import { AppError } from '../../middleware/errorHandler';
 import { auditLog } from '../../utils/auditLogger';
+import { getFirebaseMessaging } from '../../config/firebase';
 import { createEmergencySchema, resolveEmergencySchema } from './emergency.schema';
 
 /**
@@ -92,6 +93,57 @@ export async function createEmergencyAlert(req: Request, res: Response): Promise
     detalhes: { tipo: data.tipo, localizacao: data.localizacao },
     req,
   });
+
+  // Disparar Notificação Push de Emergência para TODOS os servidores com token
+  try {
+    const allUsers = await prisma.user.findMany({
+      where: {
+        ativo: true,
+        id: { not: actor.id },
+        fcmToken: { not: null },
+      },
+      select: { fcmToken: true },
+    });
+
+    const targetTokens = allUsers
+      .map((u) => u.fcmToken)
+      .filter((t): t is string => Boolean(t && t.trim().length > 0));
+
+    if (targetTokens.length > 0) {
+      const messaging = getFirebaseMessaging();
+      const pushTitle = `🚨 ALERTA: ${alert.titulo}`;
+      const pushBody = `${alert.tipo.toUpperCase()} em ${alert.localizacao} (por ${actor.nome})`;
+
+      await messaging.sendEachForMulticast({
+        tokens: targetTokens,
+        notification: {
+          title: pushTitle,
+          body: pushBody,
+        },
+        data: {
+          type: 'emergency_alert',
+          alertId: alert.id,
+          localizacao: alert.localizacao,
+        },
+        webpush: {
+          fcmOptions: {
+            link: `https://conecta-hospital.web.app/#/emergency`,
+          },
+          notification: {
+            title: pushTitle,
+            body: pushBody,
+            icon: 'https://conecta-hospital.web.app/icons/Icon-192.png',
+            badge: 'https://conecta-hospital.web.app/icons/Icon-192.png',
+            requireInteraction: true,
+            tag: 'emergency_alert',
+          },
+        },
+      });
+      console.log(`[FCM Push] Alerta de emergência enviado para ${targetTokens.length} dispositivo(s).`);
+    }
+  } catch (pushErr) {
+    console.warn('[FCM Push] Falha ao enviar push de emergência:', pushErr);
+  }
 
   res.status(201).json({
     success: true,

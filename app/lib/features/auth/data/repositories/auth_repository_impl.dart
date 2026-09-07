@@ -1,6 +1,7 @@
 import 'package:dartz/dartz.dart';
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/errors/failures.dart';
@@ -49,11 +50,20 @@ class AuthRepositoryImpl implements AuthRepository {
         return const Left(AuthFailure('Não foi possível obter o token.'));
       }
 
-      // 3. Chamar backend para validar e obter dados reais do banco
+      // 3. Tentar obter FCM token para notificações push
+      String? fcmToken;
+      try {
+        fcmToken = await FirebaseMessaging.instance.getToken();
+      } catch (_) {}
+
+      // 4. Chamar backend para validar e obter dados reais do banco
       try {
         final response = await _buildDio().post(
           '/auth/verify',
-          data: {'idToken': idToken},
+          data: {
+            'idToken': idToken,
+            if (fcmToken != null && fcmToken.isNotEmpty) 'fcmToken': fcmToken,
+          },
         );
 
         if (response.data['success'] == true) {

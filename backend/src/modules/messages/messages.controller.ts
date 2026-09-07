@@ -4,6 +4,7 @@ import { HierarquiaNivel } from '../../types';
 import { AppError } from '../../middleware/errorHandler';
 import { auditLog } from '../../utils/auditLogger';
 import { AppConstants } from '../../utils/constants';
+import { getFirebaseMessaging } from '../../config/firebase';
 import {
   sendMessageSchema,
   editMessageSchema,
@@ -113,6 +114,66 @@ export async function sendMessage(req: Request, res: Response): Promise<void> {
     where: { id: conversationId },
     data: { atualizadoEm: new Date() },
   });
+
+  // Disparar Web Push Notification via Firebase Cloud Messaging para os outros participantes
+  try {
+    const recipientMembers = await prisma.conversationMember.findMany({
+      where: {
+        conversationId,
+        userId: { not: actor.id },
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            nome: true,
+            fcmToken: true,
+          },
+        },
+      },
+    });
+
+    const targetTokens = recipientMembers
+      .map((m) => m.user.fcmToken)
+      .filter((token): token is string => Boolean(token && token.trim().length > 0));
+
+    if (targetTokens.length > 0) {
+      const messaging = getFirebaseMessaging();
+      const senderName = actor.nome || 'Novo recado';
+      const previewText = texto.length > 100 ? `${texto.substring(0, 97)}...` : texto;
+
+      await messaging.sendEachForMulticast({
+        tokens: targetTokens,
+        notification: {
+          title: senderName,
+          body: previewText,
+        },
+        data: {
+          type: 'chat_message',
+          conversationId,
+          senderId: actor.id,
+          senderName,
+          messageId: message.id,
+        },
+        webpush: {
+          fcmOptions: {
+            link: `https://conecta-hospital.web.app/#/chat/${conversationId}`,
+          },
+          notification: {
+            title: senderName,
+            body: previewText,
+            icon: 'https://conecta-hospital.web.app/icons/Icon-192.png',
+            badge: 'https://conecta-hospital.web.app/icons/Icon-192.png',
+            tag: `chat_${conversationId}`,
+            renotify: true,
+          },
+        },
+      });
+      console.log(`[FCM Push] Mensagem enviada para ${targetTokens.length} dispositivo(s).`);
+    }
+  } catch (pushErr) {
+    console.warn('[FCM Push] Falha ao enviar notificação push (ignorado):', pushErr);
+  }
 
   res.status(201).json({
     success: true,
