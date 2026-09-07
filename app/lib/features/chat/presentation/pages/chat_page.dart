@@ -220,12 +220,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         ),
       ),
     ),
-    actions: [
-        IconButton(
-          icon: const Icon(Icons.videocam_outlined),
-          onPressed: () {},
-          tooltip: 'Videochamada',
-        ),
+      actions: [
         IconButton(
           icon: const Icon(Icons.call_outlined),
           onPressed: () {},

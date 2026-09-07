@@ -83,8 +83,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       if (path.startsWith('/admin') || path == AppRoutes.administration) {
         if (!perms.canAccessAdmin) return AppRoutes.home;
       }
-      if (path == AppRoutes.employees ||
-          path.startsWith('/employees')) {
+      if (path == AppRoutes.employees) {
         if (!perms.canManageEmployees) return AppRoutes.home;
       }
       if (path == AppRoutes.auditLogs) {

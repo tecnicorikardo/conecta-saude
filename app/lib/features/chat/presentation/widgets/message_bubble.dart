@@ -1,7 +1,8 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/message_entity.dart';
+import 'audio_message_player.dart';
 
 class MessageBubble extends StatelessWidget {
   final MessageEntity message;
@@ -22,6 +23,35 @@ class MessageBubble extends StatelessWidget {
     this.onDelete,
     this.onDeleteForAll,
   });
+
+  bool get _isAudio =>
+      message.tipo == MessageType.audio || message.texto.startsWith('[audio');
+
+  String get _audioSource {
+    final text = message.texto;
+    if (text.startsWith('[audio')) {
+      final closingBracket = text.indexOf(']');
+      if (closingBracket != -1) {
+        return text.substring(closingBracket + 1);
+      }
+    }
+    return message.audioPath ?? text;
+  }
+
+  int get _audioDuration {
+    if (message.audioDuration != null && message.audioDuration! > 0) {
+      return message.audioDuration!;
+    }
+    final text = message.texto;
+    if (text.startsWith('[audio:')) {
+      final closingBracket = text.indexOf(']');
+      if (closingBracket != -1) {
+        final secStr = text.substring(7, closingBracket);
+        return int.tryParse(secStr) ?? 0;
+      }
+    }
+    return 0;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -75,9 +105,15 @@ class MessageBubble extends StatelessWidget {
                 '🚫 Esta mensagem foi apagada',
                 style: TextStyle(
                   fontStyle: FontStyle.italic,
-                  color: textColor.withOpacity(0.6),
+                  color: textColor.withValues(alpha: 0.6),
                   fontSize: 13,
                 ),
+              )
+            else if (_isAudio)
+              AudioMessagePlayer(
+                audioSource: _audioSource,
+                durationSeconds: _audioDuration,
+                isOwn: isOwn,
               )
             else
               Text(
@@ -98,7 +134,7 @@ class MessageBubble extends StatelessWidget {
                     'editada ',
                     style: TextStyle(
                       fontSize: 10,
-                      color: textColor.withOpacity(0.6),
+                      color: textColor.withValues(alpha: 0.6),
                     ),
                   ),
                 ],
@@ -106,7 +142,7 @@ class MessageBubble extends StatelessWidget {
                   timeStr,
                   style: TextStyle(
                     fontSize: 11,
-                    color: textColor.withOpacity(0.7),
+                    color: textColor.withValues(alpha: 0.7),
                   ),
                 ),
                 if (isOwn) ...[
@@ -124,11 +160,11 @@ class MessageBubble extends StatelessWidget {
   Widget _buildStatusIcon(Color textColor) {
     switch (message.status) {
       case MessageStatus.sending:
-        return Icon(Icons.access_time, size: 13, color: textColor.withOpacity(0.7));
+        return Icon(Icons.access_time, size: 13, color: textColor.withValues(alpha: 0.7));
       case MessageStatus.sent:
-        return Icon(Icons.check, size: 13, color: textColor.withOpacity(0.7));
+        return Icon(Icons.check, size: 13, color: textColor.withValues(alpha: 0.7));
       case MessageStatus.delivered:
-        return Icon(Icons.done_all, size: 13, color: textColor.withOpacity(0.7));
+        return Icon(Icons.done_all, size: 13, color: textColor.withValues(alpha: 0.7));
       case MessageStatus.read:
         return const Icon(Icons.done_all, size: 13, color: Color(0xFF67E8F9));
       case MessageStatus.error:
