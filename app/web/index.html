@@ -23,11 +23,15 @@
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="conecta_saude">
+  <meta name="apple-mobile-web-app-title" content="Conecta Saúde">
+  <meta name="theme-color" content="#1565C0">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>Conecta Saúde - SUS</title>
+  <link rel="manifest" href="manifest.json">
 
   <style>
     /* ─── Banner de Instalação PWA Mobile ─────────────────────────────────── */
@@ -227,7 +231,6 @@
           deferredPrompt = null;
         });
       } else {
-        // Se for iOS ou navegador sem suporte direto a prompt
         var isIos = /iPhone|iPad|iPod/i.test(navigator.userAgent);
         if (isIos) {
           var iosBox = document.getElementById('ios-instructions');
@@ -236,6 +239,17 @@
           alert('Para instalar, toque nos 3 pontinhos do menu do navegador e selecione "Instalar Aplicativo" ou "Adicionar à tela inicial".');
         }
       }
+    }
+
+    // Registrar Service Worker para habilitar PWA Standalone e Web Push
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', function() {
+        navigator.serviceWorker.register('firebase-messaging-sw.js').then(function(registration) {
+          console.log('ServiceWorker PWA registrado com sucesso:', registration.scope);
+        }).catch(function(err) {
+          console.log('Falha no registro do ServiceWorker:', err);
+        });
+      });
     }
   </script>
   <script src="flutter_bootstrap.js" async></script>

@@ -1,7 +1,9 @@
 {
+    "id": "/",
     "name": "Conecta Saúde - SUS",
     "short_name": "Conecta Saúde",
-    "start_url": "./",
+    "start_url": "/",
+    "scope": "/",
     "display": "standalone",
     "background_color": "#1565C0",
     "theme_color": "#1565C0",

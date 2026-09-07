@@ -15,15 +15,85 @@ import '../../features/announcements/presentation/providers/announcements_provid
 /// Supervisão     : Início | Conversas | Canais | Comunicados
 /// Coordenação    : Início | Conversas | Canais | Comunicados | Admin
 /// Direção        : Início | Conversas | Canais | Comunicados | Admin
-class MainShell extends ConsumerWidget {
+class MainShell extends ConsumerStatefulWidget {
   final StatefulNavigationShell navigationShell;
 
   const MainShell({super.key, required this.navigationShell});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MainShell> createState() => _MainShellState();
+}
+
+class _MainShellState extends ConsumerState<MainShell> {
+  @override
+  Widget build(BuildContext context) {
     final perms = ref.watch(permissionsProvider);
+    final currentUserId = ref.watch(currentUserIdProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Escutar novas mensagens em tempo real para exibir popup persistente com botão de abrir
+    ref.listen<AsyncValue<List<ConversationEntity>>>(conversationsProvider, (prev, next) {
+      final prevList = prev?.valueOrNull ?? [];
+      final nextList = next.valueOrNull ?? [];
+      final prevUnread = prevList.fold<int>(0, (sum, c) => sum + c.unreadCount);
+      final nextUnread = nextList.fold<int>(0, (sum, c) => sum + c.unreadCount);
+
+      if (nextUnread > prevUnread && nextList.isNotEmpty) {
+        final convWithNewMsg = nextList.firstWhere(
+          (c) => c.unreadCount > 0,
+          orElse: () => nextList.first,
+        );
+
+        final senderName = convWithNewMsg.displayName(currentUserId);
+        final lastMsg = convWithNewMsg.ultimaMensagem?.texto ?? 'Nova mensagem recebida';
+
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 8),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: AppColors.primaryDark,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.all(16),
+            content: Row(
+              children: [
+                const Icon(Icons.chat_bubble_rounded, color: Colors.white, size: 22),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        senderName,
+                        style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 13.5),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        lastMsg,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            action: SnackBarAction(
+              label: 'ABRIR',
+              textColor: const Color(0xFFFFD54F),
+              onPressed: () {
+                context.push(
+                  '/chat/${convWithNewMsg.id}',
+                  extra: convWithNewMsg,
+                );
+              },
+            ),
+          ),
+        );
+      }
+    });
 
     // Badges dinâmicos em tempo real
     final convs = ref.watch(conversationsProvider).valueOrNull ?? [];
@@ -50,7 +120,7 @@ class MainShell extends ConsumerWidget {
     );
 
     return Scaffold(
-      body: navigationShell,
+      body: widget.navigationShell,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: isDark ? AppColors.darkSurface : Colors.white,
@@ -78,7 +148,7 @@ class MainShell extends ConsumerWidget {
               children: navItems.map((item) {
                 return _NavItem(
                   index: item.branchIndex,
-                  currentIndex: navigationShell.currentIndex,
+                  currentIndex: widget.navigationShell.currentIndex,
                   icon: item.icon,
                   activeIcon: item.activeIcon,
                   label: item.label,

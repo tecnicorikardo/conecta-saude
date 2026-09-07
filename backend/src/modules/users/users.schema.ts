@@ -13,6 +13,7 @@ export const createUserSchema = z.object({
 export const updateUserSchema = z.object({
   nome: z.string().min(2).max(120).optional(),
   cargo: z.string().min(2).max(80).optional(),
+  matricula: z.string().nullable().optional(),
   hierarquiaNivel: z.number().int().min(1).max(4).optional(),
   setorId: z.string().uuid().optional(),
   fotoUrl: z.string().url().nullable().optional(),

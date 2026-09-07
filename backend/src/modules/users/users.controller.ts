@@ -203,19 +203,22 @@ export async function createUser(req: Request, res: Response): Promise<void> {
  */
 export async function updateUser(req: Request, res: Response): Promise<void> {
   const actor = req.user!;
+  const { id } = req.params;
 
-  if (actor.hierarquiaNivel !== HierarquiaNivel.DIRECAO) {
-    throw new AppError('Apenas a Direção pode editar funcionários.', 403);
+  // Direção pode editar qualquer usuário; outros usuários podem editar seu próprio perfil
+  if (actor.hierarquiaNivel !== HierarquiaNivel.DIRECAO && actor.id !== id) {
+    throw new AppError('Apenas a Direção ou o próprio usuário pode editar seu perfil.', 403);
   }
 
-  const { id } = req.params;
   const data = updateUserSchema.parse(req.body);
 
   const user = await prisma.user.findUnique({ where: { id } });
   if (!user) throw new AppError('Usuário não encontrado.', 404);
 
-  // Verificar setor se informado
-  if (data.setorId) {
+  // Somente a Direção pode alterar nível hierárquico ou setor de terceiros
+  const isDirecao = actor.hierarquiaNivel === HierarquiaNivel.DIRECAO;
+
+  if (data.setorId && isDirecao) {
     const setor = await prisma.sector.findUnique({ where: { id: data.setorId } });
     if (!setor) throw new AppError('Setor não encontrado.', 404);
   }
@@ -225,8 +228,9 @@ export async function updateUser(req: Request, res: Response): Promise<void> {
     data: {
       ...(data.nome && { nome: data.nome }),
       ...(data.cargo && { cargo: data.cargo }),
-      ...(data.hierarquiaNivel && { hierarquiaNivel: data.hierarquiaNivel }),
-      ...(data.setorId && { setorId: data.setorId }),
+      ...(data.matricula !== undefined && { matricula: data.matricula }),
+      ...(isDirecao && data.hierarquiaNivel && { hierarquiaNivel: data.hierarquiaNivel }),
+      ...(isDirecao && data.setorId && { setorId: data.setorId }),
       ...(data.fotoUrl !== undefined && { fotoUrl: data.fotoUrl }),
     },
     include: { setor: { select: { id: true, nome: true } } },
