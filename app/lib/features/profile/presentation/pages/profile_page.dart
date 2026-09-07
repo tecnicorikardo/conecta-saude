@@ -141,24 +141,33 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   }
 
   Future<void> _handleEnablePushNotifications() async {
+    if (_isRequestingPush) return;
     setState(() => _isRequestingPush = true);
     final messenger = ScaffoldMessenger.of(context);
     try {
       final notifService = ref.read(notificationServiceProvider);
-      final settings = await notifService.requestPermissionExplicitly();
-      if (settings.authorizationStatus == AuthorizationStatus.authorized ||
-          settings.authorizationStatus == AuthorizationStatus.provisional) {
+      final status = await notifService.requestPermissionExplicitly();
+      if (status == AuthorizationStatus.authorized ||
+          status == AuthorizationStatus.provisional) {
         messenger.showSnackBar(
           const SnackBar(
             content: Text('✅ Notificações Push ativadas com sucesso neste dispositivo!'),
             backgroundColor: AppColors.success,
           ),
         );
+      } else if (status == AuthorizationStatus.denied) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('⚠️ Notificações bloqueadas nas configurações do navegador. Clique no cadeado da barra de endereço para permitir.'),
+            backgroundColor: AppColors.warning,
+            duration: Duration(seconds: 6),
+          ),
+        );
       } else {
         messenger.showSnackBar(
           const SnackBar(
-            content: Text('⚠️ Permissão de notificações não foi concedida pelo navegador.'),
-            backgroundColor: AppColors.warning,
+            content: Text('Status de notificação atualizado.'),
+            backgroundColor: AppColors.primary,
           ),
         );
       }

@@ -32,23 +32,34 @@ class NotificationService {
     _initialized = true;
 
     try {
-      // 1. Verificar permissões atuais
-      final currentSettings = await _fcm.getNotificationSettings();
-      _ref.read(pushPermissionStatusProvider.notifier).state = currentSettings.authorizationStatus;
-      debugPrint('[FCM] Status de permissão inicial: ${currentSettings.authorizationStatus}');
+      // 1. Verificar permissões atuais com timeout seguro
+      NotificationSettings? currentSettings;
+      try {
+        currentSettings = await _fcm
+            .getNotificationSettings()
+            .timeout(const Duration(seconds: 4));
+      } catch (_) {}
+
+      final authStatus = currentSettings?.authorizationStatus ??
+          AuthorizationStatus.notDetermined;
+
+      _ref.read(pushPermissionStatusProvider.notifier).state = authStatus;
+      debugPrint('[FCM] Status de permissão inicial: $authStatus');
 
       // Se já autorizado ou provisório, sincroniza token automaticamente
-      if (currentSettings.authorizationStatus == AuthorizationStatus.authorized ||
-          currentSettings.authorizationStatus == AuthorizationStatus.provisional) {
-        await syncToken();
+      if (authStatus == AuthorizationStatus.authorized ||
+          authStatus == AuthorizationStatus.provisional) {
+        unawaited(syncToken());
       }
 
       // 2. Configurar apresentação em primeiro plano
-      await _fcm.setForegroundNotificationPresentationOptions(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
+      try {
+        await _fcm.setForegroundNotificationPresentationOptions(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
+      } catch (_) {}
 
       // 3. Escutar renovação periódica de token
       _fcm.onTokenRefresh.listen((newToken) {
@@ -59,22 +70,25 @@ class NotificationService {
 
       // 4. Escutar mensagens recebidas com o app em primeiro plano
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        debugPrint('[FCM Foreground] Push recebido: ${message.notification?.title} - ${message.notification?.body}');
+        debugPrint(
+            '[FCM Foreground] Push recebido: ${message.notification?.title} - ${message.notification?.body}');
       });
 
       // 5. Escutar abertura do app ao tocar na notificação push (background)
       FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-        debugPrint('[FCM Background Click] Notificação clicada: ${message.data}');
+        debugPrint(
+            '[FCM Background Click] Notificação clicada: ${message.data}');
       });
     } catch (e) {
       debugPrint('[FCM] Falha ao inicializar NotificationService: $e');
     }
   }
 
-  /// Solicita permissão explicitamente via clique de botão do usuário
-  Future<NotificationSettings> requestPermissionExplicitly() async {
+  /// Solicita permissão explicitamente via clique de botão do usuário com proteção contra travamento
+  Future<AuthorizationStatus> requestPermissionExplicitly() async {
     try {
-      final settings = await _fcm.requestPermission(
+      final settings = await _fcm
+          .requestPermission(
         alert: true,
         announcement: false,
         badge: true,
@@ -82,24 +96,36 @@ class NotificationService {
         criticalAlert: false,
         provisional: false,
         sound: true,
-      );
+      )
+          .timeout(const Duration(seconds: 5));
 
-      _ref.read(pushPermissionStatusProvider.notifier).state = settings.authorizationStatus;
-      debugPrint('[FCM] Permissão solicitada pelo usuário: ${settings.authorizationStatus}');
+      _ref.read(pushPermissionStatusProvider.notifier).state =
+          settings.authorizationStatus;
+      debugPrint(
+          '[FCM] Permissão solicitada pelo usuário: ${settings.authorizationStatus}');
 
       if (settings.authorizationStatus == AuthorizationStatus.authorized ||
           settings.authorizationStatus == AuthorizationStatus.provisional) {
-        await syncToken();
+        unawaited(syncToken());
       }
 
-      return settings;
+      return settings.authorizationStatus;
     } catch (e) {
       debugPrint('[FCM] Erro ao solicitar permissão de notificação: $e');
-      rethrow;
+      try {
+        final current = await _fcm
+            .getNotificationSettings()
+            .timeout(const Duration(seconds: 2));
+        _ref.read(pushPermissionStatusProvider.notifier).state =
+            current.authorizationStatus;
+        return current.authorizationStatus;
+      } catch (_) {
+        return AuthorizationStatus.denied;
+      }
     }
   }
 
-  /// Obtém o FCM token atual do dispositivo e envia para o Postgres via backend
+  /// Obtém o FCM token atual do dispositivo e envia para o Postgres via backend com timeout
   Future<String?> syncToken() async {
     try {
       final user = FirebaseAuth.instance.currentUser;
@@ -107,7 +133,12 @@ class NotificationService {
 
       String? token;
       try {
-        token = await _fcm.getToken();
+        token = await _fcm
+            .getToken()
+            .timeout(const Duration(seconds: 5), onTimeout: () {
+          debugPrint('[FCM] getToken timeout após 5s.');
+          return null;
+        });
       } catch (tokenErr) {
         debugPrint('[FCM] Erro ao recuperar token FCM: $tokenErr');
       }
@@ -131,7 +162,9 @@ class NotificationService {
       if (_fcmToken != null) {
         final http = _ref.read(httpServiceProvider);
         await http.patch('/auth/fcm-token', data: {'fcmToken': null});
-        await _fcm.deleteToken();
+        try {
+          await _fcm.deleteToken().timeout(const Duration(seconds: 3));
+        } catch (_) {}
         _fcmToken = null;
         _ref.read(currentFcmTokenProvider.notifier).state = null;
         debugPrint('[FCM] Token removido com sucesso no logout.');
