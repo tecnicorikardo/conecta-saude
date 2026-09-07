@@ -3,6 +3,7 @@ import { authenticate, requireHierarquia } from '../../middleware/authenticate';
 import { HierarquiaNivel } from '../../types';
 import { Request, Response } from 'express';
 import { prisma } from '../../config/database';
+import { getFirebaseMessaging } from '../../config/firebase';
 import { AppError } from '../../middleware/errorHandler';
 import { auditLog } from '../../utils/auditLogger';
 import { z } from 'zod';
@@ -128,6 +129,60 @@ async function createAnnouncement(req: Request, res: Response): Promise<void> {
       totalUsuarios: totalUsers,
       percentualLeitura: totalUsers > 0 ? Math.round((1 / totalUsers) * 100) : 100,
     },
+  });
+
+  // Disparar Web Push Notification para todos os usuários ativos com fcmToken
+  setImmediate(async () => {
+    try {
+      const allUsers = await prisma.user.findMany({
+        where: {
+          ativo: true,
+          id: { not: actor.id },
+          fcmToken: { not: null },
+        },
+        select: { fcmToken: true },
+      });
+
+      const targetTokens = allUsers
+        .map((u) => u.fcmToken)
+        .filter((t): t is string => Boolean(t && t.trim().length > 0));
+
+      if (targetTokens.length > 0) {
+        const messaging = getFirebaseMessaging();
+        const prefix = data.prioridade === 'urgente' ? '🚨 [URGENTE]' : '📢 [COMUNICADO]';
+        const pushTitle = `${prefix} ${announcement.titulo}`;
+        const previewText = data.mensagem.length > 100 ? `${data.mensagem.substring(0, 97)}...` : data.mensagem;
+
+        const pushResult = await messaging.sendEachForMulticast({
+          tokens: targetTokens,
+          notification: {
+            title: pushTitle,
+            body: previewText,
+          },
+          data: {
+            type: 'announcement',
+            announcementId: announcement.id,
+            priority: data.prioridade,
+          },
+          webpush: {
+            fcmOptions: {
+              link: `https://conecta-hospital.web.app/announcements/${announcement.id}`,
+            },
+            notification: {
+              title: pushTitle,
+              body: previewText,
+              icon: 'https://conecta-hospital.web.app/icons/Icon-192.png',
+              badge: 'https://conecta-hospital.web.app/icons/Icon-192.png',
+              tag: `announcement_${announcement.id}`,
+              renotify: true,
+            },
+          },
+        });
+        console.log(`[FCM Push] Comunicado enviado para ${targetTokens.length} dispositivo(s). Sucesso: ${pushResult.successCount}`);
+      }
+    } catch (pushErr) {
+      console.warn('[FCM Push] Falha ao enviar push de comunicado:', pushErr);
+    }
   });
 }
 

@@ -16,7 +16,7 @@ export const updateUserSchema = z.object({
   matricula: z.string().nullable().optional(),
   hierarquiaNivel: z.number().int().min(1).max(4).optional(),
   setorId: z.string().uuid().optional(),
-  fotoUrl: z.string().url().nullable().optional(),
+  fotoUrl: z.string().nullable().optional(),
 });
 
 export const updateUserStatusSchema = z.object({

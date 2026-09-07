@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 
 class ConversationAvatar extends StatelessWidget {
@@ -24,7 +25,9 @@ class ConversationAvatar extends StatelessWidget {
     if (trimmed.isEmpty) return '?';
     final parts = trimmed.split(RegExp(r'\s+'));
     if (parts.length >= 2) {
-      return ''.toUpperCase();
+      final first = parts[0].isNotEmpty ? parts[0][0] : '';
+      final second = parts[1].isNotEmpty ? parts[1][0] : '';
+      return '$first$second'.toUpperCase();
     }
     return trimmed[0].toUpperCase();
   }
@@ -58,17 +61,36 @@ class ConversationAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Widget avatarChild;
-    if (photoUrl != null && photoUrl!.isNotEmpty) {
-      avatarChild = ClipRRect(
-        borderRadius: BorderRadius.circular(size / 2),
-        child: Image.network(
-          photoUrl!,
-          width: size,
-          height: size,
-          fit: BoxFit.cover,
-          errorBuilder: (_, __, ___) => _buildFallback(),
-        ),
-      );
+    if (photoUrl != null && photoUrl!.trim().isNotEmpty) {
+      final raw = photoUrl!.trim();
+      if (raw.startsWith('data:image')) {
+        try {
+          final b64 = raw.contains(',') ? raw.split(',')[1] : raw;
+          avatarChild = ClipRRect(
+            borderRadius: BorderRadius.circular(size / 2),
+            child: Image.memory(
+              base64Decode(b64),
+              width: size,
+              height: size,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _buildFallback(),
+            ),
+          );
+        } catch (_) {
+          avatarChild = _buildFallback();
+        }
+      } else {
+        avatarChild = ClipRRect(
+          borderRadius: BorderRadius.circular(size / 2),
+          child: Image.network(
+            raw,
+            width: size,
+            height: size,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => _buildFallback(),
+          ),
+        );
+      }
     } else {
       avatarChild = _buildFallback();
     }

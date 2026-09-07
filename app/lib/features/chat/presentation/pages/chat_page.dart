@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_colors.dart';
@@ -31,6 +32,12 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   MessageEntity? _editingMessage;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+  }
+
+  @override
   void dispose() {
     _scrollController.dispose();
     super.dispose();
@@ -42,7 +49,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         if (animated) {
           _scrollController.animateTo(
             _scrollController.position.maxScrollExtent,
-            duration: const Duration(milliseconds: 300),
+            duration: const Duration(milliseconds: 250),
             curve: Curves.easeOut,
           );
         } else {
@@ -61,8 +68,10 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         ref.watch(messagesProvider(widget.conversationId));
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    // Detectar nome e foto do interlocutor
-    final conv = widget.conversation;
+    // Detectar nome e foto do interlocutor (suporta navegação direta por push)
+    final allConvs = ref.watch(conversationsProvider).valueOrNull ?? [];
+    final conv = widget.conversation ??
+        allConvs.where((c) => c.id == widget.conversationId).firstOrNull;
     final displayName = conv?.displayName(currentUserId) ?? 'Conversa';
     final photoUrl = conv?.displayPhoto(currentUserId);
     final isGroup = conv?.tipo == 'grupo' || conv?.tipo == 'setor';
@@ -72,7 +81,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       backgroundColor:
           isDark ? const Color(0xFF0D1B2A) : const Color(0xFFECEFF1),
       appBar: _buildAppBar(
-          context, displayName, photoUrl, subtitle, isGroup, currentUserId),
+          context, displayName, photoUrl, subtitle, isGroup, currentUserId, conv),
       body: Column(
         children: [
           // ─── Lista de mensagens ──────────────────────────────────────────
@@ -134,6 +143,7 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     String subtitle,
     bool isGroup,
     String currentUserId,
+    ConversationEntity? conv,
   ) {
     return AppBar(
       backgroundColor: AppColors.primary,
@@ -145,9 +155,19 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       ),
       title: InkWell(
         onTap: () {
-          // TODO: abrir perfil do contato
+          if (!isGroup) {
+            final otherMember = conv?.participantes
+                .where((p) => p.id != currentUserId)
+                .firstOrNull ?? conv?.participantes.firstOrNull;
+            if (otherMember != null && otherMember.id.isNotEmpty) {
+              context.push('/employees/${otherMember.id}');
+            }
+          }
         },
-        child: Row(
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+          child: Row(
           children: [
             ConversationAvatar(
               name: displayName,
@@ -188,7 +208,8 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           ],
         ),
       ),
-      actions: [
+    ),
+    actions: [
         IconButton(
           icon: const Icon(Icons.videocam_outlined),
           onPressed: () {},

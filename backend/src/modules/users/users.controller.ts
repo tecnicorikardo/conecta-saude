@@ -91,14 +91,6 @@ export async function getUser(req: Request, res: Response): Promise<void> {
 
   if (!user) throw new AppError('Usuário não encontrado.', 404);
 
-  // Não-Direção só pode ver usuários do próprio setor
-  if (
-    actor.hierarquiaNivel !== HierarquiaNivel.DIRECAO &&
-    user.setorId !== actor.setorId
-  ) {
-    throw new AppError('Acesso negado.', 403);
-  }
-
   res.json({
     success: true,
     data: {
@@ -110,6 +102,7 @@ export async function getUser(req: Request, res: Response): Promise<void> {
       setorId: user.setorId,
       setorNome: user.setor.nome,
       fotoUrl: user.fotoUrl,
+      matricula: user.matricula,
       ativo: user.ativo,
       criadoEm: user.criadoEm,
     },

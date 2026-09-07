@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../../../../core/theme/app_colors.dart';
 
 class LoginLogo extends StatelessWidget {
@@ -12,23 +12,42 @@ class LoginLogo extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: size,
-          height: size,
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
           decoration: BoxDecoration(
-            color: AppColors.primary,
-            shape: BoxShape.circle,
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: AppColors.primary.withOpacity(0.3),
-                blurRadius: 16,
-                offset: const Offset(0, 6),
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 14,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
-          child: Icon(
-            Icons.local_hospital_rounded,
-            size: size * 0.55,
-            color: Colors.white,
+          child: Image.asset(
+            'assets/images/logo_sus.png',
+            height: size * 0.85,
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) => Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.3),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Icon(
+                Icons.local_hospital_rounded,
+                size: size * 0.55,
+                color: Colors.white,
+              ),
+            ),
           ),
         ),
         const SizedBox(height: 16),

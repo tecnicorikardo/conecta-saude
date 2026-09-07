@@ -1,11 +1,14 @@
+import 'dart:convert';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/services/http_service.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../core/services/web_notification_helper.dart';
 import '../../../../core/auth/permissions_provider.dart';
+import '../../../../core/widgets/app_avatar.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../auth/presentation/providers/current_user_provider.dart';
@@ -21,6 +24,186 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   bool _isSaving = false;
   bool _isRequestingPush = false;
   bool _isTestingPush = false;
+
+  Future<void> _pickImage(UserEntity user, ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(
+        source: source,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 75,
+      );
+      if (picked == null) return;
+      final bytes = await picked.readAsBytes();
+      final base64Image = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+      await _updateProfilePhoto(user, base64Image);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Não foi possível carregar a imagem: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showUrlInputDialog(UserEntity user) {
+    final urlCtrl = TextEditingController(
+      text: user.fotoUrl?.startsWith('http') == true ? user.fotoUrl : '',
+    );
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.link_rounded, color: AppColors.primary),
+            SizedBox(width: 8),
+            Text('Link da Foto (URL)', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+          ],
+        ),
+        content: TextField(
+          controller: urlCtrl,
+          decoration: const InputDecoration(
+            labelText: 'URL da imagem (https://...)',
+            hintText: 'https://exemplo.com/minha-foto.jpg',
+            prefixIcon: Icon(Icons.image_outlined),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              final url = urlCtrl.text.trim();
+              if (url.isNotEmpty) {
+                _updateProfilePhoto(user, url);
+              }
+            },
+            child: const Text('Salvar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showPhotoOptions(UserEntity user) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (bCtx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Foto do Perfil Profissional',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFE3F2FD),
+                  child: Icon(Icons.camera_alt_outlined, color: AppColors.primary),
+                ),
+                title: const Text('Tirar Foto com a Câmera'),
+                subtitle: const Text('Usar câmera do dispositivo'),
+                onTap: () {
+                  Navigator.pop(bCtx);
+                  _pickImage(user, ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFE8F5E9),
+                  child: Icon(Icons.photo_library_outlined, color: AppColors.success),
+                ),
+                title: const Text('Escolher da Galeria / Arquivos'),
+                subtitle: const Text('Selecionar foto do dispositivo'),
+                onTap: () {
+                  Navigator.pop(bCtx);
+                  _pickImage(user, ImageSource.gallery);
+                },
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFF3E5F5),
+                  child: Icon(Icons.link_rounded, color: Color(0xFF7C3AED)),
+                ),
+                title: const Text('Inserir Link de Foto (URL)'),
+                subtitle: const Text('Usar link direto da web'),
+                onTap: () {
+                  Navigator.pop(bCtx);
+                  _showUrlInputDialog(user);
+                },
+              ),
+              if (user.fotoUrl != null && user.fotoUrl!.isNotEmpty)
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Color(0xFFFFEBEE),
+                    child: Icon(Icons.delete_outline, color: AppColors.error),
+                  ),
+                  title: const Text('Remover Foto Atual', style: TextStyle(color: AppColors.error)),
+                  onTap: () {
+                    Navigator.pop(bCtx);
+                    _updateProfilePhoto(user, null);
+                  },
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _updateProfilePhoto(UserEntity user, String? newPhotoUrl) async {
+    final messenger = ScaffoldMessenger.of(context);
+    setState(() => _isSaving = true);
+    try {
+      final resp = await HttpService.instance.put(
+        '/users/${user.id}',
+        data: {
+          'fotoUrl': newPhotoUrl,
+        },
+      );
+      if (resp.data['success'] == true) {
+        final updatedUser = user.copyWith(fotoUrl: newPhotoUrl);
+        ref.read(currentUserProvider.notifier).setUser(updatedUser);
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(newPhotoUrl != null
+                ? 'Foto de perfil atualizada com sucesso!'
+                : 'Foto de perfil removida com sucesso!'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Erro ao atualizar foto: $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
 
   void _showEditProfileDialog(UserEntity user) {
     final nomeCtrl = TextEditingController(text: user.nome);
@@ -358,22 +541,27 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         Stack(
                           alignment: Alignment.bottomRight,
                           children: [
-                            CircleAvatar(
-                              radius: 44,
-                              backgroundColor: AppColors.primary,
-                              child: Text(
-                                user.nome.isNotEmpty ? user.nome[0].toUpperCase() : '?',
-                                style: const TextStyle(fontSize: 34, color: Colors.white, fontWeight: FontWeight.bold),
-                              ),
+                            AppAvatar(
+                              name: user.nome,
+                              fotoUrl: user.fotoUrl,
+                              size: 88,
+                              hierarquiaNivel: user.hierarquiaNivel,
+                              showEditBadge: true,
+                              onEditTap: () => _showPhotoOptions(user),
+                              onTap: () => _showPhotoOptions(user),
                             ),
-                            Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                color: Color(perms.levelColorHex),
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 2),
+                            Positioned(
+                              left: 0,
+                              bottom: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: Color(perms.levelColorHex),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white, width: 2),
+                                ),
+                                child: const Icon(Icons.verified_user, color: Colors.white, size: 14),
                               ),
-                              child: const Icon(Icons.verified_user, color: Colors.white, size: 14),
                             ),
                           ],
                         ),

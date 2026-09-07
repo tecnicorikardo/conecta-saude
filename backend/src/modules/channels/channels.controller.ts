@@ -504,7 +504,7 @@ export async function postChannelMessage(req: Request, res: Response): Promise<v
           },
           webpush: {
             fcmOptions: {
-              link: `https://conecta-hospital.web.app/#/channels/${channelId}`,
+              link: `https://conecta-hospital.web.app/channels/${channelId}`,
             },
             notification: {
               title: channelTitle,

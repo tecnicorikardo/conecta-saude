@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/routes/app_routes.dart';
 import '../providers/auth_provider.dart';
@@ -21,6 +22,7 @@ class _LoginFormState extends ConsumerState<LoginForm> {
   final _emailFocus = FocusNode();
   final _passFocus  = FocusNode();
   bool _obscure     = true;
+  bool _rememberMe  = true;
 
   // ─── Cores Institucionais ──────────────────────────────────────────────────
   static const Color _primaryBlue    = Color(0xFF1565C0);
@@ -31,6 +33,32 @@ class _LoginFormState extends ConsumerState<LoginForm> {
   static const Color _errorColor     = Color(0xFFC62828);
 
   @override
+  void initState() {
+    super.initState();
+    _loadSavedCredentials();
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final remember = prefs.getBool('conecta_remember_me') ?? true;
+      final savedEmail = prefs.getString('conecta_saved_email');
+      final savedPassword = prefs.getString('conecta_saved_password');
+      if (mounted) {
+        setState(() {
+          _rememberMe = remember;
+          if (remember && savedEmail != null && savedEmail.isNotEmpty) {
+            _emailCtrl.text = savedEmail;
+            if (savedPassword != null) {
+              _passCtrl.text = savedPassword;
+            }
+          }
+        });
+      }
+    } catch (_) {}
+  }
+
+  @override
   void dispose() {
     _emailCtrl.dispose();
     _passCtrl.dispose();
@@ -39,9 +67,23 @@ class _LoginFormState extends ConsumerState<LoginForm> {
     super.dispose();
   }
 
-  void _submit() {
+  void _submit() async {
     if (!_formKey.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (_rememberMe) {
+        await prefs.setBool('conecta_remember_me', true);
+        await prefs.setString('conecta_saved_email', _emailCtrl.text.trim());
+        await prefs.setString('conecta_saved_password', _passCtrl.text);
+      } else {
+        await prefs.setBool('conecta_remember_me', false);
+        await prefs.remove('conecta_saved_email');
+        await prefs.remove('conecta_saved_password');
+      }
+    } catch (_) {}
+
     ref.read(loginNotifierProvider.notifier).signIn(
           email: _emailCtrl.text.trim(),
           password: _passCtrl.text,
@@ -272,27 +314,67 @@ class _LoginFormState extends ConsumerState<LoginForm> {
             },
           ),
 
-          // ─── Link: Esqueci minha senha ───────────────────────────────────
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton(
-              onPressed: widget.isLoading
-                  ? null
-                  : () => context.push(AppRoutes.forgotPassword),
-              style: TextButton.styleFrom(
-                foregroundColor: _primaryBlue,
-                padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              child: const Text(
-                'Esqueci minha senha',
-                style: TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w500,
+          // ─── Lembrar login & Esqueci minha senha ───────────────────────
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              InkWell(
+                onTap: widget.isLoading
+                    ? null
+                    : () => setState(() => _rememberMe = !_rememberMe),
+                borderRadius: BorderRadius.circular(4),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: Checkbox(
+                          value: _rememberMe,
+                          activeColor: _primaryBlue,
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          onChanged: widget.isLoading
+                              ? null
+                              : (v) => setState(() => _rememberMe = v ?? true),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      const Text(
+                        'Lembrar login e senha',
+                        style: TextStyle(
+                          color: _textSecondary,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
+              TextButton(
+                onPressed: widget.isLoading
+                    ? null
+                    : () => context.push(AppRoutes.forgotPassword),
+                style: TextButton.styleFrom(
+                  foregroundColor: _primaryBlue,
+                  padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text(
+                  'Esqueci minha senha',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 14),
 

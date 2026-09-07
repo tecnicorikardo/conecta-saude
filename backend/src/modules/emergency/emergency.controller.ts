@@ -150,7 +150,7 @@ export async function createEmergencyAlert(req: Request, res: Response): Promise
           },
           webpush: {
             fcmOptions: {
-              link: `https://conecta-hospital.web.app/#/emergency`,
+              link: `https://conecta-hospital.web.app/emergency`,
             },
             notification: {
               title: pushTitle,
@@ -173,23 +173,27 @@ export async function createEmergencyAlert(req: Request, res: Response): Promise
 /**
  * PATCH /api/emergency/:id/resolve
  * Encerra o chamado e finaliza o protocolo de emergência.
- * Restrito à Coordenação e Direção Geral.
+ * Permitido para quem criou o chamado, Coordenação e Direção Geral.
  */
 export async function resolveEmergencyAlert(req: Request, res: Response): Promise<void> {
   const actor = req.user!;
   const { id } = req.params;
   const data = resolveEmergencySchema.parse(req.body ?? {});
 
-  if (actor.hierarquiaNivel > HierarquiaNivel.COORDENACAO) {
-    throw new AppError(
-      'Apenas a Coordenação e a Direção Geral têm permissão para encerrar o protocolo de emergência.',
-      403,
-    );
-  }
-
   const existing = await prisma.emergencyAlert.findUnique({ where: { id } });
   if (!existing) {
     throw new AppError('Chamado de emergência não encontrado.', 404);
+  }
+
+  // Coordenação, Direção ou o criador do chamado podem encerrar o protocolo
+  if (
+    actor.hierarquiaNivel > HierarquiaNivel.COORDENACAO &&
+    existing.criadoPor !== actor.id
+  ) {
+    throw new AppError(
+      'Apenas quem criou o alerta, a Coordenação ou a Direção têm permissão para encerrar o chamado.',
+      403,
+    );
   }
 
   const updated = await prisma.emergencyAlert.update({
