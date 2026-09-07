@@ -394,7 +394,9 @@ class _ConversationTile extends StatelessWidget {
         if (!isMe && (msg.remetente.nome.isNotEmpty))
           Flexible(
             child: Text(
-              msg.tipo == MessageType.audio ? '🎤 Áudio' : msg.texto,
+              (msg.tipo == MessageType.audio || msg.texto.startsWith('[audio'))
+                  ? '🎤 Mensagem de áudio'
+                  : msg.texto,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(fontSize: 13, color: color),
@@ -403,7 +405,9 @@ class _ConversationTile extends StatelessWidget {
         else
           Flexible(
             child: Text(
-              msg.tipo == MessageType.audio ? '🎤 Áudio' : msg.texto,
+              (msg.tipo == MessageType.audio || msg.texto.startsWith('[audio'))
+                  ? '🎤 Mensagem de áudio'
+                  : msg.texto,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(fontSize: 13, color: color),

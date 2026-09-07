@@ -4,14 +4,14 @@ export const sendMessageSchema = z.object({
   texto: z
     .string()
     .min(1, 'A mensagem não pode estar vazia.')
-    .max(4000, 'Mensagem muito longa (máximo 4000 caracteres).'),
+    .max(10_000_000, 'Mensagem muito longa.'),
 });
 
 export const editMessageSchema = z.object({
   texto: z
     .string()
     .min(1, 'A mensagem não pode estar vazia.')
-    .max(4000, 'Mensagem muito longa.'),
+    .max(10_000_000, 'Mensagem muito longa.'),
 });
 
 export const listMessagesSchema = z.object({

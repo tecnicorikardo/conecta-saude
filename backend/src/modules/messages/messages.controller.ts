@@ -152,7 +152,10 @@ export async function sendMessage(req: Request, res: Response): Promise<void> {
       if (targetTokens.length > 0) {
         const messaging = getFirebaseMessaging();
         const senderName = actor.nome || 'Novo recado';
-        const previewText = texto.length > 100 ? `${texto.substring(0, 97)}...` : texto;
+        const isAudio = texto.startsWith('[audio');
+        const previewText = isAudio
+          ? '🎙️ Mensagem de áudio'
+          : (texto.length > 100 ? `${texto.substring(0, 97)}...` : texto);
 
         const pushResult = await messaging.sendEachForMulticast({
           tokens: targetTokens,

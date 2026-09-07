@@ -152,7 +152,7 @@ class _ChatInputBarState extends ConsumerState<ChatInputBar> {
   Future<void> _stopAndSendRecording() async {
     _recordTimer?.cancel();
     _recordTimer = null;
-    final duration = _recordDuration;
+    final duration = _recordDuration > 0 ? _recordDuration : 1;
 
     try {
       final path = await _audioRecorder.stop();
@@ -172,9 +172,20 @@ class _ChatInputBarState extends ConsumerState<ChatInputBar> {
           final payload = '[audio:$duration]data:$mime;base64,$b64';
 
           widget.onSent();
-          ref
-              .read(messagesProvider(widget.conversationId).notifier)
-              .sendTextMessage(payload);
+          try {
+            await ref
+                .read(messagesProvider(widget.conversationId).notifier)
+                .sendTextMessage(payload);
+          } catch (e) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Erro ao enviar áudio: $e'),
+                  backgroundColor: AppColors.error,
+                ),
+              );
+            }
+          }
         }
       }
     } catch (e) {
