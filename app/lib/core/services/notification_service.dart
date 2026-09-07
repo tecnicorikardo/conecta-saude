@@ -53,6 +53,14 @@ class NotificationService {
         unawaited(syncToken());
       }
 
+      // Sincronizar token automaticamente quando a autenticação for restaurada/iniciada
+      FirebaseAuth.instance.authStateChanges().listen((user) {
+        if (user != null) {
+          debugPrint('[FCM] Usuário autenticado (${user.email}). Sincronizando token deste dispositivo...');
+          unawaited(syncToken());
+        }
+      });
+
       // 2. Configurar apresentação em primeiro plano
       try {
         await _fcm.setForegroundNotificationPresentationOptions(

@@ -19,6 +19,7 @@ class ProfilePage extends ConsumerStatefulWidget {
 class _ProfilePageState extends ConsumerState<ProfilePage> {
   bool _isSaving = false;
   bool _isRequestingPush = false;
+  bool _isTestingPush = false;
 
   void _showEditProfileDialog(UserEntity user) {
     final nomeCtrl = TextEditingController(text: user.nome);
@@ -180,6 +181,89 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       );
     } finally {
       if (mounted) setState(() => _isRequestingPush = false);
+    }
+  }
+
+  Future<void> _handleTestPush() async {
+    if (_isTestingPush) return;
+    setState(() => _isTestingPush = true);
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final notifService = ref.read(notificationServiceProvider);
+      // Forçar sincronização imediata do token deste aparelho com o PostgreSQL
+      final token = await notifService.syncToken();
+      if (token == null) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('⚠️ Não foi possível obter o token deste dispositivo. Verifique a permissão do navegador.'),
+            backgroundColor: AppColors.warning,
+          ),
+        );
+        return;
+      }
+
+      final response = await HttpService.instance.post('/auth/test-push');
+      if (!mounted) return;
+
+      if (response.data['success'] == true) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Row(
+              children: [
+                Icon(Icons.check_circle, color: AppColors.success),
+                SizedBox(width: 8),
+                Text('Push Despachado!'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('O servidor enviou com sucesso uma notificação push via Firebase Cloud Messaging:'),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Token: ${response.data['tokenPreview']}', style: const TextStyle(fontSize: 11, fontFamily: 'monospace')),
+                      const SizedBox(height: 4),
+                      Text('ID Mensagem: ${response.data['messageId']}', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text('Se você não ouvir o som ou não ver o banner, verifique se o Android/Windows não está com "Não Perturbe" ativado ou notificações do Chrome bloqueadas.'),
+              ],
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
+            ],
+          ),
+        );
+      } else {
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text('Falha ao enviar push: ${response.data['errorMessage']}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Erro na requisição: $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isTestingPush = false);
     }
   }
 
@@ -414,7 +498,29 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                               minimumSize: const Size.fromHeight(42),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                             ),
+                          )
+                        else ...[
+                          ElevatedButton.icon(
+                            onPressed: _isTestingPush ? null : _handleTestPush,
+                            icon: _isTestingPush
+                                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                : const Icon(Icons.send_rounded, size: 18),
+                            label: Text(_isTestingPush ? 'Disparando teste...' : 'Enviar Push de Teste para Este Aparelho'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF1565C0),
+                              foregroundColor: Colors.white,
+                              minimumSize: const Size.fromHeight(42),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
                           ),
+                          const SizedBox(height: 8),
+                          Center(
+                            child: Text(
+                              'Toque acima para testar o envio em tempo real via Firebase Admin.',
+                              style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),

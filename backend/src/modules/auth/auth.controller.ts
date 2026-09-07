@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../../config/database';
-import { getFirebaseAuth } from '../../config/firebase';
+import { getFirebaseAuth, getFirebaseMessaging } from '../../config/firebase';
 import { HierarquiaNivel } from '../../types';
 import { verifyTokenSchema, updateFcmTokenSchema, registerUserSchema } from './auth.schema';
 import { AppError } from '../../middleware/errorHandler';
@@ -163,6 +163,66 @@ export async function updateFcmToken(req: Request, res: Response): Promise<void>
   });
 
   res.json({ success: true, message: 'FCM token atualizado.' });
+}
+
+/**
+ * POST /api/auth/test-push
+ * Envia push de diagnóstico diretamente para o FCM token registrado do usuário
+ */
+export async function testPush(req: Request, res: Response): Promise<void> {
+  const userId = req.user!.id;
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, nome: true, fcmToken: true },
+  });
+
+  if (!user || !user.fcmToken) {
+    throw new AppError('Nenhum token FCM registrado para este usuário. Ative as notificações no perfil primeiro.', 400);
+  }
+
+  const messaging = getFirebaseMessaging();
+  try {
+    const messageId = await messaging.send({
+      token: user.fcmToken,
+      notification: {
+        title: '🚨 Teste Conecta Saúde (SUS)',
+        body: 'Notificação push funcionando em tempo real!',
+      },
+      data: {
+        type: 'test_push',
+        timestamp: new Date().toISOString(),
+      },
+      webpush: {
+        fcmOptions: {
+          link: 'https://conecta-hospital.web.app/profile',
+        },
+        notification: {
+          title: '🚨 Teste Conecta Saúde (SUS)',
+          body: 'Notificação push funcionando em tempo real!',
+          icon: 'https://conecta-hospital.web.app/icons/Icon-192.png',
+          badge: 'https://conecta-hospital.web.app/icons/Icon-192.png',
+          tag: 'conecta_test_' + Date.now(),
+          renotify: true,
+          requireInteraction: true,
+        },
+      },
+    });
+
+    console.log(`[FCM Test Push] Sucesso para ${user.nome} (${user.id}): ${messageId}`);
+    res.json({
+      success: true,
+      message: 'Push enviado com sucesso pelo Firebase Admin!',
+      messageId,
+      tokenPreview: user.fcmToken.substring(0, 25) + '...',
+    });
+  } catch (error: any) {
+    console.error('[FCM Test Push Error]:', error);
+    res.status(500).json({
+      success: false,
+      errorCode: error.code || error.errorInfo?.code || 'UNKNOWN_ERROR',
+      errorMessage: error.message || 'Erro ao enviar push via Firebase Admin SDK',
+    });
+  }
 }
 
 function getHierarquiaNome(nivel: number): string {

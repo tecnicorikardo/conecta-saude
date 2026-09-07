@@ -56,55 +56,6 @@ messaging.onBackgroundMessage(function(payload) {
   return self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
-// Receptor nativo de eventos Push (garante exibição em todos os navegadores)
-self.addEventListener('push', function(event) {
-  console.log('[firebase-messaging-sw.js] Evento push nativo recebido:', event);
-  var data = {};
-  if (event.data) {
-    try {
-      data = event.data.json();
-    } catch (e) {
-      data = { notification: { body: event.data.text() } };
-    }
-  }
-
-  var notificationTitle = (data.notification && data.notification.title)
-    || (data.data && data.data.title)
-    || data.title
-    || 'Conecta Saúde - SUS';
-
-  var body = (data.notification && data.notification.body)
-    || (data.data && data.data.body)
-    || data.body
-    || 'Nova notificação de plantão.';
-
-  var conversationId = data.data && data.data.conversationId;
-  var channelId = data.data && data.data.channelId;
-
-  var notificationOptions = {
-    body: body,
-    icon: '/icons/Icon-192.png',
-    badge: '/icons/Icon-192.png',
-    data: {
-      url: conversationId
-        ? '/chat/' + conversationId
-        : channelId
-          ? '/channels/' + channelId
-          : '/conversations',
-      conversationId: conversationId,
-      channelId: channelId,
-    },
-    vibrate: [200, 100, 200],
-    tag: conversationId ? 'chat_' + conversationId : channelId ? 'channel_' + channelId : 'conecta_saude',
-    renotify: true,
-    requireInteraction: false,
-  };
-
-  event.waitUntil(
-    self.registration.showNotification(notificationTitle, notificationOptions)
-  );
-});
-
 // Manipulador de clique na notificação do sistema operacional
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
@@ -123,7 +74,6 @@ self.addEventListener('notificationclick', function(event) {
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
-      // Verificar se há uma janela aberta com a URL alvo ou a raiz do app
       for (var i = 0; i < clientList.length; i++) {
         var client = clientList[i];
         if (client.url.startsWith('https://conecta-hospital.web.app') && 'focus' in client) {
@@ -131,7 +81,6 @@ self.addEventListener('notificationclick', function(event) {
           return client.focus();
         }
       }
-      // Nenhuma aba aberta: abrir nova janela
       if (clients.openWindow) {
         return clients.openWindow(targetUrl);
       }

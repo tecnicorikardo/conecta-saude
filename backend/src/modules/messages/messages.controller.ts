@@ -154,7 +154,7 @@ export async function sendMessage(req: Request, res: Response): Promise<void> {
         const senderName = actor.nome || 'Novo recado';
         const previewText = texto.length > 100 ? `${texto.substring(0, 97)}...` : texto;
 
-        await messaging.sendEachForMulticast({
+        const pushResult = await messaging.sendEachForMulticast({
           tokens: targetTokens,
           notification: {
             title: senderName,
@@ -169,7 +169,7 @@ export async function sendMessage(req: Request, res: Response): Promise<void> {
           },
           webpush: {
             fcmOptions: {
-              link: `https://conecta-hospital.web.app/#/chat/${conversationId}`,
+              link: `https://conecta-hospital.web.app/chat/${conversationId}`,
             },
             notification: {
               title: senderName,
@@ -181,10 +181,17 @@ export async function sendMessage(req: Request, res: Response): Promise<void> {
             },
           },
         });
-        console.log(`[FCM Push] Mensagem enviada para ${targetTokens.length} dispositivo(s).`);
+        console.log(`[FCM Push] Mensagem enviada para ${targetTokens.length} dispositivo(s). Sucesso: ${pushResult.successCount}, Falhas: ${pushResult.failureCount}`);
+        if (pushResult.failureCount > 0) {
+          pushResult.responses.forEach((resp, idx) => {
+            if (!resp.success) {
+              console.error(`[FCM Push Erro] Destinatário token ${idx}:`, resp.error);
+            }
+          });
+        }
       }
     } catch (pushErr) {
-      console.warn('[FCM Push] Falha ao enviar notificação push (ignorado):', pushErr);
+      console.error('[FCM Push] Erro fatal ao disparar notificação push:', pushErr);
     }
   });
 }
