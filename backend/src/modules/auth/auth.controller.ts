@@ -171,6 +171,7 @@ export async function updateFcmToken(req: Request, res: Response): Promise<void>
  */
 export async function testPush(req: Request, res: Response): Promise<void> {
   const userId = req.user!.id;
+  const delaySeconds = Math.max(0, Math.min(60, Number(req.body?.delaySeconds ?? 0)));
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { id: true, nome: true, fcmToken: true },
@@ -180,13 +181,15 @@ export async function testPush(req: Request, res: Response): Promise<void> {
     throw new AppError('Nenhum token FCM registrado para este usuário. Ative as notificações no perfil primeiro.', 400);
   }
 
-  const messaging = getFirebaseMessaging();
-  try {
-    const messageId = await messaging.send({
-      token: user.fcmToken,
+  const sendPushFn = async () => {
+    const messaging = getFirebaseMessaging();
+    return messaging.send({
+      token: user.fcmToken!,
       notification: {
         title: '🚨 Teste Conecta Saúde (SUS)',
-        body: 'Notificação push funcionando em tempo real!',
+        body: delaySeconds > 0
+          ? `Alerta em segundo plano entregue com sucesso (${delaySeconds}s)!`
+          : 'Notificação push funcionando em tempo real!',
       },
       data: {
         type: 'test_push',
@@ -198,7 +201,9 @@ export async function testPush(req: Request, res: Response): Promise<void> {
         },
         notification: {
           title: '🚨 Teste Conecta Saúde (SUS)',
-          body: 'Notificação push funcionando em tempo real!',
+          body: delaySeconds > 0
+            ? `Alerta em segundo plano entregue com sucesso (${delaySeconds}s)!`
+            : 'Notificação push funcionando em tempo real!',
           icon: 'https://conecta-hospital.web.app/icons/Icon-192.png',
           badge: 'https://conecta-hospital.web.app/icons/Icon-192.png',
           tag: 'conecta_test_' + Date.now(),
@@ -207,7 +212,30 @@ export async function testPush(req: Request, res: Response): Promise<void> {
         },
       },
     });
+  };
 
+  if (delaySeconds > 0) {
+    setTimeout(async () => {
+      try {
+        const messageId = await sendPushFn();
+        console.log(`[FCM Delayed Push] Entregue após ${delaySeconds}s: ${messageId}`);
+      } catch (err) {
+        console.error('[FCM Delayed Push Erro]:', err);
+      }
+    }, delaySeconds * 1000);
+
+    res.json({
+      success: true,
+      delayed: true,
+      delaySeconds,
+      message: `Push agendado para daqui a ${delaySeconds} segundos. Minimize ou bloqueie a tela agora!`,
+      tokenPreview: user.fcmToken.substring(0, 25) + '...',
+    });
+    return;
+  }
+
+  try {
+    const messageId = await sendPushFn();
     console.log(`[FCM Test Push] Sucesso para ${user.nome} (${user.id}): ${messageId}`);
     res.json({
       success: true,

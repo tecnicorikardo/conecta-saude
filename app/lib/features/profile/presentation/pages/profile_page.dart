@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/services/http_service.dart';
 import '../../../../core/services/notification_service.dart';
+import '../../../../core/services/web_notification_helper.dart';
 import '../../../../core/auth/permissions_provider.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -184,13 +185,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     }
   }
 
-  Future<void> _handleTestPush() async {
+  Future<void> _handleTestPush({int delaySeconds = 0}) async {
     if (_isTestingPush) return;
     setState(() => _isTestingPush = true);
     final messenger = ScaffoldMessenger.of(context);
     try {
       final notifService = ref.read(notificationServiceProvider);
-      // Forçar sincronização imediata do token deste aparelho com o PostgreSQL
       final token = await notifService.syncToken();
       if (token == null) {
         messenger.showSnackBar(
@@ -202,51 +202,94 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         return;
       }
 
-      final response = await HttpService.instance.post('/auth/test-push');
+      // Disparar chime e notificação nativa imediata no navegador se estiver em primeiro plano
+      if (delaySeconds == 0) {
+        notifyHospitalUser(
+          '🚨 Teste Conecta Saúde (SUS)',
+          'Notificação push e áudio institucional funcionando!',
+          tag: 'test_push',
+        );
+      }
+
+      final response = await HttpService.instance.post(
+        '/auth/test-push',
+        data: {'delaySeconds': delaySeconds},
+      );
       if (!mounted) return;
 
       if (response.data['success'] == true) {
-        showDialog(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            title: const Row(
-              children: [
-                Icon(Icons.check_circle, color: AppColors.success),
-                SizedBox(width: 8),
-                Text('Push Despachado!'),
+        if (delaySeconds > 0) {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Row(
+                children: [
+                  Icon(Icons.timer_outlined, color: AppColors.primary),
+                  SizedBox(width: 8),
+                  Text('Disparo em 5 Segundos!'),
+                ],
+              ),
+              content: const Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '⏳ O servidor vai disparar a notificação em 5 segundos.',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 10),
+                  Text('👉 Minimize o aplicativo agora ou bloqueie a tela do celular para ver o alerta chegar em segundo plano na barra de status do Android/Windows!'),
+                ],
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Entendi, vou minimizar')),
               ],
             ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('O servidor enviou com sucesso uma notificação push via Firebase Cloud Messaging:'),
-                const SizedBox(height: 10),
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(8),
+          );
+        } else {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Row(
+                children: [
+                  Icon(Icons.check_circle, color: AppColors.success),
+                  SizedBox(width: 8),
+                  Text('Push Despachado!'),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('O servidor enviou com sucesso uma notificação push via Firebase Cloud Messaging:'),
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Token: ${response.data['tokenPreview']}', style: const TextStyle(fontSize: 11, fontFamily: 'monospace')),
+                        const SizedBox(height: 4),
+                        Text('ID Mensagem: ${response.data['messageId']}', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                      ],
+                    ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Token: ${response.data['tokenPreview']}', style: const TextStyle(fontSize: 11, fontFamily: 'monospace')),
-                      const SizedBox(height: 4),
-                      Text('ID Mensagem: ${response.data['messageId']}', style: const TextStyle(fontSize: 10, color: Colors.grey)),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const Text('Se você não ouvir o som ou não ver o banner, verifique se o Android/Windows não está com "Não Perturbe" ativado ou notificações do Chrome bloqueadas.'),
+                  const SizedBox(height: 12),
+                  const Text('O som institucional foi emitido e a notificação foi enviada ao sistema operacional.'),
+                ],
+              ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
               ],
             ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('OK')),
-            ],
-          ),
-        );
+          );
+        }
       } else {
         messenger.showSnackBar(
           SnackBar(
@@ -501,11 +544,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           )
                         else ...[
                           ElevatedButton.icon(
-                            onPressed: _isTestingPush ? null : _handleTestPush,
+                            onPressed: _isTestingPush ? null : () => _handleTestPush(delaySeconds: 0),
                             icon: _isTestingPush
                                 ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                                : const Icon(Icons.send_rounded, size: 18),
-                            label: Text(_isTestingPush ? 'Disparando teste...' : 'Enviar Push de Teste para Este Aparelho'),
+                                : const Icon(Icons.volume_up_outlined, size: 18),
+                            label: Text(_isTestingPush ? 'Disparando...' : '🔔 Testar Agora (Com Som e Alerta)'),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF1565C0),
                               foregroundColor: Colors.white,
@@ -514,9 +557,22 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                             ),
                           ),
                           const SizedBox(height: 8),
+                          OutlinedButton.icon(
+                            onPressed: _isTestingPush ? null : () => _handleTestPush(delaySeconds: 5),
+                            icon: const Icon(Icons.timer_outlined, size: 18),
+                            label: const Text('⏱️ Testar em Segundo Plano (5s para Minimizar)'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF1565C0),
+                              side: const BorderSide(color: Color(0xFF1565C0), width: 1.2),
+                              minimumSize: const Size.fromHeight(42),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
                           Center(
                             child: Text(
-                              'Toque acima para testar o envio em tempo real via Firebase Admin.',
+                              'Use "Testar em Segundo Plano" para minimizar o app e ver o push no Android/Windows.',
+                              textAlign: TextAlign.center,
                               style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                             ),
                           ),

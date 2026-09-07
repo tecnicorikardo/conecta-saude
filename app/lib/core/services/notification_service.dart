@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../config/firebase_options.dart';
 import 'http_service.dart';
+import 'web_notification_helper.dart';
 
 /// Provedor reativo do status de autorização de notificações
 final pushPermissionStatusProvider = StateProvider<AuthorizationStatus>((ref) {
@@ -80,8 +81,10 @@ class NotificationService {
 
       // 4. Escutar mensagens recebidas com o app em primeiro plano
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        debugPrint(
-            '[FCM Foreground] Push recebido: ${message.notification?.title} - ${message.notification?.body}');
+        final title = message.notification?.title ?? message.data['title'] ?? 'Conecta Saúde - SUS';
+        final body = message.notification?.body ?? message.data['body'] ?? 'Nova mensagem institucional recebida.';
+        debugPrint('[FCM Foreground] Push recebido: $title - $body');
+        notifyHospitalUser(title, body, tag: message.data['conversationId'] ?? 'chat', url: '/conversations');
       });
 
       // 5. Escutar abertura do app ao tocar na notificação push (background)
