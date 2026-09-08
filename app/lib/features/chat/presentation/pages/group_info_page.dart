@@ -34,25 +34,40 @@ class _GroupInfoPageState extends ConsumerState<GroupInfoPage> {
   }
 
   Future<void> _loadGroupDetails() async {
-    try {
+    // 1. Carrega imediatamente do cache se disponível para abrir em 0ms
+    final allConvs = ref.read(conversationsProvider).valueOrNull ?? [];
+    final cached = allConvs.where((c) => c.id == widget.conversationId).firstOrNull;
+    if (cached != null && _conversation == null) {
       setState(() {
-        _isLoading = true;
-        _error = null;
+        _conversation = cached;
+        _isLoading = false;
       });
+    }
+
+    try {
+      if (_conversation == null) {
+        setState(() {
+          _isLoading = true;
+          _error = null;
+        });
+      }
       final repo = ref.read(conversationRepositoryProvider);
       final data = await repo.getConversation(widget.conversationId);
       if (mounted) {
         setState(() {
           _conversation = data;
           _isLoading = false;
+          _error = null;
         });
       }
     } catch (e) {
       if (mounted) {
-        setState(() {
-          _error = e.toString().replaceAll('Exception: ', '');
-          _isLoading = false;
-        });
+        if (_conversation == null) {
+          setState(() {
+            _error = e.toString().replaceAll('Exception: ', '');
+            _isLoading = false;
+          });
+        }
       }
     }
   }
