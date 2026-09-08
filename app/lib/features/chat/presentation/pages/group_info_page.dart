@@ -545,9 +545,17 @@ class _GroupInfoPageState extends ConsumerState<GroupInfoPage> {
   @override
   Widget build(BuildContext context) {
     final currentUserId = ref.watch(currentUserIdProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final pageBg = isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9);
+    final cardBg = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final textPrimary = isDark ? Colors.white : const Color(0xFF0F172A);
+    final textSecondary = isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569);
+    final dividerColor = isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
 
     if (_isLoading) {
       return Scaffold(
+        backgroundColor: pageBg,
         appBar: AppBar(title: const Text('Dados do Grupo')),
         body: const Center(child: CircularProgressIndicator()),
       );
@@ -555,12 +563,13 @@ class _GroupInfoPageState extends ConsumerState<GroupInfoPage> {
 
     if (_error != null || _conversation == null) {
       return Scaffold(
+        backgroundColor: pageBg,
         appBar: AppBar(title: const Text('Dados do Grupo')),
         body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(_error ?? 'Grupo não encontrado.'),
+              Text(_error ?? 'Grupo não encontrado.', style: TextStyle(color: textPrimary)),
               const SizedBox(height: 12),
               ElevatedButton(
                 onPressed: _loadGroupDetails,
@@ -577,7 +586,7 @@ class _GroupInfoPageState extends ConsumerState<GroupInfoPage> {
     final isCreator = conv.criadoPor == currentUserId;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF1F5F9),
+      backgroundColor: pageBg,
       appBar: AppBar(
         title: const Text('Dados do Grupo'),
         backgroundColor: AppColors.primary,
@@ -587,7 +596,7 @@ class _GroupInfoPageState extends ConsumerState<GroupInfoPage> {
         children: [
           // ─── Cabeçalho: Foto e Título ─────────────────────────────────────
           Container(
-            color: Colors.white,
+            color: cardBg,
             padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
             child: Column(
               children: [
@@ -604,7 +613,7 @@ class _GroupInfoPageState extends ConsumerState<GroupInfoPage> {
                       InkWell(
                         onTap: _editGroupPhoto,
                         child: Container(
-                          padding: const EdgeInsets.all(6),
+                          padding: const EdgeInsets.all(7),
                           decoration: const BoxDecoration(
                             color: AppColors.primary,
                             shape: BoxShape.circle,
@@ -621,14 +630,18 @@ class _GroupInfoPageState extends ConsumerState<GroupInfoPage> {
                     Flexible(
                       child: Text(
                         conv.displayName(currentUserId),
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: textPrimary,
+                        ),
                         textAlign: TextAlign.center,
                       ),
                     ),
                     if (isCurrentUserAdmin) ...[
                       const SizedBox(width: 8),
                       IconButton(
-                        icon: const Icon(Icons.edit, size: 18, color: AppColors.primary),
+                        icon: const Icon(Icons.edit, size: 20, color: AppColors.primary),
                         onPressed: _editGroupName,
                         tooltip: 'Editar nome do grupo',
                       ),
@@ -638,7 +651,7 @@ class _GroupInfoPageState extends ConsumerState<GroupInfoPage> {
                 const SizedBox(height: 4),
                 Text(
                   'Grupo • ${conv.participantes.length} participantes',
-                  style: const TextStyle(color: Colors.black54, fontSize: 13),
+                  style: TextStyle(color: textSecondary, fontSize: 13, fontWeight: FontWeight.w500),
                 ),
               ],
             ),
@@ -647,7 +660,7 @@ class _GroupInfoPageState extends ConsumerState<GroupInfoPage> {
 
           // ─── Card de Descrição ────────────────────────────────────────────
           Container(
-            color: Colors.white,
+            color: cardBg,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -662,7 +675,7 @@ class _GroupInfoPageState extends ConsumerState<GroupInfoPage> {
                     if (isCurrentUserAdmin)
                       TextButton(
                         onPressed: _editGroupDescription,
-                        child: const Text('Editar', style: TextStyle(fontSize: 13)),
+                        child: const Text('Editar', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                       ),
                   ],
                 ),
@@ -674,8 +687,8 @@ class _GroupInfoPageState extends ConsumerState<GroupInfoPage> {
                   style: TextStyle(
                     fontSize: 14,
                     color: (conv.descricao != null && conv.descricao!.trim().isNotEmpty)
-                        ? Colors.black87
-                        : Colors.black38,
+                        ? textPrimary
+                        : textSecondary,
                     fontStyle: (conv.descricao == null || conv.descricao!.trim().isEmpty)
                         ? FontStyle.italic
                         : FontStyle.normal,
@@ -688,7 +701,7 @@ class _GroupInfoPageState extends ConsumerState<GroupInfoPage> {
 
           // ─── Lista de Participantes ───────────────────────────────────────
           Container(
-            color: Colors.white,
+            color: cardBg,
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -700,7 +713,7 @@ class _GroupInfoPageState extends ConsumerState<GroupInfoPage> {
                     children: [
                       Text(
                         '${conv.participantes.length} participantes',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: textPrimary),
                       ),
                     ],
                   ),
@@ -710,24 +723,31 @@ class _GroupInfoPageState extends ConsumerState<GroupInfoPage> {
                     leading: Container(
                       width: 40,
                       height: 40,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFFE8F5E9),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF1B4D3E) : const Color(0xFFE8F5E9),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.person_add, color: Color(0xFF2E7D32), size: 22),
+                      child: Icon(
+                        Icons.person_add,
+                        color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF2E7D32),
+                        size: 22,
+                      ),
                     ),
-                    title: const Text(
+                    title: Text(
                       'Adicionar participantes',
-                      style: TextStyle(color: Color(0xFF2E7D32), fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF2E7D32),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     onTap: _showAddMembersDialog,
                   ),
-                const Divider(height: 1),
+                Divider(height: 1, color: dividerColor),
                 ListView.separated(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: conv.participantes.length,
-                  separatorBuilder: (_, __) => const Divider(height: 1, indent: 70),
+                  separatorBuilder: (_, __) => Divider(height: 1, indent: 70, color: dividerColor),
                   itemBuilder: (context, idx) {
                     final p = conv.participantes[idx];
                     final isSelf = p.id == currentUserId;
@@ -744,23 +764,27 @@ class _GroupInfoPageState extends ConsumerState<GroupInfoPage> {
                           Flexible(
                             child: Text(
                               isSelf ? '${p.nome} (Você)' : p.nome,
-                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14.5,
+                                color: textPrimary,
+                              ),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           if (isAdmin) ...[
                             const SizedBox(width: 8),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFE8F5E9),
+                                color: isDark ? const Color(0xFF1B4D3E) : const Color(0xFFE8F5E9),
                                 borderRadius: BorderRadius.circular(4),
                               ),
-                              child: const Text(
+                              child: Text(
                                 'Admin do grupo',
                                 style: TextStyle(
-                                  color: Color(0xFF2E7D32),
-                                  fontSize: 10,
+                                  color: isDark ? const Color(0xFF4ADE80) : const Color(0xFF2E7D32),
+                                  fontSize: 10.5,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -770,7 +794,7 @@ class _GroupInfoPageState extends ConsumerState<GroupInfoPage> {
                       ),
                       subtitle: Text(
                         '${p.cargo} • ${p.setorNome}',
-                        style: const TextStyle(fontSize: 12, color: Colors.black54),
+                        style: TextStyle(fontSize: 12.5, color: textSecondary, fontWeight: FontWeight.w500),
                         overflow: TextOverflow.ellipsis,
                       ),
                       onTap: () => _showParticipantOptions(p, isCurrentUserAdmin),
@@ -784,24 +808,24 @@ class _GroupInfoPageState extends ConsumerState<GroupInfoPage> {
 
           // ─── Ações de Saída / Exclusão ───────────────────────────────────
           Container(
-            color: Colors.white,
+            color: cardBg,
             child: Column(
               children: [
                 ListTile(
                   leading: const Icon(Icons.exit_to_app, color: Colors.red),
                   title: const Text(
                     'Sair do grupo',
-                    style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600),
+                    style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 14.5),
                   ),
                   onTap: _confirmLeaveGroup,
                 ),
                 if (isCreator) ...[
-                  const Divider(height: 1),
+                  Divider(height: 1, color: dividerColor),
                   ListTile(
                     leading: const Icon(Icons.delete_forever, color: Colors.red),
                     title: const Text(
                       'Excluir grupo',
-                      style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600),
+                      style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 14.5),
                     ),
                     onTap: _confirmDeleteGroup,
                   ),
