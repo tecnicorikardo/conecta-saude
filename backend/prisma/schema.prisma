@@ -89,6 +89,8 @@ model Conversation {
   /// individual | grupo | setor
   tipo        String
   nome        String?
+  descricao   String?
+  fotoUrl     String?          @map("foto_url")
   criadoPor   String           @map("criado_por")
   setorId     String?          @map("setor_id")
   ativo       Boolean          @default(true)
@@ -111,6 +113,7 @@ model ConversationMember {
   id             String       @id @default(uuid())
   conversationId String       @map("conversation_id")
   userId         String       @map("user_id")
+  isAdmin        Boolean      @default(false) @map("is_admin")
   criadoEm      DateTime     @default(now()) @map("criado_em")
 
   conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
