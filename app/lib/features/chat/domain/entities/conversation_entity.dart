@@ -1,4 +1,4 @@
-﻿import 'message_entity.dart';
+import 'message_entity.dart';
 
 class ConversationParticipant {
   final String id;
@@ -7,6 +7,7 @@ class ConversationParticipant {
   final String cargo;
   final String setorNome;
   final int hierarquiaNivel;
+  final bool isAdmin;
 
   const ConversationParticipant({
     required this.id,
@@ -15,6 +16,7 @@ class ConversationParticipant {
     required this.cargo,
     required this.setorNome,
     required this.hierarquiaNivel,
+    this.isAdmin = false,
   });
 }
 
@@ -22,6 +24,9 @@ class ConversationEntity {
   final String id;
   final String tipo;
   final String? nome;
+  final String? descricao;
+  final String? fotoUrl;
+  final String? criadoPor;
   final List<ConversationParticipant> participantes;
   final MessageEntity? lastMessage;
   final int unreadCount;
@@ -31,13 +36,22 @@ class ConversationEntity {
     required this.id,
     required this.tipo,
     this.nome,
+    this.descricao,
+    this.fotoUrl,
+    this.criadoPor,
     required this.participantes,
     this.lastMessage,
     required this.unreadCount,
     required this.atualizadoEm,
   });
 
-  bool get isGroup => tipo == 'grupo' || tipo == 'canal';
+  bool get isGroup => tipo == 'grupo' || tipo == 'canal' || tipo == 'setor';
+
+  bool isCurrentUserAdmin(String currentUserId) {
+    if (criadoPor == currentUserId) return true;
+    final member = participantes.where((p) => p.id == currentUserId).firstOrNull;
+    return member?.isAdmin ?? false;
+  }
 
   String displayName(String currentUserId) {
     if (isGroup) {
@@ -59,7 +73,7 @@ class ConversationEntity {
   }
 
   String? displayPhoto(String currentUserId) {
-    if (isGroup) return null;
+    if (isGroup) return fotoUrl;
     final other = participantes.firstWhere(
       (p) => p.id != currentUserId,
       orElse: () => participantes.isNotEmpty
@@ -77,7 +91,7 @@ class ConversationEntity {
 
   String displaySubtitle(String currentUserId) {
     if (isGroup) {
-      return ' participantes';
+      return '${participantes.length} participantes';
     }
     final other = participantes.firstWhere(
       (p) => p.id != currentUserId,
@@ -92,7 +106,7 @@ class ConversationEntity {
             ),
     );
     if (other.cargo.isNotEmpty && other.setorNome.isNotEmpty) {
-      return ' • ';
+      return '${other.cargo} • ${other.setorNome}';
     }
     return other.cargo.isNotEmpty ? other.cargo : other.setorNome;
   }
@@ -101,6 +115,9 @@ class ConversationEntity {
     String? id,
     String? tipo,
     String? nome,
+    String? descricao,
+    String? fotoUrl,
+    String? criadoPor,
     List<ConversationParticipant>? participantes,
     MessageEntity? lastMessage,
     int? unreadCount,
@@ -110,6 +127,9 @@ class ConversationEntity {
       id: id ?? this.id,
       tipo: tipo ?? this.tipo,
       nome: nome ?? this.nome,
+      descricao: descricao ?? this.descricao,
+      fotoUrl: fotoUrl ?? this.fotoUrl,
+      criadoPor: criadoPor ?? this.criadoPor,
       participantes: participantes ?? this.participantes,
       lastMessage: lastMessage ?? this.lastMessage,
       unreadCount: unreadCount ?? this.unreadCount,

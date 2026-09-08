@@ -9,6 +9,7 @@ import '../../features/auth/presentation/pages/forgot_password_page.dart';
 import '../../features/home/presentation/pages/home_page.dart';
 import '../../features/chat/presentation/pages/conversations_page.dart';
 import '../../features/chat/presentation/pages/chat_page.dart';
+import '../../features/chat/presentation/pages/group_info_page.dart';
 import '../../features/channels/presentation/pages/channels_page.dart';
 import '../../features/announcements/presentation/pages/announcements_page.dart';
 import '../../features/announcements/presentation/pages/announcement_detail_page.dart';
@@ -194,6 +195,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           final id = state.pathParameters['id']!;
           final conv = state.extra as ConversationEntity?;
           return ChatPage(conversationId: id, conversation: conv);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.groupInfo,
+        builder: (context, state) {
+          final id = state.pathParameters['id']!;
+          return GroupInfoPage(conversationId: id);
         },
       ),
       GoRoute(

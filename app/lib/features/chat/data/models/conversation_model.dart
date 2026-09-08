@@ -14,6 +14,9 @@ class ConversationModel {
       id: json['id'] as String,
       tipo: json['tipo'] as String? ?? 'individual',
       nome: json['nome'] as String?,
+      descricao: json['descricao'] as String?,
+      fotoUrl: json['fotoUrl'] as String?,
+      criadoPor: json['criadoPor'] as String?,
       participantes: members,
       lastMessage: lastMsgJson != null ? _lastMessageFromJson(lastMsgJson) : null,
       unreadCount: json['unreadCount'] as int? ?? 0,
@@ -33,6 +36,7 @@ class ConversationModel {
       cargo: user['cargo'] as String? ?? j['cargo'] as String? ?? '',
       setorNome: setor?['nome'] as String? ?? user['setorNome'] as String? ?? j['setorNome'] as String? ?? '',
       hierarquiaNivel: user['hierarquiaNivel'] as int? ?? j['hierarquiaNivel'] as int? ?? 4,
+      isAdmin: j['isAdmin'] as bool? ?? user['isAdmin'] as bool? ?? false,
     );
   }
 

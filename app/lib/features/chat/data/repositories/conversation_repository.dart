@@ -47,6 +47,87 @@ class ConversationRepository {
     }
   }
 
+  /// GET /api/conversations/:id — obter detalhes de uma conversa ou grupo
+  Future<ConversationEntity> getConversation(String conversationId) async {
+    try {
+      final response = await _http.get('/conversations/$conversationId');
+      return ConversationModel.fromJson(
+          response.data['data'] as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  /// PATCH /api/conversations/:id — atualizar nome, descrição ou foto do grupo
+  Future<void> updateGroup(
+    String conversationId, {
+    String? nome,
+    String? descricao,
+    String? fotoUrl,
+  }) async {
+    try {
+      await _http.patch('/conversations/$conversationId', data: {
+        if (nome != null) 'nome': nome,
+        if (descricao != null) 'descricao': descricao,
+        if (fotoUrl != null) 'fotoUrl': fotoUrl,
+      });
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  /// POST /api/conversations/:id/members — adicionar participantes ao grupo
+  Future<void> addGroupMembers(
+    String conversationId,
+    List<String> userIds,
+  ) async {
+    try {
+      await _http.post(
+        '/conversations/$conversationId/members',
+        data: {'userIds': userIds},
+      );
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  /// DELETE /api/conversations/:id/members/:userId — remover participante ou sair do grupo
+  Future<void> removeGroupMember(
+    String conversationId,
+    String userId,
+  ) async {
+    try {
+      await _http.delete('/conversations/$conversationId/members/$userId');
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  /// PATCH /api/conversations/:id/members/:userId/role — promover ou rebaixar admin
+  Future<void> updateMemberRole(
+    String conversationId,
+    String userId,
+    bool isAdmin,
+  ) async {
+    try {
+      await _http.patch(
+        '/conversations/$conversationId/members/$userId/role',
+        data: {'isAdmin': isAdmin},
+      );
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  /// DELETE /api/conversations/:id — excluir grupo (criador ou direção)
+  Future<void> deleteGroup(String conversationId) async {
+    try {
+      await _http.delete('/conversations/$conversationId');
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
   // ─── Mensagens ────────────────────────────────────────────────────────────
 
   /// GET /api/conversations/:id/messages

@@ -166,7 +166,9 @@ class _ChatPageState extends ConsumerState<ChatPage> {
       ),
       title: InkWell(
         onTap: () {
-          if (!isGroup) {
+          if (isGroup) {
+            context.push('/chat/${widget.conversationId}/info');
+          } else {
             final otherMember = conv?.participantes
                 .where((p) => p.id != currentUserId)
                 .firstOrNull ?? conv?.participantes.firstOrNull;
@@ -179,48 +181,54 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
           child: Row(
-          children: [
-            ConversationAvatar(
-              name: displayName,
-              photoUrl: photoUrl,
-              isGroup: isGroup,
-              size: 38,
-              showOnline: !isGroup,
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    displayName,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (subtitle.isNotEmpty)
+            children: [
+              ConversationAvatar(
+                name: displayName,
+                photoUrl: photoUrl,
+                isGroup: isGroup,
+                size: 38,
+                showOnline: !isGroup,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                     Text(
-                      subtitle,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.8),
-                        fontSize: 12,
-                        fontWeight: FontWeight.w400,
+                      displayName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                ],
+                    if (subtitle.isNotEmpty)
+                      Text(
+                        subtitle,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.8),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w400,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ),
       actions: [
+        if (isGroup)
+          IconButton(
+            icon: const Icon(Icons.info_outline),
+            tooltip: 'Dados do grupo',
+            onPressed: () => context.push('/chat/${widget.conversationId}/info'),
+          ),
         IconButton(
           icon: const Icon(Icons.call_outlined),
           onPressed: () {},
@@ -228,11 +236,17 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         ),
         PopupMenuButton<String>(
           icon: const Icon(Icons.more_vert),
-          onSelected: (v) {},
-          itemBuilder: (_) => const [
-            PopupMenuItem(value: 'pesquisar', child: Text('Pesquisar')),
-            PopupMenuItem(value: 'silenciar', child: Text('Silenciar')),
-            PopupMenuItem(value: 'limpar', child: Text('Limpar conversa')),
+          onSelected: (v) {
+            if (v == 'info') {
+              context.push('/chat/${widget.conversationId}/info');
+            }
+          },
+          itemBuilder: (_) => [
+            if (isGroup)
+              const PopupMenuItem(value: 'info', child: Text('Dados do grupo')),
+            const PopupMenuItem(value: 'pesquisar', child: Text('Pesquisar')),
+            const PopupMenuItem(value: 'silenciar', child: Text('Silenciar')),
+            const PopupMenuItem(value: 'limpar', child: Text('Limpar conversa')),
           ],
         ),
       ],

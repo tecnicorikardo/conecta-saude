@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Apresentação Executiva - Conecta Saúde SUS</title>
+  <style>
+    :root {
+      --primary: #0b57d0;
+      --primary-dark: #0842a0;
+      --primary-light: #d3e3fd;
+      --accent: #00875a;
+      --danger: #d93025;
+      --warning: #f29900;
+      --bg-dark: #0b1526;
+      --card-bg: #ffffff;
+      --text-dark: #1f1f1f;
+      --text-muted: #575e71;
+      --border: #e0e3e7;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-dark);
+      overflow: hidden;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Barra de Progresso Superior */
+    .progress-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 5px;
+      background: linear-gradient(90deg, #00875a, #0b57d0);
+      width: 10%;
+      transition: width 0.3s ease;
+      z-index: 100;
+    }
+
+    /* Container do Slide (16:9) */
+    .slide-viewport {
+      width: 92vw;
+      max-width: 1280px;
+      height: 82vh;
+      max-height: 720px;
+      background: #f8fafc;
+      border-radius: 16px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .slide {
+      display: none !important;
+      width: 100%;
+      height: 100%;
+      padding: 40px 50px;
+      flex-direction: column;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .slide.active {
+      display: flex !important;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Cabeçalho do Slide */
+    .slide-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 24px;
+      border-bottom: 2px solid #eef2f6;
+      padding-bottom: 14px;
+    }
+
+    .slide-tag {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--primary);
+      background: var(--primary-light);
+      padding: 4px 10px;
+      border-radius: 20px;
+      margin-bottom: 6px;
+    }
+
+    .slide-title {
+      font-size: 28px;
+      font-weight: 800;
+      color: #0d2137;
+    }
+
+    .slide-subtitle {
+      font-size: 15px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .sus-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #e8f0fe;
+      padding: 6px 14px;
+      border-radius: 30px;
+      font-weight: 700;
+      color: #1967d2;
+      font-size: 13px;
+    }
+
+    /* Conteúdo Principal do Slide */
+    .slide-body {
+      flex: 1;
+      display: flex;
+      gap: 32px;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    .col-left {
+      flex: 1.1;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .col-right {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100%;
+    }
+
+    /* Mockup de Imagem */
+    .screen-mockup {
+      width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+      border: 1px solid rgba(0,0,0,0.08);
+      background: #fff;
+    }
+
+    /* Cards de Recursos */
+    .feature-card {
+      background: #ffffff;
+      border-left: 4px solid var(--primary);
+      padding: 14px 18px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      border-top: 1px solid #edf2f7;
+      border-right: 1px solid #edf2f7;
+      border-bottom: 1px solid #edf2f7;
+    }
+
+    .feature-card.danger {
+      border-left-color: var(--danger);
+    }
+
+    .feature-card.success {
+      border-left-color: var(--accent);
+    }
+
+    .feature-card h4 {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0d2137;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .feature-card p {
+      font-size: 13.5px;
+      color: #4a5568;
+      margin-top: 4px;
+      line-height: 1.4;
+    }
+
+    /* Tabela Comparativa (WhatsApp vs Conecta Saúde) */
+    .comp-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13.5px;
+      background: #fff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .comp-table th {
+      padding: 10px 14px;
+      background: #f1f5f9;
+      text-align: left;
+      font-weight: 700;
+      color: #334155;
+    }
+
+    .comp-table td {
+      padding: 10px 14px;
+      border-top: 1px solid #e2e8f0;
+    }
+
+    .comp-bad {
+      color: var(--danger);
+      font-weight: 600;
+    }
+
+    .comp-good {
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    /* Barra de Navegação Inferior */
+    .controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 92vw;
+      max-width: 1280px;
+      margin-top: 14px;
+      color: #cbd5e1;
+      font-size: 14px;
+    }
+
+    .nav-btn {
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      padding: 8px 18px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .nav-btn:hover {
+      background: var(--primary);
+      border-color: var(--primary);
+      transform: translateY(-1px);
+    }
+
+    .slide-dots {
+      display: flex;
+      gap: 6px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.2);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .dot.active {
+      background: var(--primary-light);
+      width: 24px;
+      border-radius: 12px;
+    }
+
+    /* Painel do Apresentador (Notas do Orador) */
+    .speaker-notes {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: #0d1b2a;
+      color: #e2e8f0;
+      border-top: 2px solid #00875a;
+      padding: 16px 40px;
+      transform: translateY(100%);
+      transition: transform 0.3s ease;
+      z-index: 90;
+      box-shadow: 0 -10px 25px rgba(0,0,0,0.5);
+    }
+
+    .speaker-notes.open {
+      transform: translateY(0);
+    }
+
+    .notes-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      color: #00c853;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .notes-content {
+      font-size: 15px;
+      line-height: 1.5;
+      color: #f1f5f9;
+      font-style: italic;
+    }
+
+    /* Slide de Capa Especial */
+    .cover-slide {
+      background: linear-gradient(135deg, #0d2137 0%, #0842a0 100%);
+      color: #fff;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      padding: 60px;
+      position: relative;
+    }
+
+    .cover-title {
+      font-size: 48px;
+      font-weight: 900;
+      letter-spacing: -1px;
+      margin-top: 15px;
+      color: #ffffff;
+    }
+
+    .cover-subtitle {
+      font-size: 20px;
+      color: #c2e7ff;
+      max-width: 650px;
+      margin-top: 10px;
+      line-height: 1.4;
+    }
+
+    .cover-pills {
+      display: flex;
+      gap: 12px;
+      margin-top: 30px;
+    }
+
+    .pill {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(8px);
+      padding: 8px 18px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Barra de Progresso Superior -->
+  <div class="progress-bar" id="progressBar"></div>
+
+  <!-- Janela de Apresentação (16:9) -->
+  <div class="slide-viewport">
+
+    <!-- SLIDE 1: Capa -->
+    <div class="slide cover-slide active" data-slide="1" data-notes="Boa tarde a todos. Apresento o Conecta Saúde, uma plataforma desenvolvida sob medida para resolver o maior gargalo operacional do hospital: a comunicação interna entre plantonistas, enfermagem e direção, com total conformidade jurídica e segurança do SUS.">
+      <div style="background: white; padding: 12px 24px; border-radius: 12px; display: inline-flex; align-items: center; gap: 10px;">
+        <span style="color: #0b57d0; font-size: 24px; font-weight: 900;">+</span>
+        <span style="color: #0d2137; font-size: 18px; font-weight: 800; letter-spacing: 0.5px;">SUS • SISTEMA ÚNICO DE SAÚDE</span>
+      </div>
+      <h1 class="cover-title">CONECTA SAÚDE</h1>
+      <p class="cover-subtitle">Sistema Integrado de Comunicação Institucional, Gestão de Plantões e Emergências Hospitalares</p>
+      
+      <div class="cover-pills">
+        <div class="pill">🔒 100% Adequado à LGPD</div>
+        <div class="pill">⚡ Código Azul / PCR Instantâneo</div>
+        <div class="pill">🎙️ Áudios com Equalizador 2x</div>
+        <div class="pill">🏥 Hierarquia SUS 4 Níveis</div>
+      </div>
+    </div>
+
+    <!-- SLIDE 2: O Problema do WhatsApp -->
+    <div class="slide" data-slide="2" data-notes="Hoje 90% dos hospitais usam WhatsApp informalmente. Mas o risco é imenso: dados de pacientes em celulares pessoais geram multas pesadas da LGPD, qualquer um manda mensagens fora de hora sem hierarquia, e recados críticos se perdem em conversas de família.">
+      <div class="slide-header">
+        <div>
+          <span class="slide-tag">Diagnóstico do Setor</span>
+          <h2 class="slide-title">O Risco da Comunicação Informal no Hospital</h2>
+          <p class="slide-subtitle">Por que o uso do WhatsApp pessoal é uma ameaça jurídica e assistencial</p>
+        </div>
+        <div class="sus-badge">⚠️ Análise de Riscos</div>
+      </div>
+      <div class="slide-body">
+        <div class="col-left">
+          <table class="comp-table">
+            <thead>
+              <tr>
+                <th>Ponto Crítico</th>
+                <th>WhatsApp Informal</th>
+                <th>Conecta Saúde</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Proteção de Dados (LGPD)</strong></td>
+                <td class="comp-bad">❌ Fotos e nomes de pacientes em celulares pessoais</td>
+                <td class="comp-good">✅ Ambiente institucional e blindado na nuvem</td>
+              </tr>
+              <tr>
+                <td><strong>Hierarquia e Governança</strong></td>
+                <td class="comp-bad">❌ Sem controle: qualquer um cria grupos e dispara textos</td>
+                <td class="comp-good">✅ 4 Níveis oficiais (Direção até Operacional)</td>
+              </tr>
+              <tr>
+                <td><strong>Emergência / Código Azul</strong></td>
+                <td class="comp-bad">❌ Mensagens soterradas por piadas e conversas pessoais</td>
+                <td class="comp-good">✅ Alerta vermelho em 1 clique com leito e setor</td>
+              </tr>
+              <tr>
+                <td><strong>Rastreabilidade Jurídica</strong></td>
+                <td class="comp-bad">❌ Mensagens apagadas ('apagar para todos') sem log</td>
+                <td class="comp-good">✅ Trilha de auditoria imutável com hora e autor</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="col-right">
+          <div class="feature-card danger" style="width: 100%;">
+            <h4>🚨 Vulnerabilidade Institucional</h4>
+            <p>Em caso de processo judicial ou auditoria do Ministério da Saúde, o hospital não tem como auditar conversas feitas em aplicativos pessoais de colaboradores.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 3: A Solução Conecta Saúde -->
+    <div class="slide" data-slide="3" data-notes="O Conecta Saúde é a resposta definitiva: criamos uma rede institucional própria, onde cada médico, enfermeiro e coordenador entra com seu e-mail funcional e vê exatamente o que seu cargo permite.">
+      <div class="slide-header">
+        <div>
+          <span class="slide-tag">A Plataforma</span>
+          <h2 class="slide-title">Ambiente Oficial, Rápido e Seguro</h2>
+          <p class="slide-subtitle">Acesso restrito, credenciais funcionais e monitoramento de ponta a ponta</p>
+        </div>
+        <div class="sus-badge">🛡️ Ambiente Protegido</div>
+      </div>
+      <div class="slide-body">
+        <div class="col-left">
+          <div class="feature-card">
+            <h4>🔐 Acesso Institucional SUS</h4>
+            <p>Login seguro com e-mail corporativo. Bloqueio instantâneo de colaboradores desligados ou em férias.</p>
+          </div>
+          <div class="feature-card success">
+            <h4>🩺 Foco Total no Paciente</h4>
+            <p>Sem distrações de conversas pessoais, grupos externos ou notificações de redes sociais durante o plantão.</p>
+          </div>
+          <div class="feature-card">
+            <h4>💻 Sem Instalações Pesadas</h4>
+            <p>Roda direto no navegador dos computadores dos postos e também em aplicativo no celular dos médicos.</p>
+          </div>
+        </div>
+        <div class="col-right">
+          <img src="./apresentacao_assets/01_login.png" class="screen-mockup" alt="Tela de Login">
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: Hierarquia SUS -->
+    <div class="slide" data-slide="4" data-notes="Organizamos o hospital em 4 níveis estritos de hierarquia SUS. Um técnico de enfermagem do nível 4 não pode disparar comunicados para o hospital inteiro, enquanto a Direção Geral no nível 1 tem acesso aos relatórios executivos e auditoria plena.">
+      <div class="slide-header">
+        <div>
+          <span class="slide-tag">Organograma</span>
+          <h2 class="slide-title">Governança em 4 Níveis Hierárquicos SUS</h2>
+          <p class="slide-subtitle">Controle de acesso rigoroso que respeita as funções de cada profissional</p>
+        </div>
+        <div class="sus-badge">🏥 Estrutura Oficial</div>
+      </div>
+      <div class="slide-body">
+        <div class="col-left">
+          <div class="feature-card" style="border-left-color: #7b1fa2;">
+            <h4>👑 Nível 1 • Direção Geral</h4>
+            <p>Visão global, comunicados gerais com confirmação de leitura, relatórios executivos e auditoria.</p>
+          </div>
+          <div class="feature-card" style="border-left-color: #0b57d0;">
+            <h4>📋 Nível 2 • Coordenação Médica & Enfermagem</h4>
+            <p>Gestão setorial (UTI, CCO, Pronto-Socorro), moderação de canais e aprovação de escalas.</p>
+          </div>
+          <div class="feature-card" style="border-left-color: #0288d1;">
+            <h4>🔍 Nível 3 • Supervisão de Setor</h4>
+            <p>Acompanhamento operacional direto e apoio técnico na passagem de plantão.</p>
+          </div>
+          <div class="feature-card" style="border-left-color: #00875a;">
+            <h4>🩺 Nível 4 • Equipe Assistencial / Operacional</h4>
+            <p>Chat setorial, recebimento de alertas de emergência e mensagens de serviço.</p>
+          </div>
+        </div>
+        <div class="col-right">
+          <img src="./apresentacao_assets/02_home.png" class="screen-mockup" alt="Dashboard Home">
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 5: Chat com Equalizador de Áudio -->
+    <div class="slide" data-slide="5" data-notes="Médicos não têm tempo para digitações longas em emergências. Por isso construímos áudios instantâneos com visual moderno de ondas sonoras e botão de velocidade 2x, idêntico ao WhatsApp, facilitando a adesão imediata de toda a equipe médica.">
+      <div class="slide-header">
+        <div>
+          <span class="slide-tag">Comunicação Ágil</span>
+          <h2 class="slide-title">Chat Institucional com Áudios Inteligentes</h2>
+          <p class="slide-subtitle">Experiência que a equipe já domina, com equalizador de som e acelerador 2x</p>
+        </div>
+        <div class="sus-badge">🎙️ Equalizador 2x</div>
+      </div>
+      <div class="slide-body">
+        <div class="col-left">
+          <div class="feature-card success">
+            <h4>🌊 Equalizador de Ondas Sonoras (Waveform)</h4>
+            <p>Visual moderno com 32 barras dinâmicas. O médico sabe visualmente a duração e o ritmo do áudio antes de ouvir.</p>
+          </div>
+          <div class="feature-card">
+            <h4>⚡ Acelerador de Velocidade (1.5x e 2x)</h4>
+            <p>Economiza tempo precioso dos plantonistas para ouvir instruções clínicas longas rapidamente.</p>
+          </div>
+          <div class="feature-card">
+            <h4>👆 Navegação por Toque e Arraste</h4>
+            <p>Basta tocar em qualquer ponto da onda sonora para pular diretamente para a informação desejada.</p>
+          </div>
+        </div>
+        <div class="col-right">
+          <img src="./apresentacao_assets/06_chat_audio.png" class="screen-mockup" alt="Chat e Áudio">
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 6: Módulo de Emergência Código Azul -->
+    <div class="slide" data-slide="6" data-notes="Em paradas cardíacas, segundos salvam vidas. O botão de Código Azul / PCR envia um alarme prioritário com leito e setor em dois cliques, notificando toda a equipe de resposta rápida e gravando o horário do atendimento.">
+      <div class="slide-header">
+        <div>
+          <span class="slide-tag">Protocolo Crítico</span>
+          <h2 class="slide-title">Módulo de Emergência: Código Azul / PCR</h2>
+          <p class="slide-subtitle">Alarme sonoro e visual imediato para equipes de resposta rápida</p>
+        </div>
+        <div class="sus-badge" style="background: #fce8e6; color: #c5221f;">🚨 Prioridade Máxima</div>
+      </div>
+      <div class="slide-body">
+        <div class="col-left">
+          <div class="feature-card danger">
+            <h4>🔴 Disparo em 2 Toques</h4>
+            <p>Basta selecionar o setor e o leito (ex: Leito 04 - UTI Geral). O alerta sobrepõe qualquer outra tela.</p>
+          </div>
+          <div class="feature-card">
+            <h4>⏱️ Cronômetro do Protocolo</h4>
+            <p>Registra o momento exato do acionamento e o tempo até a chegada do primeiro socorrista.</p>
+          </div>
+          <div class="feature-card success">
+            <h4>📝 Encerramento com Responsável</h4>
+            <p>Exige identificação do médico que assumiu a parada cardíaca, gerando registro formal para prontuário.</p>
+          </div>
+        </div>
+        <div class="col-right">
+          <div style="background: #fff; padding: 24px; border-radius: 12px; border: 2px solid #ea4335; box-shadow: 0 10px 30px rgba(234,67,53,0.2); text-align: center; width: 100%;">
+            <div style="font-size: 40px; margin-bottom: 10px;">🚨</div>
+            <h3 style="color: #c5221f; font-size: 20px; font-weight: 800;">ALERTA CÓDIGO AZUL (PCR)</h3>
+            <p style="color: #5f6368; margin-top: 6px; font-size: 14px;"><strong>Local:</strong> UTI Adulto • Leito 03</p>
+            <p style="color: #5f6368; font-size: 13px;">Equipe de reanimação acionada há <strong>18 segundos</strong></p>
+            <div style="background: #e8f0fe; color: #1967d2; padding: 8px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; margin-top: 15px;">
+              STATUS: EM ATENDIMENTO
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 7: Canais Setoriais & Passagem de Plantão -->
+    <div class="slide" data-slide="7" data-notes="Para evitar que assuntos de farmácia misturem com centro cirúrgico, o sistema conta com Canais Oficiais por Setor. A passagem de plantão fica documentada e o histórico permanece para os próximos médicos.">
+      <div class="slide-header">
+        <div>
+          <span class="slide-tag">Organização Setorial</span>
+          <h2 class="slide-title">Canais Oficiais por Setor Hospitalar</h2>
+          <p class="slide-subtitle">Fim dos grupos caóticos: cada equipe em seu espaço de trabalho</p>
+        </div>
+        <div class="sus-badge">🏢 Setores SUS</div>
+      </div>
+      <div class="slide-body">
+        <div class="col-left">
+          <div class="feature-card">
+            <h4>🏥 Salas Virtuais por Especialidade</h4>
+            <p>Canais dedicados para <strong>UTI, Centro Cirúrgico, Farmácia, CCO e Triagem</strong>.</p>
+          </div>
+          <div class="feature-card success">
+            <h4>🔄 Passagem de Plantão Estruturada</h4>
+            <p>O médico que chega às 19h lê o histórico do plantão anterior sem depender de repasses informais.</p>
+          </div>
+          <div class="feature-card">
+            <h4>📢 Moderação por Coordenadores</h4>
+            <p>Apenas coordenadores do setor podem fixar avisos importantes e aprovar tópicos oficiais.</p>
+          </div>
+        </div>
+        <div class="col-right">
+          <img src="./apresentacao_assets/04_canais.png" class="screen-mockup" alt="Canais Setoriais">
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 8: Comunicados da Direção & Auditoria -->
+    <div class="slide" data-slide="8" data-notes="A Direção Geral ganha um canal direto para enviar comunicados com confirmação de leitura obrigatória. Se a diretoria publica uma portaria ou protocolo de isolamento, ela sabe na hora quantos funcionários visualizaram o documento.">
+      <div class="slide-header">
+        <div>
+          <span class="slide-tag">Gestão & Auditoria</span>
+          <h2 class="slide-title">Comunicados com Confirmação de Leitura</h2>
+          <p class="slide-subtitle">Garantia jurídica de que as instruções da diretoria foram recebidas</p>
+        </div>
+        <div class="sus-badge">📜 Segurança Jurídica</div>
+      </div>
+      <div class="slide-body">
+        <div class="col-left">
+          <div class="feature-card">
+            <h4>📌 Avisos Fixos no Topo</h4>
+            <p>Novos protocolos sanitários, escalas de feriado e portarias não se perdem no fluxo de chat.</p>
+          </div>
+          <div class="feature-card success">
+            <h4>👁️ Auditoria de Visualização</h4>
+            <p>A diretoria visualiza a lista com nome, cargo e hora exata em que cada colaborador leu o comunicado.</p>
+          </div>
+          <div class="feature-card">
+            <h4>🔒 Logs Imutáveis</h4>
+            <p>Qualquer ação crítica fica gravada no PostgreSQL para relatórios de auditoria interna e externa.</p>
+          </div>
+        </div>
+        <div class="col-right">
+          <img src="./apresentacao_assets/05_comunicados.png" class="screen-mockup" alt="Comunicados Oficiais">
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 9: Tecnologia & Segurança -->
+    <div class="slide" data-slide="9" data-notes="A tecnologia do Conecta Saúde foi submetida a baterias rigorosas de testes automatizados com Playwright e Vitest, com 100% de aprovação. Roda em nuvem de alta disponibilidade, criptografado e sem pesar nos computadores antigos dos postos.">
+      <div class="slide-header">
+        <div>
+          <span class="slide-tag">Infraestrutura TI</span>
+          <h2 class="slide-title">Arquitetura Moderna, Nuvem e Alta Disponibilidade</h2>
+          <p class="slide-subtitle">Desenvolvido com tecnologia de ponta para garantir operação 24/7 sem interrupções</p>
+        </div>
+        <div class="sus-badge">⚡ 100% Testado</div>
+      </div>
+      <div class="slide-body">
+        <div class="col-left">
+          <div class="feature-card">
+            <h4>🌐 Multiplataforma Total</h4>
+            <p>Acesso instantâneo via Web/PWA em computadores e aplicativo móvel Android para equipes volantes.</p>
+          </div>
+          <div class="feature-card success">
+            <h4>🔒 Criptografia em Trânsito (TLS 1.3 / HTTPS)</h4>
+            <p>Nenhuma comunicação trafega sem criptografia, blindando o hospital contra espionagem no Wi-Fi.</p>
+          </div>
+          <div class="feature-card">
+            <h4>🧪 Homologação e Qualidade Técnica</h4>
+            <p>Bateria completa de testes automatizados com <strong>Vitest</strong> e <strong>Playwright E2E</strong> validando 100% dos fluxos.</p>
+          </div>
+        </div>
+        <div class="col-right">
+          <div style="background: #fff; padding: 22px; border-radius: 12px; border: 1px solid #e2e8f0; width: 100%; box-shadow: 0 4px 12px rgba(0,0,0,0.06);">
+            <h4 style="color: #0b57d0; font-size: 15px; margin-bottom: 12px;">📊 Métricas de Homologação</h4>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div style="background: #f8fafc; padding: 12px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 24px; font-weight: 800; color: #00875a;">100%</div>
+                <div style="font-size: 11px; color: #64748b; font-weight: 600;">TESTES UNITÁRIOS</div>
+              </div>
+              <div style="background: #f8fafc; padding: 12px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 24px; font-weight: 800; color: #00875a;">0</div>
+                <div style="font-size: 11px; color: #64748b; font-weight: 600;">FALHAS DE BACKEND</div>
+              </div>
+              <div style="background: #f8fafc; padding: 12px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 24px; font-weight: 800; color: #0b57d0;">15MB</div>
+                <div style="font-size: 11px; color: #64748b; font-weight: 600;">SUPORTE A ÁUDIO</div>
+              </div>
+              <div style="background: #f8fafc; padding: 12px; border-radius: 8px; text-align: center;">
+                <div style="font-size: 24px; font-weight: 800; color: #0b57d0;">24/7</div>
+                <div style="font-size: 11px; color: #64748b; font-weight: 600;">DISPONIBILIDADE NUVEM</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 10: Conclusão & Proposta Piloto -->
+    <div class="slide cover-slide" data-slide="10" data-notes="Para fechar, nossa proposta não é mudar a rotina do hospital de uma vez, mas sim iniciar um projeto piloto de 15 a 30 dias em 2 setores críticos (como CCO e Emergência). Assim a diretoria comprova na prática o ganho de eficiência sem nenhum risco. Muito obrigado!">
+      <div class="sus-badge" style="background: rgba(255,255,255,0.2); color: #fff; margin-bottom: 12px;">🚀 Próximo Passo</div>
+      <h2 style="font-size: 38px; font-weight: 800; color: #fff;">Modernize a Comunicação da Sua Unidade</h2>
+      <p style="color: #c2e7ff; font-size: 17px; max-width: 600px; margin-top: 10px;">Proposta de Implantação e Projeto Piloto</p>
+
+      <div style="display: flex; gap: 20px; margin-top: 30px; text-align: left; max-width: 800px;">
+        <div style="background: rgba(255,255,255,0.1); padding: 18px; border-radius: 12px; flex: 1; border: 1px solid rgba(255,255,255,0.2);">
+          <div style="color: #4ade80; font-weight: 800; font-size: 16px;">Fase 1 • Piloto (15 a 30 dias)</div>
+          <div style="color: #e2e8f0; font-size: 13px; margin-top: 6px;">Implantação em 2 setores de alto fluxo (Ex: CCO e UTI/Emergência) para validação prática.</div>
+        </div>
+        <div style="background: rgba(255,255,255,0.1); padding: 18px; border-radius: 12px; flex: 1; border: 1px solid rgba(255,255,255,0.2);">
+          <div style="color: #60a5fa; font-weight: 800; font-size: 16px;">Fase 2 • Expansão</div>
+          <div style="color: #e2e8f0; font-size: 13px; margin-top: 6px;">Treinamento das coordenações e ativação de todos os postos de enfermagem e farmácia.</div>
+        </div>
+      </div>
+
+      <div style="margin-top: 35px;">
+        <a href="https://conecta-hospital.web.app" target="_blank" style="background: #00875a; color: #fff; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-weight: 700; font-size: 15px; display: inline-flex; align-items: center; gap: 8px; box-shadow: 0 4px 15px rgba(0,135,90,0.4);">
+          ▶️ Abrir Demonstração ao Vivo
+        </a>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Barra de Controles e Navegação -->
+  <div class="controls">
+    <button class="nav-btn" onclick="prevSlide()">◀ Anterior</button>
+
+    <div class="slide-dots" id="slideDots"></div>
+
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span id="slideCounter" style="font-weight: 600;">1 / 10</span>
+      <button class="nav-btn" onclick="toggleNotes()" title="Mostrar o que falar neste slide">🎙️ O que Falar</button>
+      <button class="nav-btn" onclick="toggleFullScreen()" title="Modo Tela Cheia">⛶ Tela Cheia</button>
+      <button class="nav-btn" style="background: #00875a; border-color: #00875a;" onclick="nextSlide()">Próximo ▶</button>
+    </div>
+  </div>
+
+  <!-- Painel Retrátil: O que Falar (Notas do Orador) -->
+  <div class="speaker-notes" id="speakerNotes">
+    <div class="notes-header">
+      <span>🎙️ Roteiro do Apresentador (O que falar neste slide)</span>
+      <button onclick="toggleNotes()" style="background: transparent; border: none; color: #94a3b8; cursor: pointer; font-size: 14px;">✕ Fechar</button>
+    </div>
+    <div class="notes-content" id="notesContent">
+      Carregando anotações...
+    </div>
+  </div>
+
+  <!-- Script de Navegação 100% Offline -->
+  <script>
+    let currentSlide = 1;
+    const totalSlides = 10;
+    const slides = document.querySelectorAll('.slide');
+    const progressBar = document.getElementById('progressBar');
+    const slideCounter = document.getElementById('slideCounter');
+    const slideDotsContainer = document.getElementById('slideDots');
+    const speakerNotes = document.getElementById('speakerNotes');
+    const notesContent = document.getElementById('notesContent');
+
+    // Inicializa os indicadores de bolinhas
+    for (let i = 1; i <= totalSlides; i++) {
+      const dot = document.createElement('div');
+      dot.className = `dot ${i === 1 ? 'active' : ''}`;
+      dot.onclick = () => goToSlide(i);
+      slideDotsContainer.appendChild(dot);
+    }
+
+    function updateSlide() {
+      slides.forEach((s, idx) => {
+        s.classList.toggle('active', idx + 1 === currentSlide);
+      });
+
+      // Atualiza dots
+      const dots = document.querySelectorAll('.dot');
+      dots.forEach((d, idx) => {
+        d.classList.toggle('active', idx + 1 === currentSlide);
+      });
+
+      // Atualiza contador e progresso
+      slideCounter.textContent = `${currentSlide} / ${totalSlides}`;
+      progressBar.style.width = `${(currentSlide / totalSlides) * 100}%`;
+
+      // Atualiza notas do orador
+      const activeSlideEl = document.querySelector(`.slide[data-slide="${currentSlide}"]`);
+      if (activeSlideEl) {
+        notesContent.textContent = activeSlideEl.getAttribute('data-notes') || 'Sem notas para este slide.';
+      }
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides) {
+        currentSlide++;
+        updateSlide();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 1) {
+        currentSlide--;
+        updateSlide();
+      }
+    }
+
+    function goToSlide(num) {
+      if (num >= 1 && num <= totalSlides) {
+        currentSlide = num;
+        updateSlide();
+      }
+    }
+
+    function toggleNotes() {
+      speakerNotes.classList.toggle('open');
+    }
+
+    function toggleFullScreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+      }
+    }
+
+    // Atalhos de teclado (Setas, Espaço, Letra N para notas, F para tela cheia)
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+        e.preventDefault();
+        nextSlide();
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp' || e.key === 'Backspace') {
+        e.preventDefault();
+        prevSlide();
+      } else if (e.key === 'n' || e.key === 'N') {
+        toggleNotes();
+      } else if (e.key === 'f' || e.key === 'F') {
+        toggleFullScreen();
+      } else if (e.key === 'Home') {
+        goToSlide(1);
+      } else if (e.key === 'End') {
+        goToSlide(totalSlides);
+      }
+    });
+
+    // Inicia no slide 1
+    updateSlide();
+  </script>
+</body>
+</html>

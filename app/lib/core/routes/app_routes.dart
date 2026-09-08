@@ -6,6 +6,7 @@ abstract class AppRoutes {
   static const String home = '/home';
   static const String conversations = '/conversations';
   static const String chat = '/chat/:id';
+  static const String groupInfo = '/chat/:id/info';
   static const String channels = '/channels';
   static const String channelDetail = '/channels/:id';
   static const String announcements = '/announcements';
