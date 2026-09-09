@@ -22,11 +22,181 @@ class _ConversationsPageState extends ConsumerState<ConversationsPage>
   final _searchController = TextEditingController();
   bool _isSearching = false;
   String _searchQuery = '';
+  int _selectedFilterTab = 0; // 0: Todas, 1: Diretas, 2: Grupos
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  Widget _buildFilterTabs(List<ConversationEntity> allConvs) {
+    final directCount = allConvs.where((c) => !c.isGroup).length;
+    final groupCount = allConvs.where((c) => c.isGroup).length;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).brightness == Brightness.dark
+            ? AppColors.darkSurface
+            : Colors.white,
+        border: Border(
+          bottom: BorderSide(
+            color: Theme.of(context).brightness == Brightness.dark
+                ? Colors.white12
+                : Colors.black.withValues(alpha: 0.06),
+          ),
+        ),
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            _filterChip(label: 'Todas', count: allConvs.length, index: 0),
+            const SizedBox(width: 8),
+            _filterChip(label: 'Diretas', count: directCount, index: 1),
+            const SizedBox(width: 8),
+            _filterChip(label: 'Grupos', count: groupCount, index: 2, isGroupTag: true),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _filterChip({required String label, required int count, required int index, bool isGroupTag = false}) {
+    final isSelected = _selectedFilterTab == index;
+    return ChoiceChip(
+      label: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (isGroupTag) ...[
+            Icon(Icons.groups, size: 14, color: isSelected ? Colors.white : AppColors.primary),
+            const SizedBox(width: 4),
+          ],
+          Text('$label ($count)'),
+        ],
+      ),
+      selected: isSelected,
+      selectedColor: AppColors.primary,
+      backgroundColor: Colors.transparent,
+      labelStyle: TextStyle(
+        color: isSelected ? Colors.white : AppColors.neutral700,
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+        fontSize: 12,
+      ),
+      onSelected: (_) => setState(() => _selectedFilterTab = index),
+    );
+  }
+
+  void _showConversationActions(ConversationEntity conv) {
+    final isGroup = conv.isGroup;
+    final displayName = conv.displayName(ref.read(currentUserIdProvider));
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 36,
+              height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              child: Text(
+                displayName,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.cleaning_services_outlined, color: Colors.amber),
+              title: const Text('Limpar conversa'),
+              subtitle: const Text('Apaga todas as mensagens do histórico'),
+              onTap: () async {
+                Navigator.pop(ctx);
+                final messenger = ScaffoldMessenger.of(context);
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (dCtx) => AlertDialog(
+                    title: const Text('Limpar conversa?'),
+                    content: Text('Deseja apagar todas as mensagens de "$displayName"? A conversa será mantida.'),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(dCtx, false), child: const Text('Cancelar')),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.amber.shade700, foregroundColor: Colors.white),
+                        onPressed: () => Navigator.pop(dCtx, true),
+                        child: const Text('Limpar Histórico'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirm == true) {
+                  try {
+                    await ref.read(messagesProvider(conv.id).notifier).clearConversation();
+                    messenger.showSnackBar(
+                      const SnackBar(content: Text('Histórico limpo com sucesso.')),
+                    );
+                  } catch (e) {
+                    messenger.showSnackBar(
+                      SnackBar(content: Text('Erro: $e')),
+                    );
+                  }
+                }
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline, color: Colors.red),
+              title: Text(isGroup ? 'Sair e excluir grupo' : 'Excluir conversa', style: const TextStyle(color: Colors.red)),
+              subtitle: Text(isGroup ? 'Você sairá e o grupo será removido' : 'Remove a conversa da sua lista'),
+              onTap: () async {
+                Navigator.pop(ctx);
+                final messenger = ScaffoldMessenger.of(context);
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (dCtx) => AlertDialog(
+                    title: Text(isGroup ? 'Sair e excluir grupo?' : 'Excluir conversa?'),
+                    content: Text('Deseja realmente excluir "$displayName" e todo o histórico?'),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(dCtx, false), child: const Text('Cancelar')),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                        onPressed: () => Navigator.pop(dCtx, true),
+                        child: const Text('Excluir'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirm == true) {
+                  try {
+                    await ref.read(conversationsProvider.notifier).deleteConversation(conv.id);
+                    messenger.showSnackBar(
+                      const SnackBar(content: Text('Conversa excluída com sucesso.')),
+                    );
+                  } catch (e) {
+                    messenger.showSnackBar(
+                      SnackBar(content: Text('Erro: $e')),
+                    );
+                  }
+                }
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -42,18 +212,31 @@ class _ConversationsPageState extends ConsumerState<ConversationsPage>
           // ─── Barra de busca (quando ativa) ──────────────────────────────
           if (_isSearching) _buildSearchBar(),
 
+          // ─── Abas de filtro: Todas / Diretas / Grupos ─────────────────────
+          conversationsAsync.maybeWhen(
+            data: (conversations) => _buildFilterTabs(conversations),
+            orElse: () => const SizedBox.shrink(),
+          ),
+
           // ─── Lista de conversas ──────────────────────────────────────────
           Expanded(
             child: conversationsAsync.when(
               loading: () => _buildShimmerList(),
               error: (e, _) => _buildError(context),
               data: (conversations) {
-                final filtered = _searchQuery.isEmpty
-                    ? conversations
-                    : conversations.where((c) {
-                        final name = c.displayName(currentUserId).toLowerCase();
-                        return name.contains(_searchQuery.toLowerCase());
-                      }).toList();
+                var filtered = conversations;
+                if (_selectedFilterTab == 1) {
+                  filtered = filtered.where((c) => !c.isGroup).toList();
+                } else if (_selectedFilterTab == 2) {
+                  filtered = filtered.where((c) => c.isGroup).toList();
+                }
+
+                if (_searchQuery.isNotEmpty) {
+                  filtered = filtered.where((c) {
+                    final name = c.displayName(currentUserId).toLowerCase();
+                    return name.contains(_searchQuery.toLowerCase());
+                  }).toList();
+                }
 
                 if (filtered.isEmpty) {
                   return _buildEmpty(context);
@@ -72,6 +255,7 @@ class _ConversationsPageState extends ConsumerState<ConversationsPage>
                           extra: filtered[index],
                         );
                       },
+                      onLongPress: () => _showConversationActions(filtered[index]),
                     );
                   },
                 );
@@ -90,10 +274,10 @@ class _ConversationsPageState extends ConsumerState<ConversationsPage>
               initialChildSize: 0.9,
               maxChildSize: 0.95,
               minChildSize: 0.5,
-              builder: (_, scrollController) => ClipRRect(
-                borderRadius: const BorderRadius.vertical(
+              builder: (_, scrollController) => const ClipRRect(
+                borderRadius: BorderRadius.vertical(
                     top: Radius.circular(20)),
-                child: const NewConversationPage(),
+                child: NewConversationPage(),
               ),
             ),
           );
@@ -141,10 +325,10 @@ class _ConversationsPageState extends ConsumerState<ConversationsPage>
                   initialChildSize: 0.9,
                   maxChildSize: 0.95,
                   minChildSize: 0.5,
-                  builder: (_, __) => ClipRRect(
-                    borderRadius: const BorderRadius.vertical(
+                  builder: (_, __) => const ClipRRect(
+                    borderRadius: BorderRadius.vertical(
                         top: Radius.circular(20)),
-                    child: const NewConversationPage(),
+                    child: NewConversationPage(),
                   ),
                 ),
               );
@@ -200,7 +384,7 @@ class _ConversationsPageState extends ConsumerState<ConversationsPage>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.chat_bubble_outline,
+          const Icon(Icons.chat_bubble_outline,
               size: 64, color: AppColors.neutral400),
           const SizedBox(height: 16),
           Text(
@@ -243,12 +427,14 @@ class _ConversationTile extends StatelessWidget {
   final ConversationEntity conversation;
   final String currentUserId;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
   const _ConversationTile({
     super.key,
     required this.conversation,
     required this.currentUserId,
     required this.onTap,
+    this.onLongPress,
   });
 
   @override
@@ -263,6 +449,7 @@ class _ConversationTile extends StatelessWidget {
 
     return InkWell(
       onTap: onTap,
+      onLongPress: onLongPress,
       child: Container(
         color: isDark ? AppColors.darkSurface : Colors.white,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -282,23 +469,86 @@ class _ConversationTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Nome + horário
+                  // Nome + Destaque Grupo + Auto-exclusão + Horário
                   Row(
                     children: [
                       Expanded(
-                        child: Text(
-                          displayName,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: hasUnread
-                                ? FontWeight.w600
-                                : FontWeight.w500,
-                            color: isDark
-                                ? AppColors.onDarkSurface
-                                : AppColors.neutral900,
-                          ),
+                        child: Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                displayName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: hasUnread
+                                      ? FontWeight.w600
+                                      : FontWeight.w500,
+                                  color: isDark
+                                      ? AppColors.onDarkSurface
+                                      : AppColors.neutral900,
+                                ),
+                              ),
+                            ),
+                            if (isGroup) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE0F2FE),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                      color: const Color(0xFFBAE6FD)),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.groups,
+                                        size: 12, color: Color(0xFF0369A1)),
+                                    const SizedBox(width: 3),
+                                    Text(
+                                      'GRUPO • ${conversation.participantes.length}',
+                                      style: const TextStyle(
+                                        color: Color(0xFF0369A1),
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 10,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                            if (conversation.autoExcluir24h) ...[
+                              const SizedBox(width: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 5, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.amber.shade100,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.timer_outlined,
+                                        size: 11,
+                                        color: Colors.amber.shade900),
+                                    const SizedBox(width: 2),
+                                    Text(
+                                      '24h',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.amber.shade900,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ),
                       if (lastMsg != null)

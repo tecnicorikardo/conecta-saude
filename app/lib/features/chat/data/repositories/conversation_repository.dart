@@ -32,12 +32,16 @@ class ConversationRepository {
   Future<ConversationEntity> createConversation({
     required String tipo, // 'individual' | 'grupo'
     String? nome,
+    String? fotoUrl,
+    bool autoExcluir24h = false,
     required List<String> participantIds,
   }) async {
     try {
       final response = await _http.post('/conversations', data: {
         'tipo': tipo,
         if (nome != null && nome.isNotEmpty) 'nome': nome,
+        if (fotoUrl != null && fotoUrl.isNotEmpty) 'fotoUrl': fotoUrl,
+        'autoExcluir24h': autoExcluir24h,
         'participantIds': participantIds,
       });
       return ConversationModel.fromJson(
@@ -58,18 +62,20 @@ class ConversationRepository {
     }
   }
 
-  /// PATCH /api/conversations/:id — atualizar nome, descrição ou foto do grupo
+  /// PATCH /api/conversations/:id — atualizar nome, descrição, foto ou auto-exclusão
   Future<void> updateGroup(
     String conversationId, {
     String? nome,
     String? descricao,
     String? fotoUrl,
+    bool? autoExcluir24h,
   }) async {
     try {
       await _http.patch('/conversations/$conversationId', data: {
         if (nome != null) 'nome': nome,
         if (descricao != null) 'descricao': descricao,
         if (fotoUrl != null) 'fotoUrl': fotoUrl,
+        if (autoExcluir24h != null) 'autoExcluir24h': autoExcluir24h,
       });
     } on DioException catch (e) {
       throw _handleError(e);
@@ -119,10 +125,21 @@ class ConversationRepository {
     }
   }
 
-  /// DELETE /api/conversations/:id — excluir grupo (criador ou direção)
+  /// DELETE /api/conversations/:id — excluir grupo ou conversa individual
   Future<void> deleteGroup(String conversationId) async {
     try {
       await _http.delete('/conversations/$conversationId');
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+
+  Future<void> deleteConversation(String conversationId) => deleteGroup(conversationId);
+
+  /// POST /api/conversations/:id/clear — limpar histórico de mensagens
+  Future<void> clearConversation(String conversationId) async {
+    try {
+      await _http.post('/conversations/$conversationId/clear');
     } on DioException catch (e) {
       throw _handleError(e);
     }

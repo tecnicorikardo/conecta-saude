@@ -336,8 +336,11 @@ class DatabaseEngine {
   }
 
   public getConversations(actor: User): any[] {
+    const now = Date.now();
+    const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
     const userConvs = this.data.conversations.filter(
-      (c) => c.membroIds && c.membroIds.includes(actor.id)
+      (c) => c.ativo !== false && c.membroIds && c.membroIds.includes(actor.id)
     );
 
     return userConvs.map((conv) => {
@@ -348,8 +351,8 @@ class DatabaseEngine {
       const outroMembroId = (conv.membroIds || []).find((id) => id !== actor.id) || actor.id;
       const outroMembro = this.data.users.find((u) => u.id === outroMembroId) || {
         id: outroMembroId,
-        nome: 'Colaborador',
-        cargo: 'Servidor SUS',
+        nome: conv.nome || 'Colaborador',
+        cargo: conv.tipo === 'grupo' ? 'Grupo Hospitalar' : 'Servidor SUS',
         hierarquiaNivel: 4,
         email: '',
         setorId: '',
@@ -358,20 +361,81 @@ class DatabaseEngine {
         criadoEm: '',
       };
 
-      const naoLidas = this.data.messages.filter(
-        (m) => m.conversationId === conv.id && m.remetenteId !== actor.id && !m.lida
+      // Se autoExcluir24h estiver ativo, ignorar mensagens com mais de 24h
+      const validMessages = this.data.messages.filter((m) => {
+        if (m.conversationId !== conv.id) return false;
+        if (conv.autoExcluir24h && m.createdAtTimestamp && now - m.createdAtTimestamp > ONE_DAY_MS) {
+          return false;
+        }
+        return true;
+      });
+
+      const naoLidas = validMessages.filter(
+        (m) => m.remetenteId !== actor.id && !m.lida
       ).length;
+
+      const lastValidMsg = validMessages[validMessages.length - 1];
 
       return {
         ...conv,
+        nome: conv.nome || (conv.tipo === 'grupo' ? 'Grupo Sem Nome' : outroMembro.nome),
         membros,
         outroMembro,
         naoLidas,
+        ultimaMensagem: lastValidMsg ? (lastValidMsg.tipo === 'audio' ? 'Mensagem de voz gravada' : lastValidMsg.texto) : conv.ultimaMensagem,
+        ultimaMensagemHora: lastValidMsg ? lastValidMsg.createdAt : conv.ultimaMensagemHora,
       };
     });
   }
 
-  public createConversation(actor: User, targetUserId: string): any {
+  public createConversation(actor: User, targetOrData: string | { targetUserId?: string; participantIds?: string[]; tipo?: 'individual' | 'grupo'; nome?: string; fotoUrl?: string; autoExcluir24h?: boolean }): any {
+    if (typeof targetOrData === 'object' && targetOrData.tipo === 'grupo') {
+      const { nome, participantIds = [], fotoUrl, autoExcluir24h } = targetOrData;
+      if (!nome || !nome.trim()) throw new Error('Nome do grupo é obrigatório.');
+
+      const allMemberIds = Array.from(new Set([actor.id, ...participantIds]));
+      const newConv: Conversation = {
+        id: `conv-grp-${Date.now()}`,
+        tipo: 'grupo',
+        nome: nome.trim(),
+        fotoUrl: fotoUrl || undefined,
+        autoExcluir24h: !!autoExcluir24h,
+        criadoPor: actor.id,
+        ativo: true,
+        membroIds: allMemberIds,
+        ultimaMensagem: 'Grupo criado com sucesso.',
+        ultimaMensagemHora: 'Agora',
+        atualizadoEm: new Date().toISOString().replace('T', ' ').substring(0, 16),
+      };
+
+      this.data.conversations.unshift(newConv);
+      this.scheduleSave();
+
+      const membros = allMemberIds
+        .map((id) => this.data.users.find((u) => u.id === id))
+        .filter((u): u is User => !!u);
+
+      return {
+        ...newConv,
+        membros,
+        outroMembro: {
+          id: 'grp',
+          nome: newConv.nome!,
+          cargo: 'Grupo Hospitalar',
+          hierarquiaNivel: 4,
+          email: '',
+          setorId: '',
+          ativo: true,
+          firebaseUid: '',
+          criadoEm: '',
+        },
+        naoLidas: 0,
+      };
+    }
+
+    const targetUserId = typeof targetOrData === 'string' ? targetOrData : (targetOrData.targetUserId || targetOrData.participantIds?.[0]);
+    if (!targetUserId) throw new Error('Destinatário da conversa não informado.');
+
     const targetUser = this.data.users.find((u) => u.id === targetUserId);
     if (!targetUser) throw new Error('Usuário destinatário não encontrado.');
 
@@ -387,6 +451,8 @@ class DatabaseEngine {
 
     const existing = this.data.conversations.find(
       (c) =>
+        c.ativo !== false &&
+        c.tipo === 'individual' &&
         c.membroIds &&
         c.membroIds.length === 2 &&
         c.membroIds.includes(actor.id) &&
@@ -409,6 +475,7 @@ class DatabaseEngine {
       id: `conv-${Date.now()}`,
       tipo: 'individual',
       membroIds: [actor.id, targetUserId],
+      ativo: true,
       ultimaMensagem: '',
       ultimaMensagemHora: 'Agora',
       atualizadoEm: new Date().toISOString().replace('T', ' ').substring(0, 16),
@@ -432,6 +499,18 @@ class DatabaseEngine {
     if (!conv.membroIds || !conv.membroIds.includes(actor.id)) {
       throw new Error('Acesso negado a esta conversa privada.');
     }
+
+    const now = Date.now();
+    const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+    // Se auto-exclusão 24h estiver ativa nesta conversa, filtrar mensagens antigas
+    const validMessages = this.data.messages.filter((m) => {
+      if (m.conversationId !== conversationId) return false;
+      if (conv.autoExcluir24h && m.createdAtTimestamp && now - m.createdAtTimestamp > ONE_DAY_MS) {
+        return false;
+      }
+      return true;
+    });
 
     // Marcar como lidas mensagens do outro membro
     this.data.messages.forEach((m) => {
@@ -460,7 +539,7 @@ class DatabaseEngine {
 
     this.scheduleSave();
 
-    return this.data.messages.filter((m) => m.conversationId === conversationId);
+    return validMessages;
   }
 
   public markConversationRead(actor: User, conversationId: string): void {
@@ -514,6 +593,7 @@ class DatabaseEngine {
       remetenteCargo: actor.cargo,
       texto: data.texto,
       createdAt: hora,
+      createdAtTimestamp: Date.now(),
       lida: false,
       tipo: data.tipo || 'texto',
       audioDuracaoSegundos: data.audioDuracaoSegundos,
@@ -524,13 +604,13 @@ class DatabaseEngine {
     conv.ultimaMensagemHora = hora;
     conv.atualizadoEm = new Date().toISOString();
 
-    // Notificar o outro membro com vínculo à conversa
-    const outroId = (conv.membroIds || []).find((id) => id !== actor.id);
-    if (outroId) {
+    // Notificar os outros membros com vínculo à conversa
+    const outrosMembroIds = (conv.membroIds || []).filter((id) => id !== actor.id);
+    for (const outroId of outrosMembroIds) {
       this.data.notifications.unshift({
-        id: `notif-${Date.now()}`,
+        id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 3)}`,
         userId: outroId,
-        titulo: `Mensagem de ${actor.nome}`,
+        titulo: conv.tipo === 'grupo' ? `${conv.nome || 'Grupo'}: ${actor.nome}` : `Mensagem de ${actor.nome}`,
         descricao: data.texto.slice(0, 60),
         tipo: 'mensagem',
         conversaId: conversationId,
@@ -542,6 +622,115 @@ class DatabaseEngine {
 
     this.scheduleSave();
     return newMsg;
+  }
+
+  public clearConversationMessages(actor: User, conversationId: string): void {
+    const conv = this.data.conversations.find((c) => c.id === conversationId);
+    if (!conv) throw new Error('Conversa não encontrada.');
+    if (!conv.membroIds || !conv.membroIds.includes(actor.id)) {
+      throw new Error('Acesso negado.');
+    }
+
+    this.data.messages = this.data.messages.filter((m) => m.conversationId !== conversationId);
+    conv.ultimaMensagem = 'Histórico de mensagens limpo.';
+    conv.ultimaMensagemHora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    conv.atualizadoEm = new Date().toISOString();
+
+    this.logAudit(
+      actor.id,
+      actor.nome,
+      'CONVERSATION_CLEAR',
+      'Conversas',
+      `Histórico da conversa ${conversationId} limpo por ${actor.nome}`
+    );
+
+    this.scheduleSave();
+  }
+
+  public deleteConversation(actor: User, conversationId: string): void {
+    const conv = this.data.conversations.find((c) => c.id === conversationId);
+    if (!conv) throw new Error('Conversa não encontrada.');
+    if (!conv.membroIds || !conv.membroIds.includes(actor.id)) {
+      throw new Error('Acesso negado.');
+    }
+
+    // Se for o criador ou direção, desativa a conversa
+    // Se for outro membro, sai do grupo / remove a si mesmo dos membros
+    if (conv.criadoPor === actor.id || actor.hierarquiaNivel === 1 || conv.tipo === 'individual') {
+      conv.ativo = false;
+      this.data.messages = this.data.messages.filter((m) => m.conversationId !== conversationId);
+    } else {
+      conv.membroIds = conv.membroIds.filter((id) => id !== actor.id);
+      if (conv.membroIds.length === 0) {
+        conv.ativo = false;
+      }
+    }
+
+    this.logAudit(
+      actor.id,
+      actor.nome,
+      'CONVERSATION_DELETE',
+      'Conversas',
+      `Conversa ${conversationId} excluída/encerrada por ${actor.nome}`
+    );
+
+    this.scheduleSave();
+  }
+
+  public addConversationMembers(actor: User, conversationId: string, userIds: string[]): any {
+    const conv = this.data.conversations.find((c) => c.id === conversationId);
+    if (!conv) throw new Error('Conversa não encontrada.');
+    if (conv.tipo !== 'grupo') throw new Error('Apenas grupos permitem adicionar múltiplos membros.');
+    if (!conv.membroIds || !conv.membroIds.includes(actor.id)) {
+      throw new Error('Você precisa ser membro do grupo para adicionar novos participantes.');
+    }
+
+    const currentSet = new Set(conv.membroIds || []);
+    for (const uid of userIds) {
+      currentSet.add(uid);
+    }
+    conv.membroIds = Array.from(currentSet);
+    conv.atualizadoEm = new Date().toISOString();
+
+    this.scheduleSave();
+
+    const membros = conv.membroIds
+      .map((id) => this.data.users.find((u) => u.id === id))
+      .filter((u): u is User => !!u);
+
+    return {
+      ...conv,
+      membros,
+    };
+  }
+
+  public updateConversation(
+    actor: User,
+    conversationId: string,
+    data: { nome?: string; descricao?: string; fotoUrl?: string; autoExcluir24h?: boolean }
+  ): any {
+    const conv = this.data.conversations.find((c) => c.id === conversationId);
+    if (!conv) throw new Error('Conversa não encontrada.');
+    if (!conv.membroIds || !conv.membroIds.includes(actor.id)) {
+      throw new Error('Acesso negado.');
+    }
+
+    if (data.nome !== undefined) conv.nome = data.nome.trim();
+    if (data.descricao !== undefined) conv.descricao = data.descricao.trim();
+    if (data.fotoUrl !== undefined) conv.fotoUrl = data.fotoUrl;
+    if (data.autoExcluir24h !== undefined) conv.autoExcluir24h = data.autoExcluir24h;
+    conv.atualizadoEm = new Date().toISOString();
+
+    this.scheduleSave();
+
+    const membros = (conv.membroIds || [])
+      .map((id) => this.data.users.find((u) => u.id === id))
+      .filter((u): u is User => !!u);
+
+    return {
+      ...conv,
+      membros,
+    };
   }
 
   public deleteMessage(actor: User, messageId: string): void {

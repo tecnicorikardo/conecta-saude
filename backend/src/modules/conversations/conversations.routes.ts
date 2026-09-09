@@ -10,6 +10,7 @@ import {
   removeMember,
   updateMemberRole,
   deleteConversation,
+  clearConversation,
   listMessages,
   sendMessage,
 } from './conversations.controller';
@@ -22,6 +23,7 @@ router.post('/', asyncHandler(createConversation));
 router.get('/:id', asyncHandler(getConversation));
 router.patch('/:id', asyncHandler(updateConversation));
 router.delete('/:id', asyncHandler(deleteConversation));
+router.post('/:id/clear', asyncHandler(clearConversation));
 
 router.post('/:id/members', asyncHandler(addMembers));
 router.delete('/:id/members/:userId', asyncHandler(removeMember));

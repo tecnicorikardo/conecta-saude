@@ -23,6 +23,8 @@ export interface User {
   telefone?: string;
 }
 
+export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
+
 export interface Message {
   id: string;
   conversationId?: string;
@@ -37,12 +39,18 @@ export interface Message {
   apagada?: boolean;
   tipo?: 'texto' | 'audio' | 'alerta';
   audioDuracaoSegundos?: number;
+  status?: MessageStatus;
 }
 
 export interface Conversation {
   id: string;
   tipo: 'individual' | 'grupo';
   membros: User[];
+  nome?: string;
+  descricao?: string;
+  fotoUrl?: string;
+  autoExcluir24h?: boolean;
+  criadoPor?: string;
   ultimaMensagem?: string;
   ultimaMensagemHora?: string;
   naoLidas: number;

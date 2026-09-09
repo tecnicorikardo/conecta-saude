@@ -173,15 +173,60 @@ apiRouter.get('/conversations', authenticate, (req: Request, res: Response) => {
 apiRouter.post('/conversations', authenticate, (req: Request, res: Response) => {
   try {
     const actor = req.user!;
-    const { targetUserId } = req.body;
+    const body = req.body;
 
-    if (!targetUserId) {
+    if (!body.targetUserId && !body.participantIds && (!body.tipo || body.tipo === 'individual')) {
       res.status(400).json({ success: false, error: 'ID do destinatário é obrigatório.' });
       return;
     }
 
-    const conv = db.createConversation(actor, targetUserId);
+    const conv = db.createConversation(actor, body);
     res.status(201).json({ success: true, data: conv });
+  } catch (err: any) {
+    res.status(403).json({ success: false, error: err.message });
+  }
+});
+
+apiRouter.patch('/conversations/:id', authenticate, (req: Request, res: Response) => {
+  try {
+    const actor = req.user!;
+    const updated = db.updateConversation(actor, req.params.id, req.body);
+    res.json({ success: true, data: updated });
+  } catch (err: any) {
+    res.status(403).json({ success: false, error: err.message });
+  }
+});
+
+apiRouter.delete('/conversations/:id', authenticate, (req: Request, res: Response) => {
+  try {
+    const actor = req.user!;
+    db.deleteConversation(actor, req.params.id);
+    res.json({ success: true, message: 'Conversa excluída com sucesso.' });
+  } catch (err: any) {
+    res.status(403).json({ success: false, error: err.message });
+  }
+});
+
+apiRouter.post('/conversations/:id/clear', authenticate, (req: Request, res: Response) => {
+  try {
+    const actor = req.user!;
+    db.clearConversationMessages(actor, req.params.id);
+    res.json({ success: true, message: 'Histórico da conversa limpo com sucesso.' });
+  } catch (err: any) {
+    res.status(403).json({ success: false, error: err.message });
+  }
+});
+
+apiRouter.post('/conversations/:id/members', authenticate, (req: Request, res: Response) => {
+  try {
+    const actor = req.user!;
+    const { userIds } = req.body;
+    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+      res.status(400).json({ success: false, error: 'Lista de participantes inválida.' });
+      return;
+    }
+    const updated = db.addConversationMembers(actor, req.params.id, userIds);
+    res.status(201).json({ success: true, data: updated });
   } catch (err: any) {
     res.status(403).json({ success: false, error: err.message });
   }

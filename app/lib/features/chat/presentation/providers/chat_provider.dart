@@ -103,18 +103,44 @@ class ConversationsNotifier
     final current = state.value ?? [];
     final updated = current.map((c) {
       if (c.id != conversationId) return c;
-      return ConversationEntity(
-        id: c.id,
-        tipo: c.tipo,
-        nome: c.nome,
-        participantes: c.participantes,
+      return c.copyWith(
         lastMessage: msg,
-        unreadCount: c.unreadCount,
         atualizadoEm: msg.criadoEm,
       );
     }).toList();
 
     state = AsyncValue.data(_sortConversations(updated));
+  }
+
+  /// Excluir conversa (individual ou grupo)
+  Future<void> deleteConversation(String conversationId) async {
+    final current = state.value ?? [];
+    state = AsyncValue.data(current.where((c) => c.id != conversationId).toList());
+
+    try {
+      final repo = _ref.read(conversationRepositoryProvider);
+      await repo.deleteConversation(conversationId);
+    } catch (e) {
+      load();
+      rethrow;
+    }
+  }
+
+  /// Alternar auto-exclusão 24h
+  Future<void> toggleAutoExcluir24h(String conversationId, bool value) async {
+    final current = state.value ?? [];
+    final updated = current.map((c) {
+      if (c.id != conversationId) return c;
+      return c.copyWith(autoExcluir24h: value);
+    }).toList();
+    state = AsyncValue.data(updated);
+
+    try {
+      final repo = _ref.read(conversationRepositoryProvider);
+      await repo.updateGroup(conversationId, autoExcluir24h: value);
+    } catch (_) {
+      load();
+    }
   }
 }
 
@@ -153,12 +179,22 @@ class MessagesNotifier
     });
   }
 
+  List<MessageEntity> _filterAutoExcluir(List<MessageEntity> msgs) {
+    final convs = _ref.read(conversationsProvider).valueOrNull ?? [];
+    final thisConv = convs.where((c) => c.id == conversationId).firstOrNull;
+    if (thisConv?.autoExcluir24h != true) return msgs;
+
+    final cutoff = DateTime.now().subtract(const Duration(hours: 24));
+    return msgs.where((m) => m.criadoEm.isAfter(cutoff)).toList();
+  }
+
   /// Carregamento inicial completo
   Future<void> _load() async {
     try {
       final repo = _ref.read(conversationRepositoryProvider);
       final messages = await repo.listMessages(conversationId);
-      if (mounted) state = AsyncValue.data(messages);
+      final filtered = _filterAutoExcluir(messages);
+      if (mounted) state = AsyncValue.data(filtered);
     } catch (e, st) {
       if (mounted) state = AsyncValue.error(e, st);
     }
@@ -171,7 +207,8 @@ class MessagesNotifier
 
     try {
       final repo = _ref.read(conversationRepositoryProvider);
-      final fresh = await repo.listMessages(conversationId);
+      final raw = await repo.listMessages(conversationId);
+      final fresh = _filterAutoExcluir(raw);
 
       if (!mounted) return;
 
@@ -339,6 +376,20 @@ class MessagesNotifier
     try {
       final repo = _ref.read(conversationRepositoryProvider);
       await repo.deleteMessage(messageId);
+    } catch (e) {
+      _load();
+      rethrow;
+    }
+  }
+
+  // ─── Limpar mensagens da conversa ──────────────────────────────────────
+  Future<void> clearConversation() async {
+    state = const AsyncValue.data([]);
+
+    try {
+      final repo = _ref.read(conversationRepositoryProvider);
+      await repo.clearConversation(conversationId);
+      _ref.read(conversationsProvider.notifier).load();
     } catch (e) {
       _load();
       rethrow;

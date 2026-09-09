@@ -95,6 +95,28 @@ class ConversationAvatar extends StatelessWidget {
       avatarChild = _buildFallback();
     }
 
+    if (isGroup) {
+      return Stack(
+        clipBehavior: Clip.none,
+        children: [
+          avatarChild,
+          Positioned(
+            right: -1,
+            bottom: -1,
+            child: Container(
+              padding: const EdgeInsets.all(2),
+              decoration: BoxDecoration(
+                color: AppColors.primary,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 1.5),
+              ),
+              child: Icon(Icons.groups, size: size * 0.28, color: Colors.white),
+            ),
+          ),
+        ],
+      );
+    }
+
     if (!showOnline) return avatarChild;
 
     return Stack(

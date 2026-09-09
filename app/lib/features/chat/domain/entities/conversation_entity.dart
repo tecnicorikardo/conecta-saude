@@ -27,6 +27,7 @@ class ConversationEntity {
   final String? descricao;
   final String? fotoUrl;
   final String? criadoPor;
+  final bool autoExcluir24h;
   final List<ConversationParticipant> participantes;
   final MessageEntity? lastMessage;
   final int unreadCount;
@@ -39,6 +40,7 @@ class ConversationEntity {
     this.descricao,
     this.fotoUrl,
     this.criadoPor,
+    this.autoExcluir24h = false,
     required this.participantes,
     this.lastMessage,
     required this.unreadCount,
@@ -118,6 +120,7 @@ class ConversationEntity {
     String? descricao,
     String? fotoUrl,
     String? criadoPor,
+    bool? autoExcluir24h,
     List<ConversationParticipant>? participantes,
     MessageEntity? lastMessage,
     int? unreadCount,
@@ -130,6 +133,7 @@ class ConversationEntity {
       descricao: descricao ?? this.descricao,
       fotoUrl: fotoUrl ?? this.fotoUrl,
       criadoPor: criadoPor ?? this.criadoPor,
+      autoExcluir24h: autoExcluir24h ?? this.autoExcluir24h,
       participantes: participantes ?? this.participantes,
       lastMessage: lastMessage ?? this.lastMessage,
       unreadCount: unreadCount ?? this.unreadCount,

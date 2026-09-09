@@ -59,12 +59,19 @@ export interface Message {
   apagada?: boolean;
   tipo?: 'texto' | 'audio' | 'alerta';
   audioDuracaoSegundos?: number;
+  createdAtTimestamp?: number;
 }
 
 export interface Conversation {
   id: string;
   tipo: 'individual' | 'grupo';
   membroIds: string[];
+  nome?: string;
+  descricao?: string;
+  fotoUrl?: string;
+  autoExcluir24h?: boolean;
+  criadoPor?: string;
+  ativo?: boolean;
   ultimaMensagem?: string;
   ultimaMensagemHora?: string;
   atualizadoEm: string;

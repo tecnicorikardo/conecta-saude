@@ -637,5 +637,27 @@ function _validateCommunicationRules(
   }
 }
 
+/**
+ * POST /api/conversations/:id/clear
+ * Limpa todas as mensagens da conversa.
+ */
+export async function clearConversation(req: Request, res: Response): Promise<void> {
+  const actor = req.user!;
+  const { id: conversationId } = req.params;
+
+  const membership = await prisma.conversationMember.findUnique({
+    where: {
+      conversationId_userId: { conversationId, userId: actor.id },
+    },
+  });
+  if (!membership) throw new AppError('Você não participa desta conversa.', 403);
+
+  await prisma.message.deleteMany({
+    where: { conversationId },
+  });
+
+  res.json({ success: true, message: 'Histórico da conversa limpo com sucesso.' });
+}
+
 // Re-exportar handlers de mensagens para o router de conversations
 export { listMessages, sendMessage };

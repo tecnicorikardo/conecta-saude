@@ -1,11 +1,9 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/conversation_entity.dart';
-import '../../data/models/conversation_model.dart';
 import '../../data/repositories/conversation_repository.dart';
 import '../providers/chat_provider.dart';
 import '../widgets/conversation_avatar.dart';
@@ -175,6 +173,15 @@ class _GroupInfoPageState extends ConsumerState<GroupInfoPage> {
     }
   }
 
+  static const _presetPhotos = [
+    ('Geral / Hospital', 'https://images.unsplash.com/photo-1586773860418-d37222d8fce3?w=150&auto=format&fit=crop&q=80'),
+    ('Equipe Médica', 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=150&auto=format&fit=crop&q=80'),
+    ('Enfermagem', 'https://images.unsplash.com/photo-1576765608535-5f04d1e3f289?w=150&auto=format&fit=crop&q=80'),
+    ('UTI / Emergência', 'https://images.unsplash.com/photo-1516549655169-df83a0774514?w=150&auto=format&fit=crop&q=80'),
+    ('Farmácia', 'https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=150&auto=format&fit=crop&q=80'),
+    ('Centro Cirúrgico', 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=150&auto=format&fit=crop&q=80'),
+  ];
+
   Future<void> _editGroupPhoto() async {
     if (_conversation == null) return;
     final controller = TextEditingController(text: _conversation!.fotoUrl ?? '');
@@ -183,23 +190,61 @@ class _GroupInfoPageState extends ConsumerState<GroupInfoPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Foto do Grupo'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Insira a URL de uma imagem ou link público para definir a foto do grupo:',
-              style: TextStyle(fontSize: 13, color: Colors.black54),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: controller,
-              decoration: const InputDecoration(
-                hintText: 'https://exemplo.com/foto.png',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.link),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Escolha uma foto temática:',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 72,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _presetPhotos.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (_, i) {
+                    final item = _presetPhotos[i];
+                    return InkWell(
+                      onTap: () {
+                        controller.text = item.$2;
+                        Navigator.pop(ctx, item.$2);
+                      },
+                      child: Column(
+                        children: [
+                          CircleAvatar(
+                            radius: 24,
+                            backgroundImage: NetworkImage(item.$2),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(item.$1, style: const TextStyle(fontSize: 9)),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const Divider(height: 24),
+              const Text(
+                'Ou insira o link de uma imagem pública:',
+                style: TextStyle(fontSize: 12, color: Colors.black54),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: controller,
+                decoration: const InputDecoration(
+                  hintText: 'https://exemplo.com/foto.png',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.link),
+                  isDense: true,
+                ),
+              ),
+            ],
+          ),
         ),
         actions: [
           if (_conversation!.fotoUrl != null && _conversation!.fotoUrl!.isNotEmpty)
@@ -308,23 +353,21 @@ class _GroupInfoPageState extends ConsumerState<GroupInfoPage> {
                       ? null
                       : () async {
                           Navigator.pop(ctx);
+                          if (!mounted) return;
+                          final messenger = ScaffoldMessenger.of(context);
                           try {
                             await repo.addGroupMembers(_conversation!.id, selectedIds.toList());
                             ref.invalidate(conversationsProvider);
                             _loadGroupDetails();
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('${selectedIds.length} participante(s) adicionado(s).'),
-                                ),
-                              );
-                            }
+                            messenger.showSnackBar(
+                              SnackBar(
+                                content: Text('${selectedIds.length} participante(s) adicionado(s).'),
+                              ),
+                            );
                           } catch (e) {
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Erro: $e'), backgroundColor: Colors.red),
-                              );
-                            }
+                            messenger.showSnackBar(
+                              SnackBar(content: Text('Erro: $e'), backgroundColor: Colors.red),
+                            );
                           }
                         },
                   child: Text('Adicionar (${selectedIds.length})'),
@@ -695,6 +738,35 @@ class _GroupInfoPageState extends ConsumerState<GroupInfoPage> {
                   ),
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // ─── Card de Mensagens Temporárias (Auto-exclusão 24h) ───────────
+          Container(
+            color: cardBg,
+            child: SwitchListTile(
+              secondary: const Icon(Icons.timer_outlined, color: AppColors.primary),
+              title: Text('Mensagens temporárias (24h)', style: TextStyle(fontWeight: FontWeight.w600, color: textPrimary)),
+              subtitle: Text(
+                'Quando ativo, as mensagens deste grupo expiram e somem após 24 horas.',
+                style: TextStyle(fontSize: 12, color: textSecondary),
+              ),
+              value: conv.autoExcluir24h,
+              activeTrackColor: AppColors.primary,
+              onChanged: (val) async {
+                final messenger = ScaffoldMessenger.of(context);
+                try {
+                  final repo = ref.read(conversationRepositoryProvider);
+                  await repo.updateGroup(conv.id, autoExcluir24h: val);
+                  ref.read(conversationsProvider.notifier).toggleAutoExcluir24h(conv.id, val);
+                  _loadGroupDetails();
+                } catch (e) {
+                  messenger.showSnackBar(
+                    SnackBar(content: Text('Erro: $e'), backgroundColor: Colors.red),
+                  );
+                }
+              },
             ),
           ),
           const SizedBox(height: 12),

@@ -8,10 +8,10 @@ Documento oficial de acompanhamento do status de desenvolvimento, módulos entre
 
 | Métrica | Valor |
 | :--- | :--- |
-| **Status Geral do Projeto** | 🚀 **92% Concluído** |
+| **Status Geral do Projeto** | 🚀 **95% Concluído** |
 | **Módulos Core Implementados** | **8 de 9 módulos entregues e validados** |
 | **Backend & Banco de Dados** | Node.js + Express + Neon PostgreSQL + Prisma ORM |
-| **Frontend & Mobile** | Flutter 3.38+ (Web, PWA e Android APK) |
+| **Frontend & Mobile** | Flutter 3.38+ (Web, PWA e Android APK) + React Web |
 | **Autenticação & Segurança** | Firebase Auth + RBAC Hierárquico SUS de 4 Níveis |
 
 ---
@@ -21,9 +21,9 @@ Documento oficial de acompanhamento do status de desenvolvimento, módulos entre
 | Módulo | Descrição Funcional | Status | Testado? |
 | :--- | :--- | :---: | :---: |
 | 🔐 **1. Autenticação & Hierarquia** | Login seguro, 4 níveis de hierarquia SUS (Direção, Coordenação, Supervisão, Funcionário) e perfil institucional. | 🟢 Concluído | ✅ Sim |
-| 💬 **2. Mensagens 1x1 e Grupos** | Chat individual e grupos setoriais no CCO, sem duplicidade de mensagens, lista estável. | 🟢 Concluído | ✅ Sim |
+| 💬 **2. Mensagens 1x1 e Grupos** | Chat individual e grupos com destaque visual (badges `GRUPO`, avatares temáticos, foto do grupo), gestão e adição de participantes, auto-exclusão 24h (mensagens temporárias de plantão), exclusão de conversa/mensagem e limpeza funcional de histórico. | 🟢 Concluído | ✅ Sim |
 | 📢 **3. Canais de Comunicação** | Canais institucionais e de setor, publicação restrita à liderança, indicador de visualização. | 🟢 Concluído | ✅ Sim |
-| 📋 **4. Comunicados Oficiais** | Avisos com prioridades, confirmação formal de leitura pelo servidor e painel de auditoria * Quem leu e pendentes*. | 🟢 Concluído | ✅ Sim |
+| 📋 **4. Comunicados Oficiais** | Avisos com prioridades, confirmação formal de leitura pelo servidor e painel de auditoria *Quem leu e pendentes*. | 🟢 Concluído | ✅ Sim |
 | 🚨 **5. Central de Emergência** | Chamados críticos (PCR, trauma, pane O₂), banner dinâmico pulsante na Home e encerramento pela liderança. | 🟢 Concluído | ✅ Sim |
 | 🛡️ **6. Ouvidoria & Denúncias** | Relatos anônimos/confidenciais com blindagem de chefia, apuração exclusiva da Direção Geral e resposta oficial. | 🟢 Concluído | ✅ Sim |
 | 👥 **7. Onboarding & Aprovação RH** | Auto-cadastro do colaborador ("Primeiro Acesso?") com validação em 1 clique pelo RH ou Coordenação (Dr. Roberto - CCO). | 🟢 Concluído | ✅ Sim |
@@ -47,4 +47,4 @@ Documento oficial de acompanhamento do status de desenvolvimento, módulos entre
 
 ---
 
-*Documento atualizado em: 06/09/2026 — Conecta Saúde Team*
+*Documento atualizado em: 08/09/2026 — Conecta Saúde Team*

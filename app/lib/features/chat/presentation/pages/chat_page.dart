@@ -8,6 +8,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/conversation_entity.dart';
 import '../../domain/entities/message_entity.dart';
 import '../providers/chat_provider.dart';
+import '../../data/repositories/conversation_repository.dart';
 import '../widgets/conversation_avatar.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/chat_input_bar.dart';
@@ -96,6 +97,44 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           context, displayName, photoUrl, subtitle, isGroup, currentUserId, conv),
       body: Column(
         children: [
+          if (conv?.autoExcluir24h == true)
+            Container(
+              color: Colors.amber.shade100,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  Icon(Icons.timer_outlined, size: 18, color: Colors.amber.shade900),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '⏱️ Mensagens temporárias ativas (24h)',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.amber.shade900,
+                      ),
+                    ),
+                  ),
+                  InkWell(
+                    onTap: () async {
+                      await ref
+                          .read(conversationsProvider.notifier)
+                          .toggleAutoExcluir24h(widget.conversationId, false);
+                      ref.read(messagesProvider(widget.conversationId).notifier).refresh();
+                    },
+                    child: Text(
+                      'Desativar',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.blue.shade800,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
           // ─── Lista de mensagens ──────────────────────────────────────────
           Expanded(
             child: messagesAsync.when(
@@ -223,12 +262,18 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         ),
       ),
       actions: [
-        if (isGroup)
+        if (isGroup) ...[
+          IconButton(
+            icon: const Icon(Icons.person_add_alt_1_outlined),
+            tooltip: 'Adicionar participante',
+            onPressed: () => _openAddParticipantsModal(context),
+          ),
           IconButton(
             icon: const Icon(Icons.info_outline),
             tooltip: 'Dados do grupo',
             onPressed: () => context.push('/chat/${widget.conversationId}/info'),
           ),
+        ],
         IconButton(
           icon: const Icon(Icons.call_outlined),
           onPressed: () {},
@@ -236,23 +281,225 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         ),
         PopupMenuButton<String>(
           icon: const Icon(Icons.more_vert),
-          onSelected: (v) {
+          onSelected: (v) async {
             if (v == 'info') {
               context.push('/chat/${widget.conversationId}/info');
+            } else if (v == 'auto_excluir') {
+              final messenger = ScaffoldMessenger.of(context);
+              final isCurrentlyActive = conv?.autoExcluir24h == true;
+              try {
+                await ref
+                    .read(conversationsProvider.notifier)
+                    .toggleAutoExcluir24h(widget.conversationId, !isCurrentlyActive);
+                ref.read(messagesProvider(widget.conversationId).notifier).refresh();
+                messenger.showSnackBar(
+                  SnackBar(
+                    content: Text(!isCurrentlyActive
+                        ? '⏱️ Mensagens temporárias ativas: mensagens expiram após 24 horas.'
+                        : 'Mensagens temporárias desativadas.'),
+                  ),
+                );
+              } catch (e) {
+                messenger.showSnackBar(
+                  SnackBar(content: Text('Erro ao atualizar: $e')),
+                );
+              }
+            } else if (v == 'limpar') {
+              final messenger = ScaffoldMessenger.of(context);
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('Limpar conversa?'),
+                  content: const Text(
+                    'Todas as mensagens desta conversa serão apagadas permanentemente. A conversa continuará na sua lista.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: const Text('Cancelar'),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.amber.shade700,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: const Text('Limpar Histórico'),
+                    ),
+                  ],
+                ),
+              );
+
+              if (confirm == true) {
+                try {
+                  await ref
+                      .read(messagesProvider(widget.conversationId).notifier)
+                      .clearConversation();
+                  messenger.showSnackBar(
+                    const SnackBar(content: Text('Histórico da conversa limpo com sucesso.')),
+                  );
+                } catch (e) {
+                  messenger.showSnackBar(
+                    SnackBar(content: Text('Erro ao limpar conversa: $e')),
+                  );
+                }
+              }
+            } else if (v == 'excluir') {
+              final messenger = ScaffoldMessenger.of(context);
+              final navigator = Navigator.of(context);
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: Text(isGroup ? 'Sair e excluir grupo?' : 'Excluir conversa?'),
+                  content: Text(
+                    isGroup
+                      ? 'Você sairá deste grupo e ele será removido da sua lista de conversas.'
+                      : 'Esta conversa e todo o seu histórico serão removidos permanentemente da sua lista.',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx, false),
+                      child: const Text('Cancelar'),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red.shade700,
+                        foregroundColor: Colors.white,
+                      ),
+                      onPressed: () => Navigator.pop(ctx, true),
+                      child: const Text('Excluir'),
+                    ),
+                  ],
+                ),
+              );
+
+              if (confirm == true) {
+                try {
+                  await ref
+                      .read(conversationsProvider.notifier)
+                      .deleteConversation(widget.conversationId);
+                  navigator.pop();
+                  messenger.showSnackBar(
+                    const SnackBar(content: Text('Conversa excluída com sucesso.')),
+                  );
+                } catch (e) {
+                  messenger.showSnackBar(
+                    SnackBar(content: Text('Erro ao excluir conversa: $e')),
+                  );
+                }
+              }
             }
           },
           itemBuilder: (_) => [
             if (isGroup)
               const PopupMenuItem(value: 'info', child: Text('Dados do grupo')),
+            PopupMenuItem(
+              value: 'auto_excluir',
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.timer_outlined,
+                    size: 20,
+                    color: (conv?.autoExcluir24h == true) ? Colors.amber.shade800 : null,
+                  ),
+                  const SizedBox(width: 8),
+                  Text((conv?.autoExcluir24h == true) ? 'Desativar 24h' : 'Auto-exclusão 24h'),
+                ],
+              ),
+            ),
             const PopupMenuItem(value: 'pesquisar', child: Text('Pesquisar')),
             const PopupMenuItem(value: 'silenciar', child: Text('Silenciar')),
             const PopupMenuItem(value: 'limpar', child: Text('Limpar conversa')),
+            const PopupMenuItem(
+              value: 'excluir',
+              child: Text(
+                'Excluir conversa',
+                style: TextStyle(color: Colors.red),
+              ),
+            ),
           ],
         ),
       ],
       systemOverlayStyle: const SystemUiOverlayStyle(
         statusBarColor: AppColors.primaryDark,
         statusBarIconBrightness: Brightness.light,
+      ),
+    );
+  }
+
+  void _openAddParticipantsModal(BuildContext context) {
+    final availableAsync = ref.read(availableUsersProvider);
+    final allUsers = availableAsync.valueOrNull ?? [];
+    final conv = ref.read(conversationsProvider).valueOrNull?.where((c) => c.id == widget.conversationId).firstOrNull;
+    final existingMemberIds = conv?.participantes.map((p) => p.id).toSet() ?? {};
+    final candidates = allUsers.where((u) => !existingMemberIds.contains(u.id)).toList();
+
+    final selectedIds = <String>{};
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) => AlertDialog(
+          title: const Text('Adicionar Participantes'),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 350,
+            child: candidates.isEmpty
+                ? const Center(child: Text('Nenhum colega adicional para adicionar.'))
+                : ListView.builder(
+                    itemCount: candidates.length,
+                    itemBuilder: (context, i) {
+                      final u = candidates[i];
+                      final isSelected = selectedIds.contains(u.id);
+                      return CheckboxListTile(
+                        value: isSelected,
+                        activeColor: AppColors.primary,
+                        title: Text(u.nome, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                        subtitle: Text('${u.cargo} • ${u.setorNome}', style: const TextStyle(fontSize: 12)),
+                        secondary: ConversationAvatar(name: u.nome, photoUrl: u.fotoUrl, size: 36),
+                        onChanged: (val) {
+                          setModalState(() {
+                            if (val == true) {
+                              selectedIds.add(u.id);
+                            } else {
+                              selectedIds.remove(u.id);
+                            }
+                          });
+                        },
+                      );
+                    },
+                  ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: selectedIds.isEmpty
+                  ? null
+                  : () async {
+                      Navigator.pop(ctx);
+                      final messenger = ScaffoldMessenger.of(context);
+                      try {
+                        final repo = ref.read(conversationRepositoryProvider);
+                        await repo.addGroupMembers(widget.conversationId, selectedIds.toList());
+                        ref.invalidate(conversationsProvider);
+                        messenger.showSnackBar(
+                          SnackBar(
+                            content: Text('${selectedIds.length} participante(s) adicionado(s) com sucesso.'),
+                          ),
+                        );
+                      } catch (e) {
+                        messenger.showSnackBar(
+                          SnackBar(content: Text('Erro ao adicionar: $e'), backgroundColor: Colors.red),
+                        );
+                      }
+                    },
+              child: Text('Adicionar (${selectedIds.length})'),
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -209,9 +209,20 @@ class _GroupTab extends ConsumerStatefulWidget {
 }
 
 class _GroupTabState extends ConsumerState<_GroupTab> {
+  static const _presetPhotos = [
+    ('Geral / Hospital', 'https://images.unsplash.com/photo-1586773860418-d37222d8fce3?w=150&auto=format&fit=crop&q=80'),
+    ('Equipe Médica', 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=150&auto=format&fit=crop&q=80'),
+    ('Enfermagem', 'https://images.unsplash.com/photo-1576765608535-5f04d1e3f289?w=150&auto=format&fit=crop&q=80'),
+    ('UTI / Emergência', 'https://images.unsplash.com/photo-1516549655169-df83a0774514?w=150&auto=format&fit=crop&q=80'),
+    ('Farmácia', 'https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=150&auto=format&fit=crop&q=80'),
+    ('Centro Cirúrgico', 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=150&auto=format&fit=crop&q=80'),
+  ];
+
   final _nameCtrl = TextEditingController();
   final _searchCtrl = TextEditingController();
   final Set<UserSummary> _selected = {};
+  String? _selectedFotoUrl;
+  bool _autoExcluir24h = false;
   bool _loading = false;
 
   @override
@@ -219,6 +230,74 @@ class _GroupTabState extends ConsumerState<_GroupTab> {
     _nameCtrl.dispose();
     _searchCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _pickGroupPhoto() async {
+    final controller = TextEditingController(text: _selectedFotoUrl ?? '');
+    final picked = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Foto do Grupo'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Escolha uma foto temática:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 72,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: _presetPhotos.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  itemBuilder: (_, i) {
+                    final item = _presetPhotos[i];
+                    return InkWell(
+                      onTap: () => Navigator.pop(ctx, item.$2),
+                      child: Column(
+                        children: [
+                          CircleAvatar(radius: 24, backgroundImage: NetworkImage(item.$2)),
+                          const SizedBox(height: 2),
+                          Text(item.$1, style: const TextStyle(fontSize: 9)),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const Divider(height: 24),
+              const Text('Ou insira o link de uma imagem pública:', style: TextStyle(fontSize: 12, color: Colors.black54)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: controller,
+                decoration: const InputDecoration(
+                  hintText: 'https://exemplo.com/foto.png',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.link),
+                  isDense: true,
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          if (_selectedFotoUrl != null)
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, ''),
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Remover foto'),
+            ),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, controller.text.trim()), child: const Text('Confirmar')),
+        ],
+      ),
+    );
+
+    if (picked != null) {
+      setState(() => _selectedFotoUrl = picked.isEmpty ? null : picked);
+    }
   }
 
   Future<void> _createGroup(BuildContext context) async {
@@ -238,6 +317,8 @@ class _GroupTabState extends ConsumerState<_GroupTab> {
       final conv = await repo.createConversation(
         tipo: 'grupo',
         nome: nome,
+        fotoUrl: _selectedFotoUrl,
+        autoExcluir24h: _autoExcluir24h,
         participantIds: _selected.map((u) => u.id).toList(),
       );
 
@@ -258,17 +339,63 @@ class _GroupTabState extends ConsumerState<_GroupTab> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // ─── Nome do grupo ─────────────────────────────────────────────
+        // ─── Foto e Nome do grupo ──────────────────────────────────────
         Padding(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-          child: TextField(
-            controller: _nameCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Nome do grupo',
-              hintText: 'Ex: Maqueiros CCO',
-              prefixIcon: Icon(Icons.group_outlined),
-            ),
-            textCapitalization: TextCapitalization.words,
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+          child: Row(
+            children: [
+              GestureDetector(
+                onTap: _pickGroupPhoto,
+                child: Stack(
+                  children: [
+                    CircleAvatar(
+                      radius: 28,
+                      backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+                      backgroundImage: _selectedFotoUrl != null ? NetworkImage(_selectedFotoUrl!) : null,
+                      child: _selectedFotoUrl == null
+                          ? const Icon(Icons.camera_alt, color: AppColors.primary, size: 26)
+                          : null,
+                    ),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                        child: const Icon(Icons.edit, size: 10, color: Colors.white),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: _nameCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Nome do grupo',
+                    hintText: 'Ex: Maqueiros CCO',
+                    prefixIcon: Icon(Icons.group_outlined),
+                  ),
+                  textCapitalization: TextCapitalization.words,
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // ─── Switch Auto-exclusão 24h ──────────────────────────────────
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: SwitchListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            secondary: const Icon(Icons.timer_outlined, color: AppColors.primary, size: 20),
+            title: const Text('Auto-exclusão 24h', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            subtitle: const Text('Mensagens expiram após 24 horas', style: TextStyle(fontSize: 11)),
+            value: _autoExcluir24h,
+            activeTrackColor: AppColors.primary,
+            onChanged: (val) => setState(() => _autoExcluir24h = val),
           ),
         ),
 

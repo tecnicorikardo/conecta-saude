@@ -17,6 +17,7 @@ class ConversationModel {
       descricao: json['descricao'] as String?,
       fotoUrl: json['fotoUrl'] as String?,
       criadoPor: json['criadoPor'] as String?,
+      autoExcluir24h: json['autoExcluir24h'] as bool? ?? false,
       participantes: members,
       lastMessage: lastMsgJson != null ? _lastMessageFromJson(lastMsgJson) : null,
       unreadCount: json['unreadCount'] as int? ?? 0,

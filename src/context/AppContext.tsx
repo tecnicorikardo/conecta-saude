@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import {
   User,
   Channel,
@@ -44,6 +44,11 @@ interface AppContextType {
   markAnnouncementAsRead: (id: string) => Promise<void>;
   conversations: Conversation[];
   startConversationWith: (targetUserId: string) => Promise<string>;
+  createGroup: (data: { nome: string; participantIds: string[]; fotoUrl?: string; autoExcluir24h?: boolean }) => Promise<string>;
+  deleteConversation: (conversationId: string) => Promise<void>;
+  clearConversation: (conversationId: string) => Promise<void>;
+  addConversationMembers: (conversationId: string, userIds: string[]) => Promise<void>;
+  updateConversation: (conversationId: string, data: { nome?: string; fotoUrl?: string; autoExcluir24h?: boolean }) => Promise<void>;
   activeConversationId: string | null;
   setActiveConversationId: (id: string | null) => void;
   markConversationAsRead: (conversationId: string) => Promise<void>;
@@ -114,60 +119,59 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [backendOnline, setBackendOnline] = useState<boolean>(true);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
 
-  // Load all data from real backend endpoints
+  // Load all data from real backend endpoints — PARALLELIZED
   const loadBackendData = useCallback(async (userIdToLoad?: string) => {
     const activeUid = userIdToLoad || getApiUser();
     setIsSyncing(true);
 
     try {
-      // 1. Carrega todos os perfis para o seletor institucional
-      const profiles = await api.getAllProfiles().catch(() => INITIAL_USERS);
-      setAvailableProfiles(profiles);
+      // Lote 1: auth (necessário para permissões no lote 2)
+      const [profiles, me] = await Promise.all([
+        api.getAllProfiles().catch(() => INITIAL_USERS),
+        api.getMe().catch(() => null),
+      ]);
 
-      // 2. Carrega usuário ativo
-      const me = await api.getMe().catch(() => null);
+      setAvailableProfiles(profiles);
       if (me) {
         setCurrentUserState(me);
         localStorage.setItem('cs_current_user', JSON.stringify(me));
       }
 
-      // 3. Usuários filtrados pelo backend conforme isolamento de centro
-      const usersData = await api.getUsers().catch(() => []);
+      // Lote 2: todos os dados em paralelo (não dependem uns dos outros)
+      const userLevel = me ? me.hierarquiaNivel : (userIdToLoad === 'usr-carlos' ? 1 : 4);
+
+      const promises: Promise<any>[] = [
+        api.getUsers().catch(() => []),
+        api.getChannels().catch(() => []),
+        api.getAnnouncements().catch(() => []),
+        api.getConversations().catch(() => []),
+        api.getNotifications().catch(() => []),
+        api.getReports().catch(() => []),
+        api.getEmergencyStatus().catch(() => null),
+      ];
+
+      // Auditoria só para Direção
+      if (userLevel === 1) {
+        promises.push(api.getAuditLogs().catch(() => []));
+      }
+
+      const [usersData, channelsData, annData, convData, notifs, repData, emg, logs] =
+        await Promise.all(promises);
+
+      // Atualiza state apenas quando temos dados (stale-while-revalidate)
       if (usersData && usersData.length > 0) setUsers(usersData);
-
-      // 4. Canais com permissão
-      const channelsData = await api.getChannels().catch(() => []);
       if (channelsData && channelsData.length > 0) setChannels(channelsData);
-
-      // 5. Comunicados
-      const annData = await api.getAnnouncements().catch(() => []);
       if (annData && annData.length > 0) setAnnouncements(annData);
-
-      // 6. Conversas e mensagens
-      const convData = await api.getConversations().catch(() => []);
       if (convData) setConversations(convData);
-
-      // 7. Notificações
-      const notifs = await api.getNotifications().catch(() => []);
       if (notifs) setNotifications(notifs);
-
-      // 8. Relatos de ouvidoria
-      const repData = await api.getReports().catch(() => []);
       if (repData) setReports(repData);
-
-      // 9. Estado de emergência
-      const emg = await api.getEmergencyStatus().catch(() => null);
       if (emg) {
         setEmergencyAlertActive(emg.alertActive);
         setEmergencyAlertMessage(emg.alertMessage);
       }
-
-      // 10. Auditoria (somente se for Direção)
-      const userLevel = me ? me.hierarquiaNivel : (userIdToLoad === 'usr-carlos' ? 1 : 4);
-      if (userLevel === 1) {
-        const logs = await api.getAuditLogs().catch(() => []);
-        if (logs) setAuditLogs(logs);
-      } else {
+      if (userLevel === 1 && logs) {
+        setAuditLogs(logs);
+      } else if (userLevel !== 1) {
         setAuditLogs([]);
       }
 
@@ -200,15 +204,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [activeChannelId]);
 
-  // Carrega mensagens da conversa ativa quando muda
+  // Carrega mensagens da conversa ativa quando muda — PARALLELIZED
   useEffect(() => {
     if (activeConversationId) {
-      // 1. Zera contagem de não lidas na conversa imediatamente
+      // 1. Atualizações locais imediatas (sem esperar backend)
       setConversations((prev) =>
         prev.map((c) => (c.id === activeConversationId ? { ...c, naoLidas: 0 } : c))
       );
-
-      // 2. Marca como lida as notificações dessa conversa no state local
       setNotifications((prev) =>
         prev.map((n) => {
           if (n.tipo === 'mensagem' && (n.conversaId === activeConversationId || !n.conversaId)) {
@@ -218,40 +220,53 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         })
       );
 
-      // 3. Notifica backend e carrega mensagens
-      api.markConversationRead(activeConversationId)
-        .then(() => api.getNotifications())
-        .then((freshNotifs) => {
-          if (freshNotifs) setNotifications(freshNotifs);
-        })
-        .catch(() => {});
-
-      api.getConversationMessages(activeConversationId)
-        .then((convMsgs) => {
+      // 2. Backend em paralelo: marcar lida + buscar mensagens + atualizar notificações
+      Promise.all([
+        api.getConversationMessages(activeConversationId).catch(() => null),
+        api.markConversationRead(activeConversationId)
+          .then(() => api.getNotifications())
+          .catch(() => null),
+      ]).then(([convMsgs, freshNotifs]) => {
+        if (convMsgs) {
           setMessages((prev) => {
             const others = prev.filter((m) => m.conversationId !== activeConversationId);
             return [...others, ...convMsgs];
           });
-        })
-        .catch((err) => console.log('Conversa protegida:', err.message));
+        }
+        if (freshNotifs) setNotifications(freshNotifs);
+      });
     }
   }, [activeConversationId]);
 
-  // Polling leve para sincronizar notificações e mensagens em segundo plano
+  // Ref para evitar recriar o timer a cada troca de conversa
+  const activeConvRef = useRef(activeConversationId);
+  useEffect(() => {
+    activeConvRef.current = activeConversationId;
+  }, [activeConversationId]);
+
+  // Polling otimizado — intervalo de 12s em vez de 4s, usa ref estável
   useEffect(() => {
     const timer = setInterval(async () => {
       try {
-        const [notifs, convs] = await Promise.all([
+        const currentConvId = activeConvRef.current;
+
+        const promises: Promise<any>[] = [
           api.getNotifications().catch(() => null),
           api.getConversations().catch(() => null),
-        ]);
+        ];
+
+        // Só busca mensagens se há conversa ativa
+        if (currentConvId) {
+          promises.push(api.getConversationMessages(currentConvId).catch(() => null));
+        }
+
+        const [notifs, convs, msgs] = await Promise.all(promises);
 
         if (notifs) {
           setNotifications((prev) => {
-            // Se a conversa ativa estiver aberta, garantir que as notificações dela continuam lidas
-            if (activeConversationId) {
-              return notifs.map((n) =>
-                n.conversaId === activeConversationId ? { ...n, lida: true } : n
+            if (currentConvId) {
+              return notifs.map((n: any) =>
+                n.conversaId === currentConvId ? { ...n, lida: true } : n
               );
             }
             return notifs;
@@ -260,28 +275,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         if (convs) {
           setConversations((prev) =>
-            convs.map((c) =>
-              c.id === activeConversationId ? { ...c, naoLidas: 0 } : c
+            convs.map((c: any) =>
+              c.id === currentConvId ? { ...c, naoLidas: 0 } : c
             )
           );
         }
 
-        if (activeConversationId) {
-          const msgs = await api.getConversationMessages(activeConversationId).catch(() => null);
-          if (msgs) {
-            setMessages((prev) => {
-              const others = prev.filter((m) => m.conversationId !== activeConversationId);
-              return [...others, ...msgs];
-            });
-          }
+        if (msgs && currentConvId) {
+          setMessages((prev) => {
+            const others = prev.filter((m) => m.conversationId !== currentConvId);
+            return [...others, ...msgs];
+          });
         }
       } catch (err) {
         // Silencioso em caso de instabilidade
       }
-    }, 4000);
+    }, 12000);
 
     return () => clearInterval(timer);
-  }, [activeConversationId]);
+  }, []); // Timer estável — não recria ao trocar conversa
 
   // Troca de usuário / perfil com recarga imediata de permissões e isolamento
   const switchProfile = async (userId: string) => {
@@ -405,6 +417,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   ) => {
     if (!texto.trim() && tipo !== 'audio') return;
 
+    // 1. Criar mensagem local otimista (aparece imediatamente)
+    const tempId = `temp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const now = new Date();
+    const horaStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+
+    const optimisticMsg: Message = {
+      id: tempId,
+      conversationId,
+      channelId,
+      remetenteId: currentUser.id,
+      remetenteNome: currentUser.nome,
+      remetenteCargo: currentUser.cargo,
+      texto,
+      createdAt: horaStr,
+      lida: false,
+      tipo,
+      audioDuracaoSegundos: tipo === 'audio' ? 14 : undefined,
+      status: 'sending',
+    };
+
+    // Inserir imediatamente no state
+    setMessages((prev) => [...prev, optimisticMsg]);
+
+    // Atualizar a lista de conversas localmente (última mensagem)
+    if (conversationId) {
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === conversationId
+            ? { ...c, ultimaMensagem: texto, ultimaMensagemHora: horaStr }
+            : c
+        )
+      );
+    }
+
+    // 2. Enviar para o backend em background
     try {
       let postedMsg: Message;
       if (channelId) {
@@ -423,15 +470,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return;
       }
 
-      setMessages((prev) => [...prev, postedMsg]);
+      // 3. Substituir mensagem temporária pela confirmada do servidor
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === tempId ? { ...postedMsg, status: 'sent' } : m
+        )
+      );
 
-      // Atualiza lista de conversas
+      // Atualiza conversas em background (sem bloquear)
       if (conversationId) {
-        const updatedConvs = await api.getConversations();
-        setConversations(updatedConvs);
+        api.getConversations()
+          .then((updatedConvs) => setConversations(updatedConvs))
+          .catch(() => {});
       }
     } catch (err: any) {
-      alert(err.message || 'Erro ao enviar mensagem');
+      // 4. Marcar como falha — manter a mensagem visível com status 'failed'
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === tempId ? { ...m, status: 'failed' } : m
+        )
+      );
+      console.warn('Falha ao enviar mensagem:', err.message);
     }
   };
 
@@ -465,6 +524,78 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (err: any) {
       alert(err.message || 'Falha ao iniciar conversa');
       throw err;
+    }
+  };
+
+  const createGroup = async (data: {
+    nome: string;
+    participantIds: string[];
+    fotoUrl?: string;
+    autoExcluir24h?: boolean;
+  }): Promise<string> => {
+    try {
+      const conv = await api.createGroup(data);
+      setConversations((prev) => [conv, ...prev]);
+      setActiveConversationId(conv.id);
+      return conv.id;
+    } catch (err: any) {
+      alert(err.message || 'Falha ao criar grupo');
+      throw err;
+    }
+  };
+
+  const deleteConversation = async (conversationId: string) => {
+    try {
+      setConversations((prev) => prev.filter((c) => c.id !== conversationId));
+      setMessages((prev) => prev.filter((m) => m.conversationId !== conversationId));
+      if (activeConversationId === conversationId) {
+        setActiveConversationId(null);
+      }
+      await api.deleteConversation(conversationId);
+    } catch (err: any) {
+      console.warn('Erro ao excluir conversa:', err.message);
+      api.getConversations().then(setConversations).catch(() => {});
+    }
+  };
+
+  const clearConversation = async (conversationId: string) => {
+    try {
+      setMessages((prev) => prev.filter((m) => m.conversationId !== conversationId));
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === conversationId
+            ? { ...c, ultimaMensagem: 'Histórico de mensagens limpo.', ultimaMensagemHora: 'Agora' }
+            : c
+        )
+      );
+      await api.clearConversation(conversationId);
+    } catch (err: any) {
+      console.warn('Erro ao limpar conversa:', err.message);
+    }
+  };
+
+  const addConversationMembers = async (conversationId: string, userIds: string[]) => {
+    try {
+      const updated = await api.addConversationMembers(conversationId, userIds);
+      setConversations((prev) =>
+        prev.map((c) => (c.id === conversationId ? { ...c, ...updated } : c))
+      );
+    } catch (err: any) {
+      alert(err.message || 'Falha ao adicionar participantes');
+    }
+  };
+
+  const updateConversation = async (
+    conversationId: string,
+    data: { nome?: string; fotoUrl?: string; autoExcluir24h?: boolean }
+  ) => {
+    try {
+      setConversations((prev) =>
+        prev.map((c) => (c.id === conversationId ? { ...c, ...data } : c))
+      );
+      await api.updateConversation(conversationId, data);
+    } catch (err: any) {
+      console.warn('Erro ao atualizar conversa:', err.message);
     }
   };
 
@@ -606,6 +737,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         markAnnouncementAsRead,
         conversations,
         startConversationWith,
+        createGroup,
+        deleteConversation,
+        clearConversation,
+        addConversationMembers,
+        updateConversation,
         activeConversationId,
         setActiveConversationId,
         markConversationAsRead,

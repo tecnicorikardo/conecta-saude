@@ -38,6 +38,11 @@ Também foi observada uma espera de carregamento significativa em algumas telas.
 | Conversas | [x] | Paula Souza e Thiago Duarte listados |
 | Histórico com Paula | [x] | Mensagens recebidas e enviadas carregaram |
 | Envio de mensagem | [x] | Nova mensagem enviada e confirmada com duplo check |
+| Limpar histórico de conversa | [x] | Confirmado: limpa histórico de mensagens preservando a conversa |
+| Excluir conversa e mensagens | [x] | Confirmado: exclusão completa com diálogo de confirmação |
+| Adicionar participantes em grupo | [x] | Confirmado: seleção múltipla e adição imediata de participantes |
+| Foto e destaque visual do grupo | [x] | Confirmado: foto personalizada, badge "GRUPO", membros e abas |
+| Auto-exclusão de mensagens (24h) | [x] | Confirmado: mensagens temporárias com expiração em 24h e banner |
 | Canais | [~] | Rota abriu pela navegação interna; carregamento direto apresentou tela vazia inicialmente |
 | Comunicados | [~] | Acesso e listagem identificados; detalhe individual não confirmado nesta rodada |
 | Notificações internas | [ ] | Atalho está visível, mas a abertura individual não foi concluída nesta rodada |
@@ -108,6 +113,11 @@ Também foi observada uma espera de carregamento significativa em algumas telas.
 - [x] A mensagem apareceu no lado direito da conversa.
 - [~] O envio começou com ícone de relógio.
 - [x] Após aguardar, o ícone mudou para duplo check.
+- [x] Opção "Limpar conversa": funcional com diálogo de confirmação, limpa histórico de mensagens preservando a conversa.
+- [x] Opção "Excluir conversa": funcional com diálogo de confirmação, remove a conversa permanentemente da lista.
+- [x] Adicionar participantes em grupo: funcionalidade completa de inclusão de novos membros em grupos existentes.
+- [x] Foto de grupo personalizada e destaque visual marcante: badge "GRUPO", avatar com foto, contagem de participantes e abas de filtro ("Todas", "Diretas", "Grupos").
+- [x] Auto-exclusão de mensagens 24 horas: funcionalidade de mensagens temporárias com expiração automática após 24h e banner informativo no chat.
 - [ ] Recebimento confirmado em uma sessão separada de Paula.
 - [ ] Push da mensagem recebido por Paula.
 - [ ] Teste com aplicativo em segundo plano.

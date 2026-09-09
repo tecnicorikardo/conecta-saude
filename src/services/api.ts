@@ -26,7 +26,7 @@ export const getApiUser = (): string => {
   return currentUserId;
 };
 
-// Helper fetch com cabeçalho de autenticação e contexto de usuário
+// Helper fetch com cabeçalho de autenticação, contexto de usuário e timeout
 async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const userId = getApiUser();
   const headers = new Headers(options.headers || {});
@@ -34,18 +34,32 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
   headers.set('x-user-id', userId);
   headers.set('Authorization', `Bearer ${userId}`);
 
-  const res = await fetch(`/api${endpoint}`, {
-    ...options,
-    headers,
-  });
+  // Timeout de 8 segundos para evitar spinner indefinido
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-  const json = await res.json().catch(() => ({}));
+  try {
+    const res = await fetch(`/api${endpoint}`, {
+      ...options,
+      headers,
+      signal: controller.signal,
+    });
 
-  if (!res.ok) {
-    throw new Error(json.error || `Erro na requisição (${res.status})`);
+    const json = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      throw new Error(json.error || `Erro na requisição (${res.status})`);
+    }
+
+    return json.data !== undefined ? json.data : json;
+  } catch (err: any) {
+    if (err.name === 'AbortError') {
+      throw new Error('A conexão com o servidor excedeu o tempo limite. Tente novamente.');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  return json.data !== undefined ? json.data : json;
 }
 
 export const api = {
@@ -127,6 +141,50 @@ export const api = {
     return apiRequest<Conversation>('/conversations', {
       method: 'POST',
       body: JSON.stringify({ targetUserId }),
+    });
+  },
+
+  createGroup: async (data: {
+    nome: string;
+    participantIds: string[];
+    fotoUrl?: string;
+    autoExcluir24h?: boolean;
+  }): Promise<Conversation> => {
+    return apiRequest<Conversation>('/conversations', {
+      method: 'POST',
+      body: JSON.stringify({
+        tipo: 'grupo',
+        ...data,
+      }),
+    });
+  },
+
+  updateConversation: async (
+    conversationId: string,
+    data: { nome?: string; fotoUrl?: string; autoExcluir24h?: boolean }
+  ): Promise<Conversation> => {
+    return apiRequest<Conversation>(`/conversations/${conversationId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+
+  deleteConversation: async (conversationId: string): Promise<void> => {
+    await apiRequest(`/conversations/${conversationId}`, {
+      method: 'DELETE',
+    });
+  },
+
+  clearConversation: async (conversationId: string): Promise<void> => {
+    await apiRequest(`/conversations/${conversationId}/clear`, {
+      method: 'POST',
+    });
+  },
+
+  addConversationMembers: async (conversationId: string, userIds: string[]): Promise<Conversation> => {
+    return apiRequest<Conversation>(`/conversations/${conversationId}/members`, {
+      method: 'POST',
+      body: JSON.stringify({ userIds }),
     });
   },
 

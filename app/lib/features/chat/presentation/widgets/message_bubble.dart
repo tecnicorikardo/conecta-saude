@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/message_entity.dart';
@@ -68,91 +69,187 @@ class MessageBubble extends StatelessWidget {
 
     return Align(
       alignment: isOwn ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.78,
-        ),
-        margin: const EdgeInsets.symmetric(vertical: 3, horizontal: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-        decoration: BoxDecoration(
-          color: bubbleColor,
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(16),
-            topRight: const Radius.circular(16),
-            bottomLeft: Radius.circular(isOwn ? 16 : 4),
-            bottomRight: Radius.circular(isOwn ? 4 : 16),
+      child: GestureDetector(
+        onLongPress: () => _showMessageActions(context),
+        child: Container(
+          constraints: BoxConstraints(
+            maxWidth: MediaQuery.of(context).size.width * 0.78,
           ),
-        ),
-        child: Column(
-          crossAxisAlignment:
-              isOwn ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (showSenderName && !isOwn) ...[
-              Text(
-                message.remetente.nome,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                  color: AppColors.primaryLight,
+          margin: const EdgeInsets.symmetric(vertical: 3, horizontal: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: bubbleColor,
+            borderRadius: BorderRadius.only(
+              topLeft: const Radius.circular(16),
+              topRight: const Radius.circular(16),
+              bottomLeft: Radius.circular(isOwn ? 16 : 4),
+              bottomRight: Radius.circular(isOwn ? 4 : 16),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment:
+                isOwn ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (showSenderName && !isOwn) ...[
+                Text(
+                  message.remetente.nome,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                    color: AppColors.primaryLight,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 2),
-            ],
+                const SizedBox(height: 2),
+              ],
 
-            if (message.excluido)
-              Text(
-                '🚫 Esta mensagem foi apagada',
-                style: TextStyle(
-                  fontStyle: FontStyle.italic,
-                  color: textColor.withValues(alpha: 0.6),
-                  fontSize: 13,
+              if (message.excluido)
+                Text(
+                  '🚫 Esta mensagem foi apagada',
+                  style: TextStyle(
+                    fontStyle: FontStyle.italic,
+                    color: textColor.withValues(alpha: 0.6),
+                    fontSize: 13,
+                  ),
+                )
+              else if (_isAudio)
+                AudioMessagePlayer(
+                  audioSource: _audioSource,
+                  durationSeconds: _audioDuration,
+                  isOwn: isOwn,
+                )
+              else
+                Text(
+                  message.texto,
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 14.5,
+                    height: 1.3,
+                  ),
                 ),
-              )
-            else if (_isAudio)
-              AudioMessagePlayer(
-                audioSource: _audioSource,
-                durationSeconds: _audioDuration,
-                isOwn: isOwn,
-              )
-            else
-              Text(
-                message.texto,
-                style: TextStyle(
-                  color: textColor,
-                  fontSize: 14.5,
-                  height: 1.3,
-                ),
-              ),
 
-            const SizedBox(height: 3),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (message.editado && !message.excluido) ...[
+              const SizedBox(height: 3),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (message.editado && !message.excluido) ...[
+                    Text(
+                      'editada ',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: textColor.withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ],
                   Text(
-                    'editada ',
+                    timeStr,
                     style: TextStyle(
-                      fontSize: 10,
-                      color: textColor.withValues(alpha: 0.6),
+                      fontSize: 11,
+                      color: textColor.withValues(alpha: 0.7),
                     ),
                   ),
+                  if (isOwn) ...[
+                    const SizedBox(width: 4),
+                    _buildStatusIcon(textColor),
+                  ],
                 ],
-                Text(
-                  timeStr,
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: textColor.withValues(alpha: 0.7),
-                  ),
-                ),
-                if (isOwn) ...[
-                  const SizedBox(width: 4),
-                  _buildStatusIcon(textColor),
-                ],
-              ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showMessageActions(BuildContext context) {
+    if (message.excluido) return;
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 36,
+              height: 4,
+              margin: const EdgeInsets.symmetric(vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
+            if (onReply != null)
+              ListTile(
+                leading: const Icon(Icons.reply),
+                title: const Text('Responder'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  onReply!();
+                },
+              ),
+            ListTile(
+              leading: const Icon(Icons.copy),
+              title: const Text('Copiar texto'),
+              onTap: () {
+                Navigator.pop(ctx);
+                Clipboard.setData(ClipboardData(text: message.texto));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Mensagem copiada')),
+                );
+              },
+            ),
+            if (onEdit != null)
+              ListTile(
+                leading: const Icon(Icons.edit_outlined),
+                title: const Text('Editar mensagem'),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  onEdit!();
+                },
+              ),
+            if (onDelete != null)
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                title: const Text('Excluir mensagem', style: TextStyle(color: Colors.red)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _confirmDelete(context);
+                },
+              ),
+            const SizedBox(height: 8),
           ],
         ),
+      ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Excluir mensagem?'),
+        content: const Text('Deseja realmente apagar esta mensagem para todos?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              Navigator.pop(ctx);
+              onDelete?.call();
+            },
+            child: const Text('Excluir'),
+          ),
+        ],
       ),
     );
   }
