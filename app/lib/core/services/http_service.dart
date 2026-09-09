@@ -31,8 +31,8 @@ class HttpService {
     _dio = Dio(
       BaseOptions(
         baseUrl: kApiBaseUrl,
-        connectTimeout: const Duration(seconds: 15),
-        receiveTimeout: const Duration(seconds: 25),
+        connectTimeout: const Duration(seconds: 45),
+        receiveTimeout: const Duration(seconds: 45),
         headers: {
           'Content-Type': 'application/json',
           'Bypass-Tunnel-Reminder': 'true',
@@ -121,6 +121,25 @@ class HttpService {
 
   Future<Response<T>> delete<T>(String path) {
     return dio.delete<T>(path);
+  }
+
+  /// Pré-aquece o servidor no Render silenciosamente para evitar atraso de cold start no login
+  void warmUp() {
+    try {
+      final warmUpDio = Dio(
+        BaseOptions(
+          connectTimeout: const Duration(seconds: 45),
+          receiveTimeout: const Duration(seconds: 45),
+        ),
+      );
+      warmUpDio
+          .get('https://conecta-saude-backende.onrender.com/health')
+          .then((res) {
+        debugPrint('[WarmUp] Backend Render pré-aquecido com sucesso (HTTP ${res.statusCode}).');
+      }).catchError((_) {
+        // Ignora silenciosamente
+      });
+    } catch (_) {}
   }
 }
 

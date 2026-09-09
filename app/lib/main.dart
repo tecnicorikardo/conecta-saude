@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'core/config/firebase_options.dart';
 import 'core/routes/app_router.dart';
 import 'core/routes/url_strategy.dart';
+import 'core/services/http_service.dart';
 import 'core/theme/app_theme.dart';
 
 void main() async {
@@ -36,6 +37,9 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Pré-aquece o backend no Render preventivamente em background
+  HttpService.instance.warmUp();
 
   // SharedPreferences
   final prefs = await SharedPreferences.getInstance();

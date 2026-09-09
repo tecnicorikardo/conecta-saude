@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/routes/app_routes.dart';
+import '../../../../core/services/http_service.dart';
 import '../providers/auth_provider.dart';
 
 class LoginForm extends ConsumerStatefulWidget {
@@ -36,6 +37,7 @@ class _LoginFormState extends ConsumerState<LoginForm> {
   void initState() {
     super.initState();
     _loadSavedCredentials();
+    HttpService.instance.warmUp();
   }
 
   Future<void> _loadSavedCredentials() async {

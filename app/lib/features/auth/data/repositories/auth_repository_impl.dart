@@ -22,8 +22,8 @@ class AuthRepositoryImpl implements AuthRepository {
     return Dio(
       BaseOptions(
         baseUrl: kApiBaseUrl,
-        connectTimeout: const Duration(seconds: 12),
-        receiveTimeout: const Duration(seconds: 15),
+        connectTimeout: const Duration(seconds: 45),
+        receiveTimeout: const Duration(seconds: 45),
         headers: token != null
             ? {'Authorization': 'Bearer $token'}
             : {},
@@ -54,35 +54,47 @@ class AuthRepositoryImpl implements AuthRepository {
         return const Left(AuthFailure('Não foi possível obter o token.'));
       }
 
-      // 3. Tentar obter FCM token para notificações push
-      // vapidKey é OBRIGATÓRIA para Web Push — sem ela getToken() retorna null
+      // 3. Tentar obter FCM token sem bloquear o fluxo de login
+      // Timeout ultracurto (1.2s). O NotificationService sincroniza em background logo em seguida.
       String? fcmToken;
       try {
-        if (kIsWeb) {
-          fcmToken = await FirebaseMessaging.instance
-              .getToken(vapidKey: kFirebaseWebVapidKey)
-              .timeout(const Duration(seconds: 8));
-        } else {
-          fcmToken = await FirebaseMessaging.instance
-              .getToken()
-              .timeout(const Duration(seconds: 8));
-        }
-        debugPrint('[FCM] Token no login: ${fcmToken != null ? '${fcmToken.substring(0, 20)}...' : 'null'}');
+        fcmToken = await FirebaseMessaging.instance
+            .getToken(vapidKey: kIsWeb ? kFirebaseWebVapidKey : null)
+            .timeout(const Duration(milliseconds: 1200));
+        debugPrint('[FCM] Token capturado no login: ${fcmToken != null ? '${fcmToken.substring(0, 15)}...' : 'null'}');
       } catch (e) {
-        debugPrint('[FCM] Não foi possível obter token no login: $e');
+        debugPrint('[FCM] Token FCM ignorado no login rápido (NotificationService sincronizará em background)');
       }
 
       // 4. Chamar backend para validar e obter dados reais do banco
+      // Com retry automático para cobrir cold start do Render / Neon
       try {
-        final response = await _buildDio().post(
-          '/auth/verify',
-          data: {
-            'idToken': idToken,
-            if (fcmToken != null && fcmToken.isNotEmpty) 'fcmToken': fcmToken,
-          },
-        );
+        Response? response;
+        for (int attempt = 1; attempt <= 2; attempt++) {
+          try {
+            response = await _buildDio().post(
+              '/auth/verify',
+              data: {
+                'idToken': idToken,
+                if (fcmToken != null && fcmToken.isNotEmpty) 'fcmToken': fcmToken,
+              },
+            );
+            break; // Conectado com sucesso
+          } on DioException catch (dioErr) {
+            final isTimeout = dioErr.type == DioExceptionType.connectionTimeout ||
+                dioErr.type == DioExceptionType.receiveTimeout ||
+                dioErr.type == DioExceptionType.connectionError;
 
-        if (response.data['success'] == true) {
+            if (attempt == 1 && isTimeout) {
+              debugPrint('[Auth] Servidor acordando (cold start). Tentativa 2 imediata...');
+              await Future.delayed(const Duration(milliseconds: 500));
+              continue;
+            }
+            rethrow;
+          }
+        }
+
+        if (response != null && response.data['success'] == true) {
           final data = response.data['data'] as Map<String, dynamic>;
           final entity = _mapToEntity(data);
           if (!entity.ativo) {
@@ -97,18 +109,32 @@ class AuthRepositoryImpl implements AuthRepository {
         return const Left(AuthFailure('Resposta inválida do servidor.'));
       } on DioException catch (e) {
         final statusCode = e.response?.statusCode;
-        await _firebaseAuth.signOut();
 
+        // Só faz signOut se foi explicitamente rejeitado pelo backend (403 ou 404)
         if (statusCode == 403) {
+          await _firebaseAuth.signOut();
           final msg = e.response?.data?['message'] as String? ??
               e.response?.data?['error'] as String? ??
               'Cadastro em análise. Seu acesso está aguardando aprovação pelo RH ou Coordenação da unidade.';
           return Left(UserInactiveFailure(msg));
         }
         if (statusCode == 404) {
+          await _firebaseAuth.signOut();
           return const Left(UserNotFoundFailure());
         }
 
+        // Se for erro de timeout ou rede, NÃO desloga do Firebase
+        final isTimeout = e.type == DioExceptionType.connectionTimeout ||
+            e.type == DioExceptionType.receiveTimeout ||
+            e.type == DioExceptionType.connectionError;
+
+        if (isTimeout) {
+          return const Left(AuthFailure(
+            'O servidor institucional está inicializando. Por favor, tente novamente em instantes.',
+          ));
+        }
+
+        await _firebaseAuth.signOut();
         return const Left(AuthFailure('Falha na autenticação institucional.'));
       }
     } on FirebaseAuthException catch (e) {
@@ -210,10 +236,12 @@ class AuthRepositoryImpl implements AuthRepository {
           }
           return Right(entity);
         }
-        await _firebaseAuth.signOut();
         return const Right(null);
-      } catch (_) {
-        await _firebaseAuth.signOut();
+      } catch (e) {
+        if (e is DioException &&
+            (e.response?.statusCode == 401 || e.response?.statusCode == 403)) {
+          await _firebaseAuth.signOut();
+        }
         return const Right(null);
       }
     } catch (e) {
@@ -240,10 +268,12 @@ class AuthRepositoryImpl implements AuthRepository {
           }
           return entity;
         }
-        await _firebaseAuth.signOut();
         return null;
-      } catch (_) {
-        await _firebaseAuth.signOut();
+      } catch (e) {
+        if (e is DioException &&
+            (e.response?.statusCode == 401 || e.response?.statusCode == 403)) {
+          await _firebaseAuth.signOut();
+        }
         return null;
       }
     });

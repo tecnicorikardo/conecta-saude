@@ -209,12 +209,20 @@ class NotificationService {
 
   /// Envia o token FCM para o endpoint PATCH /api/auth/fcm-token
   Future<void> _sendTokenToBackend(String? token) async {
-    try {
-      final http = _ref.read(httpServiceProvider);
-      await http.patch('/auth/fcm-token', data: {'fcmToken': token});
-      debugPrint('[FCM] ✅ Token salvo no PostgreSQL com sucesso.');
-    } catch (e) {
-      debugPrint('[FCM] ❌ Não foi possível registrar token no backend: $e');
+    for (int attempt = 1; attempt <= 2; attempt++) {
+      try {
+        final http = _ref.read(httpServiceProvider);
+        await http.patch('/auth/fcm-token', data: {'fcmToken': token});
+        debugPrint('[FCM] ✅ Token salvo no PostgreSQL com sucesso.');
+        return;
+      } catch (e) {
+        if (attempt == 1) {
+          debugPrint('[FCM] ⏳ Servidor inicializando. Repetindo envio do token em 3s...');
+          await Future.delayed(const Duration(seconds: 3));
+          continue;
+        }
+        debugPrint('[FCM] ❌ Não foi possível registrar token no backend após retry: $e');
+      }
     }
   }
 }
