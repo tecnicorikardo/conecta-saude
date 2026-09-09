@@ -30,3 +30,6 @@ Thumbs.db
 *serviceAccount*.json
 *service-account*.json
 firebase-admin*.json
+
+# Backups locais de migração (dados privados e configuração anterior)
+.local-migration/

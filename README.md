@@ -1,67 +1,47 @@
-# Conecta Saúde — Plataforma Institucional SUS
+# Conecta Saúde
 
-Plataforma institucional de comunicação interna para ambiente hospitalar do SUS, integrando os centros **CCDTI** (Centro Carioca de Diagnóstico e Tratamento por Imagem), **CCO** (Centro Carioca do Olho), **CCE** (Centro Carioca de Especialidades) e a **Direção Geral**.
+Comunicação institucional para hospitais: conversas, grupos, canais, comunicados e gestão de acesso.
 
-Comunicação profissional, organizada, segura e com rastreabilidade — mantendo estrita governança hierárquica e isolamento setorial entre os centros de atendimento.
+## Estrutura ativa
 
----
+- app/: Flutter (web e Android), Riverpod, Firebase Auth e FCM.
+- backend/: Express e TypeScript, Prisma, Supabase PostgreSQL.
+- e2e/: Playwright. Atenção: a configuração atual aponta para o site publicado.
+- src/ e server/: interface React e servidor JSON anteriores; o package.json da raiz não inicia essa interface.
 
-## 🌟 Recursos Implementados
+## Desenvolvimento
 
-1. **Isolamento Institucional e Governança por Nível**:
-   - **Nível 1 (Direção Geral)**: Acesso irrestrito a todos os centros, painel executivo de indicadores, gestão de funcionários, auditoria de logs e triagem de ouvidoria.
-   - **Nível 2 (Coordenação Médica/Cirúrgica)**: Gestão de canais do seu setor, publicação de comunicados oficiais e acionamento de emergências.
-   - **Nível 3 (Supervisão)**: Supervisão operacional de equipes e canais permitidos.
-   - **Nível 4 (Funcionário)**: Comunicação estritamente restrita ao seu próprio centro (CCDTI, CCO ou CCE), comunicados gerais e canal de emergência.
+Backend (Node.js 20 ou superior), dentro de backend/:
 
-2. **Canais Oficiais & Setoriais**:
-   - Isolamento de canais por sigla (`CCDTI`, `CCO`, `CCE`). Colaboradores de um setor não acessam canais de outros setores, com exceção da Direção Geral.
-   - Canal de Avisos da Direção Geral aberto a toda a rede.
-   - Canal Prioritário de Emergência com disparo de alertas em tempo real.
+```sh
+npm ci
+npm run db:generate
+npm run dev
+npm test
+npm run build
+```
 
-3. **Comunicados Oficiais com Confirmação de Leitura**:
-   - Publicação exclusiva por Lideranças e Coordenações.
-   - Níveis de prioridade: Normal, Alta e 🚨 Urgente.
-   - Confirmação formal de leitura por colaborador com métrica de taxa de leitura institucional.
+Configurar DATABASE_URL no backend/.env com a conexão Supabase Session pooler e as variáveis Firebase existentes. Nunca versionar esse arquivo. Porta padrão da API: 3000.
 
-4. **Central de Emergência e Ramais Hospitalares**:
-   - Ramais diretos imediatos para Tomografia/CCDTI, Bloco Cirúrgico/CCO, Regulação/CCE e Plantão Geral.
-   - Protocolos padronizados SUS: Código Amarelo, Código Vermelho e Código Roxo.
-   - Disparo prioritário de Alerta Vermelho na rede hospitalar.
+Aplicativo, dentro de app/:
 
-5. **Conversas e Mensagens Seguras**:
-   - Mensagens diretas entre profissionais respeitando hierarquia.
-   - Suporte a reprodução de mensagens de áudio institucionais gravadas.
-   - Exclusão com soft-delete e ferramenta de denúncia para condutas impróprias.
+```sh
+flutter pub get
+flutter run -d chrome --web-port 8080
+flutter analyze
+flutter build web --release
+```
 
-6. **Gestão de Funcionários, Auditoria e Ouvidoria**:
-   - Cadastro e ativação/desativação de funcionários pela Direção Geral.
-   - Trilha imutável de logs de auditoria com IP, módulo, ação e data/hora.
-   - Triagem e resolução de ocorrências anônimas de integridade e ética.
+O aplicativo web em localhost usa a API local na porta 3000. A versão publicada usa o serviço conecta-saude-backende no Render. O Firebase Hosting publica app/build/web.
 
----
+## Mensagens e acesso
 
-## 🚀 Execução no Ambiente
+O chat usa envio otimista e avisos WebSocket autenticados em /api/realtime. O token é enviado em um quadro inicial, nunca na URL. Apenas participantes ativos recebem avisos; os dados são obtidos pela API autenticada. Reconexões recuperam alterações por HTTP. Há sincronização periódica de reserva. Canais oficiais ainda usam consultas periódicas.
 
-- **Ambiente**: Node.js 22
-- **Porta**: 3000
-- **Frontend**: React 19, TypeScript, Vite, Tailwind CSS v4, Lucide Icons
-- **Scripts**:
-  ```bash
-  npm run dev     # Inicia o servidor Vite na porta 3000 (host 0.0.0.0)
-  npm run build   # Compilação estática de produção em dist/
-  npm run lint    # Verificação de tipos TypeScript
-  ```
+Cargo e hospital são confirmados pelo backend, sem perfil improvisado a partir do e-mail. Permissões por hospital ainda exigem revisão completa antes de ampliar para outras instituições.
 
----
+## Publicação e migração
 
-## 👥 Papéis Pré-Configurados para Testes
+Consulte backend/SUPABASE-MIGRATION.md. O banco local foi trocado para Supabase e os dados existentes foram copiados. O Render exige DATABASE_URL no painel. Os segredos Firebase também são configurados pelo painel, nunca pelo render.yaml.
 
-O seletor rápido no topo da aplicação permite alternar instantaneamente entre os perfis institucionais:
-- **Dr. Carlos Eduardo Mendes** (Direção Geral — Nível 1)
-- **Dra. Juliana Moreira** (Coord. Médica CCDTI — Nível 2)
-- **Lucas Ribeiro** (Técnico Radiologia CCDTI — Nível 4)
-- **Dr. Roberto Vasconcelos** (Coord. Cirúrgico CCO — Nível 2)
-- **Paula Souza** (Técnica Oftalmológica CCO — Nível 4)
-- **Dra. Beatriz Castro** (Coord. Ambulatorial CCE — Nível 2)
-- **Gabriel Mendes** (Assistente Regulação CCE — Nível 4)
+A entrega em tempo real usa uma instância de API, adequada à demonstração gratuita. Antes de operar múltiplas instâncias, adicionar distribuição compartilhada de eventos. Desempenho de produção deve ser medido em dispositivos reais.

@@ -1,3 +1,4 @@
+import '../../../../core/services/realtime_service.dart';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -52,6 +53,7 @@ final currentUserNomeProvider = Provider<String>((ref) {
 final conversationsProvider =
     StateNotifierProvider<ConversationsNotifier,
         AsyncValue<List<ConversationEntity>>>((ref) {
+  ref.watch(realtimeServiceProvider);
   return ConversationsNotifier(ref);
 });
 
@@ -64,16 +66,27 @@ class ConversationsNotifier
 
   final Ref _ref;
   Timer? _pollTimer;
+  StreamSubscription<String?>? _realtimeSub;
+  bool _syncing = false;
+  bool _syncAgain = false;
+  int _pollTicks = 0;
 
   @override
   void dispose() {
     _pollTimer?.cancel();
+    _realtimeSub?.cancel();
     super.dispose();
   }
 
   void _startPolling() {
+    final realtime = _ref.read(realtimeServiceProvider);
+    _realtimeSub = realtime.changes.listen((_) {
+      if (mounted) unawaited(_pollConversations());
+    });
     _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-      if (mounted) _pollConversations();
+      if (mounted && (!realtime.connected || ++_pollTicks % 10 == 0)) {
+        unawaited(_pollConversations());
+      }
     });
   }
 
@@ -93,6 +106,8 @@ class ConversationsNotifier
   }
 
   Future<void> _pollConversations() async {
+    if (_syncing) { _syncAgain = true; return; }
+    _syncing = true;
     try {
       final repo = _ref.read(conversationRepositoryProvider);
       final raw = await repo.listConversations();
@@ -109,6 +124,12 @@ class ConversationsNotifier
       state = AsyncValue.data(sorted);
     } catch (_) {
       // Ignora erro silenciosamente durante polling
+    } finally {
+      _syncing = false;
+      if (_syncAgain && mounted) {
+        _syncAgain = false;
+        unawaited(_pollConversations());
+      }
     }
   }
 
@@ -193,8 +214,9 @@ class ConversationsNotifier
 
 // ─── Mensagens de uma conversa — dados reais + polling ───────────────────────
 final messagesProvider =
-    StateNotifierProvider.family<MessagesNotifier,
+    StateNotifierProvider.autoDispose.family<MessagesNotifier,
         AsyncValue<List<MessageEntity>>, String>((ref, conversationId) {
+  ref.watch(realtimeServiceProvider);
   return MessagesNotifier(conversationId, ref);
 });
 
@@ -210,19 +232,32 @@ class MessagesNotifier
   final Ref _ref;
   final _uuid = const Uuid();
   Timer? _pollTimer;
+  StreamSubscription<String?>? _realtimeSub;
+  bool _syncing = false;
+  bool _syncAgain = false;
+  int _pollTicks = 0;
   final Map<String, MessageEntity> _pendingOutgoing = {};
 
   @override
   void dispose() {
     _pollTimer?.cancel();
+    _realtimeSub?.cancel();
     _pendingOutgoing.clear();
     super.dispose();
   }
 
   /// Inicia polling a cada 3 segundos para mensagens novas
   void _startPolling() {
+    final realtime = _ref.read(realtimeServiceProvider);
+    _realtimeSub = realtime.changes.listen((id) {
+      if (mounted && (id == null || id == conversationId)) {
+        unawaited(_pollNewMessages());
+      }
+    });
     _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-      if (mounted) _pollNewMessages();
+      if (mounted && (!realtime.connected || ++_pollTicks % 10 == 0)) {
+        unawaited(_pollNewMessages());
+      }
     });
   }
 
@@ -264,8 +299,10 @@ class MessagesNotifier
 
   /// Polling — busca mensagens novas sem apagar mensagens enviadas localmente
   Future<void> _pollNewMessages() async {
+    if (_syncing) { _syncAgain = true; return; }
+    _syncing = true;
     final current = state.value;
-    if (current == null) return;
+    if (current == null) { _syncing = false; return; }
 
     try {
       final repo = _ref.read(conversationRepositoryProvider);
@@ -276,9 +313,7 @@ class MessagesNotifier
 
       // Limpa de _pendingOutgoing as mensagens que já chegaram do backend no polling
       _pendingOutgoing.removeWhere((tempId, pending) {
-        return fresh.any((f) =>
-            f.id == tempId ||
-            (f.remetente.id == pending.remetente.id && f.texto == pending.texto));
+        return fresh.any((f) => f.id == tempId);
       });
 
       final freshIds = fresh.map((m) => m.id).toSet();
@@ -300,11 +335,17 @@ class MessagesNotifier
       }
     } catch (_) {
       // Polling silencioso — não exibe erro
+    } finally {
+      _syncing = false;
+      if (_syncAgain && mounted) {
+        _syncAgain = false;
+        unawaited(_pollNewMessages());
+      }
     }
   }
 
   // ─── Enviar mensagem de texto ───────────────────────────────────────────
-  Future<void> sendTextMessage(String texto) async {
+  Future<void> sendTextMessage(String texto, {String? retryId}) async {
     final cleanText = texto.trim();
     if (cleanText.isEmpty) return;
 
@@ -313,7 +354,8 @@ class MessagesNotifier
     final currentUser = _ref.read(currentUserProvider).value;
 
     // Adicionar localmente com status "sending" IMEDIATAMENTE (zero delay na UI)
-    final tempId = 'temp_${_uuid.v4()}';
+    final tempId = retryId ?? _uuid.v4();
+    if (_pendingOutgoing[tempId]?.status == MessageStatus.sending) return;
     final tempMsg = MessageEntity(
       id: tempId,
       conversationId: conversationId,
@@ -332,11 +374,11 @@ class MessagesNotifier
     _pendingOutgoing[tempId] = tempMsg;
 
     final current = state.value ?? [];
-    state = AsyncValue.data([...current, tempMsg]);
+    state = AsyncValue.data([...current.where((m) => m.id != tempId), tempMsg]);
 
     try {
       final repo = _ref.read(conversationRepositoryProvider);
-      final realMsg = await repo.sendMessage(conversationId, cleanText);
+      final realMsg = await repo.sendMessage(conversationId, cleanText, clientMessageId: tempId);
 
       _pendingOutgoing.remove(tempId);
 
@@ -361,7 +403,7 @@ class MessagesNotifier
             .updateLastMessage(conversationId, realMsg);
       }
     } catch (e) {
-      _pendingOutgoing.remove(tempId);
+      _pendingOutgoing[tempId] = tempMsg.copyWith(status: MessageStatus.error);
       if (mounted) {
         final currentList = state.value ?? [];
         state = AsyncValue.data(

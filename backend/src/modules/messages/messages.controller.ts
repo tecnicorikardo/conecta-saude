@@ -5,6 +5,7 @@ import { AppError } from '../../middleware/errorHandler';
 import { auditLog } from '../../utils/auditLogger';
 import { AppConstants } from '../../utils/constants';
 import { getFirebaseMessaging } from '../../config/firebase';
+import { notifyConversation } from '../../realtime';
 import {
   sendMessageSchema,
   editMessageSchema,
@@ -58,6 +59,7 @@ export async function listMessages(req: Request, res: Response): Promise<void> {
       })),
       skipDuplicates: true,
     });
+    notifyConversation(conversationId);
   }
 
   res.json({
@@ -86,7 +88,7 @@ export async function listMessages(req: Request, res: Response): Promise<void> {
 export async function sendMessage(req: Request, res: Response): Promise<void> {
   const actor = req.user!;
   const { id: conversationId } = req.params;
-  const { texto } = sendMessageSchema.parse(req.body);
+  const { texto, clientMessageId } = sendMessageSchema.parse(req.body);
 
   // Verificar participação
   const membership = await prisma.conversationMember.findUnique({
@@ -96,7 +98,7 @@ export async function sendMessage(req: Request, res: Response): Promise<void> {
   });
   if (!membership) throw new AppError('Você não participa desta conversa.', 403);
 
-  const message = await prisma.message.create({
+  const messageData = {
     data: {
       conversationId,
       remetenteId: actor.id,
@@ -107,7 +109,19 @@ export async function sendMessage(req: Request, res: Response): Promise<void> {
         select: { id: true, nome: true, fotoUrl: true, cargo: true },
       },
     },
-  });
+  };
+  const message = clientMessageId
+    ? await prisma.message.upsert({
+        where: { id: clientMessageId },
+        create: { ...messageData.data, id: clientMessageId },
+        update: {},
+        include: messageData.include,
+      })
+    : await prisma.message.create(messageData);
+  if (message.remetenteId !== actor.id || message.conversationId !== conversationId || message.texto !== texto) {
+    throw new AppError('Identificador de mensagem já utilizado.', 409);
+  }
+
 
   // Atualizar timestamp da conversa
   await prisma.conversation.update({
@@ -116,6 +130,7 @@ export async function sendMessage(req: Request, res: Response): Promise<void> {
   });
 
   // Retornar resposta HTTP 201 imediatamente (envio instantâneo)
+  notifyConversation(conversationId);
   res.status(201).json({
     success: true,
     data: {
@@ -231,6 +246,7 @@ export async function editMessage(req: Request, res: Response): Promise<void> {
     where: { id },
     data: { texto, editado: true, editadoEm: new Date() },
   });
+  notifyConversation(message.conversationId);
 
   res.json({
     success: true,
@@ -268,6 +284,7 @@ export async function deleteMessage(req: Request, res: Response): Promise<void> 
     where: { id },
     data: { excluido: true, excluidoEm: new Date() },
   });
+  notifyConversation(message.conversationId);
 
   // Registrar auditoria se for moderação administrativa
   if (isDirecao && !isOwner) {

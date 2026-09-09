@@ -65,9 +65,9 @@ class AuthRepositoryImpl implements AuthRepository {
       }
 
       // 4. Chamar backend para validar e obter dados reais do banco
-      // Timeout ultrarrápido (4s) para nunca prender o usuário se o backend estiver em cold start
+      // Permite a inicialização da instância gratuita; acesso depende da validação do servidor.
       try {
-        final response = await _buildDio(null, const Duration(seconds: 4)).post(
+        final response = await _buildDio(null, const Duration(seconds: 75)).post(
           '/auth/verify',
           data: {
             'idToken': idToken,
@@ -86,11 +86,11 @@ class AuthRepositoryImpl implements AuthRepository {
           }
           return Right(entity);
         }
-        return Right(_buildFallbackFromFirebase(firebaseUser));
+        return const Left(AuthFailure('Não foi possível confirmar seu acesso no servidor. Tente novamente.'));
       } on DioException catch (e) {
         final statusCode = e.response?.statusCode;
 
-        // Só faz signOut se foi explicitamente rejeitado como inativo (403)
+        // Uma conta inativa não pode iniciar a sessão institucional.
         if (statusCode == 403) {
           await _firebaseAuth.signOut();
           final msg = e.response?.data?['message'] as String? ??
@@ -99,13 +99,11 @@ class AuthRepositoryImpl implements AuthRepository {
           return Left(UserInactiveFailure(msg));
         }
 
-        // Se o servidor demorar, der timeout, cold start ou erro temporário de rede:
-        // NÃO FALHA O LOGIN! O Firebase Auth já validou a credencial com sucesso.
-        debugPrint('[Auth] Backend indisponível/lento ($statusCode). Liberando acesso imediato via credencial segura.');
-        return Right(_buildFallbackFromFirebase(firebaseUser));
+        // Firebase valida a identidade; o backend confirma cargo, hospital e aprovação.
+        return const Left(AuthFailure('Não foi possível confirmar seu acesso no servidor. Tente novamente.'));
       } catch (e) {
-        debugPrint('[Auth] Erro ao sincronizar com backend: $e. Usando fallback seguro.');
-        return Right(_buildFallbackFromFirebase(firebaseUser));
+        // Falha de sincronização não concede um perfil local.
+        return const Left(AuthFailure('Não foi possível confirmar seu acesso no servidor. Tente novamente.'));
       }
     } on FirebaseAuthException catch (e) {
       return Left(AuthFailure(_mapFirebaseError(e.code)));
@@ -193,10 +191,10 @@ class AuthRepositoryImpl implements AuthRepository {
       if (firebaseUser == null) return const Right(null);
 
       final idToken = await firebaseUser.getIdToken();
-      if (idToken == null) return Right(_buildFallbackFromFirebase(firebaseUser));
+      if (idToken == null) return const Left(AuthFailure('Não foi possível confirmar seu acesso no servidor. Tente novamente.'));
 
       try {
-        final response = await _buildDio(idToken, const Duration(seconds: 4)).get('/me');
+        final response = await _buildDio(idToken, const Duration(seconds: 75)).get('/me');
         if (response.data['success'] == true) {
           final data = response.data['data'] as Map<String, dynamic>;
           final entity = _mapToEntity(data);
@@ -206,15 +204,15 @@ class AuthRepositoryImpl implements AuthRepository {
           }
           return Right(entity);
         }
-        return Right(_buildFallbackFromFirebase(firebaseUser));
+        return const Left(AuthFailure('Não foi possível confirmar seu acesso no servidor. Tente novamente.'));
       } catch (e) {
         if (e is DioException &&
             (e.response?.statusCode == 401 || e.response?.statusCode == 403)) {
           await _firebaseAuth.signOut();
           return const Right(null);
         }
-        // Se houver falha de rede/timeout/cold start, mantém a sessão ativa com fallback
-        return Right(_buildFallbackFromFirebase(firebaseUser));
+        // Falha de rede não concede acesso institucional sem validação.
+        return const Left(AuthFailure('Não foi possível confirmar seu acesso no servidor. Tente novamente.'));
       }
     } catch (e) {
       return Left(UnknownFailure(e.toString()));
@@ -228,9 +226,9 @@ class AuthRepositoryImpl implements AuthRepository {
 
       try {
         final idToken = await firebaseUser.getIdToken();
-        if (idToken == null) return _buildFallbackFromFirebase(firebaseUser);
+        if (idToken == null) return null;
 
-        final response = await _buildDio(idToken, const Duration(seconds: 4)).get('/me');
+        final response = await _buildDio(idToken, const Duration(seconds: 75)).get('/me');
         if (response.data['success'] == true) {
           final data = response.data['data'] as Map<String, dynamic>;
           final entity = _mapToEntity(data);
@@ -240,14 +238,14 @@ class AuthRepositoryImpl implements AuthRepository {
           }
           return entity;
         }
-        return _buildFallbackFromFirebase(firebaseUser);
+        return null;
       } catch (e) {
         if (e is DioException &&
             (e.response?.statusCode == 401 || e.response?.statusCode == 403)) {
           await _firebaseAuth.signOut();
           return null;
         }
-        return _buildFallbackFromFirebase(firebaseUser);
+        return null;
       }
     });
   }
@@ -273,97 +271,6 @@ class AuthRepositoryImpl implements AuthRepository {
           : null,
       criadoEm: DateTime.tryParse(data['criadoEm'] as String? ?? '')?.toLocal() ??
           DateTime.now(),
-    );
-  }
-
-  UserEntity _buildFallbackFromFirebase(User firebaseUser) {
-    final email = firebaseUser.email?.toLowerCase().trim() ?? '';
-    final displayName = firebaseUser.displayName?.trim();
-
-    String nome = (displayName != null && displayName.isNotEmpty)
-        ? displayName
-        : (email.isNotEmpty ? email.split('@').first : 'Profissional');
-    String cargo = 'Profissional da Saúde';
-    int hierarquiaNivel = 4;
-    String setorNome = 'Hospital Geral';
-
-    String setorId = '1c5017ec-4800-4c54-8ce4-90e44c5a1525'; // Default CCO
-
-    if (email == 'tecnicorikardo@gmail.com') {
-      nome = (displayName != null && displayName.isNotEmpty) ? displayName : 'Ricardo Martins Santos';
-      cargo = 'Funcionário / Técnico de Saúde';
-      hierarquiaNivel = 4; // Funcionário
-      setorNome = 'Centro Carioca do Olho (CCO)';
-      setorId = '1c5017ec-4800-4c54-8ce4-90e44c5a1525';
-    } else if (email.contains('direcao')) {
-      nome = (displayName != null && displayName.isNotEmpty) ? displayName : 'Carlos Eduardo Mendes';
-      cargo = 'Diretor Geral / Admin Geral';
-      hierarquiaNivel = 1;
-      setorNome = 'Direção Geral';
-      setorId = 'bb317361-1736-4c5f-9a2d-d39b8a1c9680';
-    } else if (email.contains('coord.ccdti')) {
-      nome = (displayName != null && displayName.isNotEmpty) ? displayName : 'Dra. Juliana Moreira';
-      cargo = 'Coordenadora — CCDTI';
-      hierarquiaNivel = 2;
-      setorNome = 'Centro Carioca de Diagnóstico e Tratamento por Imagem (CCDTI)';
-      setorId = '29b5d5d1-3ae3-4a0e-9a1a-6e71d8770612';
-    } else if (email.contains('coord.cco')) {
-      nome = (displayName != null && displayName.isNotEmpty) ? displayName : 'Dr. Roberto Vasconcelos';
-      cargo = 'Coordenador Médico — CCO';
-      hierarquiaNivel = 2;
-      setorNome = 'Centro Carioca do Olho (CCO)';
-      setorId = '1c5017ec-4800-4c54-8ce4-90e44c5a1525';
-    } else if (email.contains('coord.cce')) {
-      nome = (displayName != null && displayName.isNotEmpty) ? displayName : 'Dra. Beatriz Castro';
-      cargo = 'Coordenadora Ambulatorial — CCE';
-      hierarquiaNivel = 2;
-      setorNome = 'Centro Carioca de Especialidades (CCE)';
-      setorId = '81b50efa-2919-41ce-8ab5-4d81c6c033fa';
-    } else if (email.contains('coord')) {
-      cargo = 'Coordenador(a)';
-      hierarquiaNivel = 2;
-      setorNome = 'Coordenação Setorial';
-    } else if (email.contains('lucas.ccdti')) {
-      nome = 'Lucas Ribeiro';
-      cargo = 'Técnico em Radiologia — CCDTI';
-      hierarquiaNivel = 4;
-      setorNome = 'Centro Carioca de Diagnóstico e Tratamento por Imagem (CCDTI)';
-      setorId = '29b5d5d1-3ae3-4a0e-9a1a-6e71d8770612';
-    } else if (email.contains('paula.cco')) {
-      nome = 'Paula Souza';
-      cargo = 'Técnica Oftalmológica — CCO';
-      hierarquiaNivel = 4;
-      setorNome = 'Centro Carioca do Olho (CCO)';
-      setorId = '1c5017ec-4800-4c54-8ce4-90e44c5a1525';
-    } else if (email.contains('thiago.cco')) {
-      nome = 'Thiago Duarte';
-      cargo = 'Enfermeiro Cirúrgico — CCO';
-      hierarquiaNivel = 4;
-      setorNome = 'Centro Carioca do Olho (CCO)';
-      setorId = '1c5017ec-4800-4c54-8ce4-90e44c5a1525';
-    } else if (email.contains('gabriel.cce')) {
-      nome = 'Gabriel Mendes';
-      cargo = 'Assistente de Regulação — CCE';
-      hierarquiaNivel = 4;
-      setorNome = 'Centro Carioca de Especialidades (CCE)';
-      setorId = '81b50efa-2919-41ce-8ab5-4d81c6c033fa';
-    }
-
-    return UserEntity(
-      id: firebaseUser.uid,
-      firebaseUid: firebaseUser.uid,
-      nome: nome,
-      email: email,
-      cargo: cargo,
-      hierarquiaNivel: hierarquiaNivel,
-      setorId: setorId,
-      setorNome: setorNome,
-      fotoUrl: firebaseUser.photoURL,
-      matricula: null,
-      ativo: true,
-      aprovadoPor: 'Sistema Institucional',
-      aprovadoEm: DateTime.now(),
-      criadoEm: firebaseUser.metadata.creationTime ?? DateTime.now(),
     );
   }
 

@@ -2,6 +2,7 @@ import 'dotenv/config';
 import { createApp } from './app';
 import { initializeFirebase } from './config/firebase';
 import { connectDatabase, disconnectDatabase } from './config/database';
+import { startRealtime } from './realtime';
 
 const PORT = Number(process.env.PORT ?? 3000);
 
@@ -15,6 +16,7 @@ async function bootstrap(): Promise<void> {
     console.log(`   Porta    : ${PORT}`);
     console.log(`   Health   : http://localhost:${PORT}/health\n`);
   });
+  const realtime = startRealtime(server);
 
   // 2. Firebase Admin SDK
   try {
@@ -33,6 +35,7 @@ async function bootstrap(): Promise<void> {
   // ─── Graceful shutdown ─────────────────────────────────────────────────
   const shutdown = async (signal: string): Promise<void> => {
     console.log(`\n[Server] Recebido ${signal}. Encerrando...`);
+    realtime.close();
     server.close(async () => {
       await disconnectDatabase();
       console.log('[Server] Encerrado com sucesso.');

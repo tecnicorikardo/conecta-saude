@@ -1,5 +1,5 @@
 // Conecta Saúde — Schema Prisma
-// Banco principal: PostgreSQL
+// Banco principal: Supabase PostgreSQL (Session pooler)
 // Firebase é usado apenas para Auth e FCM — não é o banco principal.
 
 generator client {

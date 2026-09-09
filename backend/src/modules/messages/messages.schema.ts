@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 export const sendMessageSchema = z.object({
+  clientMessageId: z.string().uuid().optional(),
   texto: z
     .string()
     .min(1, 'A mensagem não pode estar vazia.')

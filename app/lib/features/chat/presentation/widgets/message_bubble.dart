@@ -10,6 +10,7 @@ class MessageBubble extends StatelessWidget {
   final bool isOwn;
   final bool showSenderName;
   final VoidCallback? onReply;
+  final VoidCallback? onRetry;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
   final VoidCallback? onDeleteForAll;
@@ -20,6 +21,7 @@ class MessageBubble extends StatelessWidget {
     required this.isOwn,
     this.showSenderName = false,
     this.onReply,
+    this.onRetry,
     this.onEdit,
     this.onDelete,
     this.onDeleteForAll,
@@ -99,6 +101,11 @@ class MessageBubble extends StatelessWidget {
                 isOwn ? CrossAxisAlignment.end : CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (isOwn && message.status == MessageStatus.error)
+                TextButton(
+                  onPressed: onRetry,
+                  child: const Text("Falha no envio · Tentar novamente", style: TextStyle(color: Colors.white)),
+                ),
               if (showSenderName && !isOwn) ...[
                 Text(
                   message.remetente.nome,

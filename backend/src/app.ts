@@ -17,6 +17,8 @@ import { emergencyRouter } from './modules/emergency/emergency.routes';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { authenticate } from './middleware/authenticate';
 import { getMe } from './modules/auth/auth.controller';
+import { prisma } from './config/database';
+import { getFirebaseAdmin } from './config/firebase';
 
 export function createApp(): express.Application {
   const app = express();
@@ -85,7 +87,21 @@ export function createApp(): express.Application {
       status: 'ok',
       timestamp: new Date().toISOString(),
       environment: process.env.NODE_ENV,
+      revision: process.env.RENDER_GIT_COMMIT?.slice(0, 12) ?? 'local',
     });
+  });
+
+  app.get('/ready', async (_req, res) => {
+    try {
+      getFirebaseAdmin();
+      await prisma.$queryRaw`SELECT 1`;
+      const hostname = new URL(process.env.DATABASE_URL ?? '').hostname;
+      const database = hostname.endsWith('.supabase.com') || hostname.endsWith('.supabase.co')
+        ? 'supabase' : 'postgresql';
+      res.json({ status: 'ready', database, revision: process.env.RENDER_GIT_COMMIT?.slice(0, 12) ?? 'local' });
+    } catch {
+      res.status(503).json({ status: 'unavailable' });
+    }
   });
 
   // ─── Rotas da API ─────────────────────────────────────────────────────────

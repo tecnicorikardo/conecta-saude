@@ -146,6 +146,12 @@ class _ChatPageState extends ConsumerState<ChatPage> {
                   messages: messages,
                   currentUserId: currentUserId,
                   scrollController: _scrollController,
+                  onRetry: (msg) async {
+                    try {
+                      await ref.read(messagesProvider(widget.conversationId).notifier)
+                          .sendTextMessage(msg.texto, retryId: msg.id);
+                    } catch (_) { /* O balão mantém a opção de tentar novamente. */ }
+                  },
                   onReply: (msg) => setState(() {
                     _replyingTo = msg;
                     _editingMessage = null;
@@ -513,6 +519,7 @@ class _MessageList extends StatelessWidget {
   final void Function(MessageEntity) onReply;
   final void Function(MessageEntity) onEdit;
   final void Function(MessageEntity) onDelete;
+  final void Function(MessageEntity) onRetry;
   final String conversationId;
 
   const _MessageList({
@@ -522,6 +529,7 @@ class _MessageList extends StatelessWidget {
     required this.onReply,
     required this.onEdit,
     required this.onDelete,
+    required this.onRetry,
     required this.conversationId,
   });
 
@@ -549,6 +557,7 @@ class _MessageList extends StatelessWidget {
           isOwn: isOwn,
           showSenderName: !isOwn,
           onReply: () => onReply(msg),
+          onRetry: () => onRetry(msg),
           onEdit: isOwn && !msg.excluido ? () => onEdit(msg) : null,
           onDelete: isOwn && !msg.excluido ? () => onDelete(msg) : null,
           onDeleteForAll: isOwn && !msg.excluido ? () => onDelete(msg) : null,

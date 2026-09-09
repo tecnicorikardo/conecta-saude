@@ -173,11 +173,11 @@ class ConversationRepository {
 
   /// POST /api/conversations/:id/messages
   Future<MessageEntity> sendMessage(
-      String conversationId, String texto) async {
+      String conversationId, String texto, {String? clientMessageId}) async {
     try {
       final response = await _http.post(
         '/conversations/$conversationId/messages',
-        data: {'texto': texto},
+        data: {'texto': texto, if (clientMessageId != null) 'clientMessageId': clientMessageId},
       );
       return MessageModel.fromJson(
           response.data['data'] as Map<String, dynamic>, conversationId);
