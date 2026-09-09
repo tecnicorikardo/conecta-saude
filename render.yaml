@@ -3,7 +3,7 @@ services:
     name: conecta-saude-backende
     env: node
     rootDir: backend
-    buildCommand: npm install && npm run build && npx prisma generate
+    buildCommand: npm install && npx prisma generate && npm run build
     startCommand: npm start
     plan: free
     autoDeploy: true
@@ -12,4 +12,10 @@ services:
         value: "postgresql://neondb_owner:npg_pMBJNjh8yW7Q@ep-rapid-sky-acy5nv8d-pooler.sa-east-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require"
       - key: NODE_ENV
         value: production
+      - key: FIREBASE_PROJECT_ID
+        value: conecta-hospital
+      - key: FIREBASE_CLIENT_EMAIL
+        value: firebase-adminsdk-fbsvc@conecta-hospital.iam.gserviceaccount.com
+      - key: FIREBASE_PRIVATE_KEY
+        value: "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCwexRJhrjl3vXK\n0FDY6GZDT63RDHA5Px+iGNmsoKqY9BVtzNpx46KNMPVs/CyuLKGukuEd1mumNTbx\nW3tIu6PthYSUhKaCMNP+lUtTsMOAwSr70XNUN2q0sh3qMomIHQGvKIdX5lTs+iQX\njUxipDLCmEW0qgvVcQJVeM6DdkjfuAgPyj8w7oOMayHd5FxslcQcU/josGkgH6i/\nRdMxS1PG92isIaXiMnsrfj1gTjvQjXCqjPbNkmZratH15qun5DgYzFzQTF1ORZkH\nBRIOd0PSyTqBZyGqQrMKMiG2KIINJ/6ywxAOcxS8LfM/cO8ZuOwjK5HzwelAjq6I\ntANv5qN3AgMBAAECggEAQ2XVwxi4300NeHWjEpt6hoVU/8usxigVyB2Ob+9yB3Tc\nBDFiUXFaYGqMqCEMXT49RwLgBzmepfyXrYg+5nGGssy1a9TXFExagdT5Tg5pM3BS\nHpaIYWbCkRye8RR40qslPAQR4B9eWpxTEU2MmPVVT1zA7jSszUhZ2FOJJsqTHSC0\nRCcy2YlQ/4IMNXZf5Pxc2lz1XaIcdArYagcoy6dn6qEmyN3cglmHLqpgc+9lIW36\nTWtyED7pA8AW4vsn0TGHI+55k7FdolBoYCLWWHVzMQHF+VCd9ocgAmCrT4fq9ii0\nt8X17IygmEM2ziIydPVaB0k+byvdNz5dZvvKAh66WQKBgQDa1Bf2j2bcSiDVixMU\noky0yPRiJHMOOrW2MrMICW4MgC398+2o1FM4c2hBotEucw+FhMT1GFI69QO2b+ph\nAx09WFPDM/vRq1VxFeBjTzFmmUaudGMfDSFM2HxYn+PJU7nr2AAeY5WckYw5Hue2\nuxZeCQFnn73/kM8yWFVxtuf2XwKBgQDOdXdoy/SRyU3IphxzMMFgojCWXeE6PudW\nTWMYdAR1FXHP4KzVHY/ff0GxZb25rw/QLn5H7cCVe5PF9R2xvJSHqGmxMLkq9NS0\n0lFpTH9oQkf25nlvDut66WI5IEzT3pu4CD6+7f5BPyBNVG3yBc3GawRWtGdzeftd\njS881/v56QKBgQCPn8ESnNBAKY8fWSZu1o9N4M81UwMJBdOZ//Cth7LpFYAaO+1y\nb9knJef5nGl6+R3o3ll/HDVsaL/FD/NfNPIN/1kKt6XB2Zg8nsUlqSadVmCjw9QC\n31VJ4JTMfjS9QOy4NI7vYyEhIA5Ot1ASCP0HPxXi8196y4qSWpPKDOh2NQKBgDrk\n6V48qBSaTxUIxZ7abp9pRODwANrDrOxCgR0to0PfDStWlRbqKut/erbnJfr9BE7H\npIBSQxihOuNCa+kSuXAFS7kfBANL+g1m3ZBjIQkVtz+oOUXEBMp4Huva2e+qVdNm\njreaXmgwYL+OcRqUK0IJryAosEYRqvHh33LEzf1ZAoGAbsWbD14B0kupnZKSa1nE\ncpNPnZWm8ST9fdOm9QVtRIOC1G6bAPPuioxHGwi5pI6r7Rx0Zo24Ofq9qmNzpg8Y\nI9yePd5n7WTJUFGl2m357xftYsoCuc9s6Jp3XrdPRJNFpf3ITD9WqkFn853MWOwE\nOxXy3pil+tdKZD4ivKdYHpw=\n-----END PRIVATE KEY-----\n"
 

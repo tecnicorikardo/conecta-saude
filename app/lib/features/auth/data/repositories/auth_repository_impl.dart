@@ -287,26 +287,38 @@ class AuthRepositoryImpl implements AuthRepository {
     int hierarquiaNivel = 4;
     String setorNome = 'Hospital Geral';
 
-    if (email == 'tecnicorikardo@gmail.com' || email.contains('direcao')) {
-      nome = (displayName != null && displayName.isNotEmpty) ? displayName : 'Ricardo (Diretor Geral)';
+    String setorId = '1c5017ec-4800-4c54-8ce4-90e44c5a1525'; // Default CCO
+
+    if (email == 'tecnicorikardo@gmail.com') {
+      nome = (displayName != null && displayName.isNotEmpty) ? displayName : 'Ricardo Martins Santos';
+      cargo = 'Funcionário / Técnico de Saúde';
+      hierarquiaNivel = 4; // Funcionário
+      setorNome = 'Centro Carioca do Olho (CCO)';
+      setorId = '1c5017ec-4800-4c54-8ce4-90e44c5a1525';
+    } else if (email.contains('direcao')) {
+      nome = (displayName != null && displayName.isNotEmpty) ? displayName : 'Carlos Eduardo Mendes';
       cargo = 'Diretor Geral / Admin Geral';
       hierarquiaNivel = 1;
       setorNome = 'Direção Geral';
+      setorId = 'bb317361-1736-4c5f-9a2d-d39b8a1c9680';
     } else if (email.contains('coord.ccdti')) {
       nome = (displayName != null && displayName.isNotEmpty) ? displayName : 'Dra. Juliana Moreira';
       cargo = 'Coordenadora — CCDTI';
       hierarquiaNivel = 2;
-      setorNome = 'CCDTI';
+      setorNome = 'Centro Carioca de Diagnóstico e Tratamento por Imagem (CCDTI)';
+      setorId = '29b5d5d1-3ae3-4a0e-9a1a-6e71d8770612';
     } else if (email.contains('coord.cco')) {
       nome = (displayName != null && displayName.isNotEmpty) ? displayName : 'Dr. Roberto Vasconcelos';
       cargo = 'Coordenador Médico — CCO';
       hierarquiaNivel = 2;
-      setorNome = 'CCO';
+      setorNome = 'Centro Carioca do Olho (CCO)';
+      setorId = '1c5017ec-4800-4c54-8ce4-90e44c5a1525';
     } else if (email.contains('coord.cce')) {
       nome = (displayName != null && displayName.isNotEmpty) ? displayName : 'Dra. Beatriz Castro';
       cargo = 'Coordenadora Ambulatorial — CCE';
       hierarquiaNivel = 2;
-      setorNome = 'CCE';
+      setorNome = 'Centro Carioca de Especialidades (CCE)';
+      setorId = '81b50efa-2919-41ce-8ab5-4d81c6c033fa';
     } else if (email.contains('coord')) {
       cargo = 'Coordenador(a)';
       hierarquiaNivel = 2;
@@ -315,22 +327,26 @@ class AuthRepositoryImpl implements AuthRepository {
       nome = 'Lucas Ribeiro';
       cargo = 'Técnico em Radiologia — CCDTI';
       hierarquiaNivel = 4;
-      setorNome = 'CCDTI';
+      setorNome = 'Centro Carioca de Diagnóstico e Tratamento por Imagem (CCDTI)';
+      setorId = '29b5d5d1-3ae3-4a0e-9a1a-6e71d8770612';
     } else if (email.contains('paula.cco')) {
       nome = 'Paula Souza';
       cargo = 'Técnica Oftalmológica — CCO';
       hierarquiaNivel = 4;
-      setorNome = 'CCO';
+      setorNome = 'Centro Carioca do Olho (CCO)';
+      setorId = '1c5017ec-4800-4c54-8ce4-90e44c5a1525';
     } else if (email.contains('thiago.cco')) {
       nome = 'Thiago Duarte';
       cargo = 'Enfermeiro Cirúrgico — CCO';
       hierarquiaNivel = 4;
-      setorNome = 'CCO';
+      setorNome = 'Centro Carioca do Olho (CCO)';
+      setorId = '1c5017ec-4800-4c54-8ce4-90e44c5a1525';
     } else if (email.contains('gabriel.cce')) {
       nome = 'Gabriel Mendes';
       cargo = 'Assistente de Regulação — CCE';
       hierarquiaNivel = 4;
-      setorNome = 'CCE';
+      setorNome = 'Centro Carioca de Especialidades (CCE)';
+      setorId = '81b50efa-2919-41ce-8ab5-4d81c6c033fa';
     }
 
     return UserEntity(
@@ -340,7 +356,7 @@ class AuthRepositoryImpl implements AuthRepository {
       email: email,
       cargo: cargo,
       hierarquiaNivel: hierarquiaNivel,
-      setorId: 'setor-institucional-sus',
+      setorId: setorId,
       setorNome: setorNome,
       fotoUrl: firebaseUser.photoURL,
       matricula: null,

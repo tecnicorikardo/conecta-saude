@@ -45,29 +45,6 @@ export async function verifyToken(req: Request, res: Response): Promise<void> {
           setor: { select: { id: true, nome: true } },
         },
       });
-    } else if (decodedToken.email.toLowerCase() === 'tecnicorikardo@gmail.com') {
-      let defaultSetor = await prisma.sector.findFirst({
-        where: { nome: { contains: 'Direção', mode: 'insensitive' } },
-      });
-      if (!defaultSetor) {
-        defaultSetor = await prisma.sector.findFirst();
-      }
-      if (defaultSetor) {
-        user = await prisma.user.create({
-          data: {
-            firebaseUid: decodedToken.uid,
-            nome: 'Ricardo (Admin / Direção Geral)',
-            email: decodedToken.email,
-            cargo: 'Diretor Geral / Administrador de TI',
-            hierarquiaNivel: HierarquiaNivel.DIRECAO,
-            setorId: defaultSetor.id,
-            ativo: true,
-          },
-          include: {
-            setor: { select: { id: true, nome: true } },
-          },
-        });
-      }
     }
   }
 

@@ -6,10 +6,7 @@ import { connectDatabase, disconnectDatabase } from './config/database';
 const PORT = Number(process.env.PORT ?? 3000);
 
 async function bootstrap(): Promise<void> {
-  // 1. Firebase Admin SDK
-  initializeFirebase();
-
-  // 2. Servidor HTTP (inicia imediatamente para atender /health e binding do Render)
+  // 1. Servidor HTTP (inicia imediatamente para atender /health e binding do Render)
   const app = createApp();
 
   const server = app.listen(PORT, () => {
@@ -18,6 +15,13 @@ async function bootstrap(): Promise<void> {
     console.log(`   Porta    : ${PORT}`);
     console.log(`   Health   : http://localhost:${PORT}/health\n`);
   });
+
+  // 2. Firebase Admin SDK
+  try {
+    initializeFirebase();
+  } catch (fbErr) {
+    console.error('[Firebase] Alerta ao inicializar Admin SDK:', fbErr);
+  }
 
   // 3. Conexão ao banco de dados PostgreSQL
   try {

@@ -202,7 +202,7 @@ class _LoginFormState extends ConsumerState<LoginForm> {
                   runSpacing: 6,
                   children: [
                     _buildQuickAccountChip(
-                      label: '👑 Ricardo (Diretor)',
+                      label: '👤 Ricardo (Funcionário)',
                       email: 'tecnicorikardo@gmail.com',
                       password: '',
                     ),
