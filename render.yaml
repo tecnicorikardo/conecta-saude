@@ -1,9 +1,15 @@
 services:
   - type: web
-    name: conecta-saude-backend
+    name: conecta-saude-backende
     env: node
     rootDir: backend
     buildCommand: npm install && npm run build && npx prisma generate
     startCommand: npm start
     plan: free
     autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        value: "postgresql://neondb_owner:npg_pMBJNjh8yW7Q@ep-rapid-sky-acy5nv8d-pooler.sa-east-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require"
+      - key: NODE_ENV
+        value: production
+

@@ -76,6 +76,40 @@ async function main() {
     }
   }
 
+  // Sincronizar usuário real do proprietário (se existir no Firebase)
+  try {
+    const ownerEmail = 'tecnicorikardo@gmail.com';
+    try {
+      const ownerRecord = await auth.getUserByEmail(ownerEmail);
+      const sector = await prisma.sector.findFirst();
+      const existingOwner = await prisma.user.findUnique({ where: { email: ownerEmail } });
+      if (!existingOwner && sector) {
+        await prisma.user.create({
+          data: {
+            firebaseUid: ownerRecord.uid,
+            nome: ownerRecord.displayName || 'Ricardo (Direção)',
+            email: ownerEmail,
+            cargo: 'Diretor Geral',
+            hierarquiaNivel: 1,
+            setorId: sector.id,
+            ativo: true,
+          },
+        });
+        console.log(`✨ Usuário real criado no banco: ${ownerEmail}`);
+      } else if (existingOwner) {
+        await prisma.user.update({
+          where: { email: ownerEmail },
+          data: { firebaseUid: ownerRecord.uid, ativo: true, hierarquiaNivel: 1 },
+        });
+        console.log(`🔗 Usuário real sincronizado no banco: ${ownerEmail}`);
+      }
+    } catch (e) {
+      console.log(`ℹ️ Usuário real ${ownerEmail} não encontrado no Firebase Auth ainda.`);
+    }
+  } catch (err) {
+    console.error('Erro ao verificar usuário real:', err);
+  }
+
   console.log('\n──────────────────────────────────────────────────');
   console.log('✅ Configuração concluída!\n');
   console.log('📋 Credenciais para teste:');

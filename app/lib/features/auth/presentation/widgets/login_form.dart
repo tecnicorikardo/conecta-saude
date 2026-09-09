@@ -170,6 +170,68 @@ class _LoginFormState extends ConsumerState<LoginForm> {
             },
           ),
 
+          // ─── Acesso Rápido para Teste / Demonstração ────────────────────
+          Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: _borderColor),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.bolt_rounded, size: 15, color: _primaryBlue),
+                    SizedBox(width: 4),
+                    Text(
+                      'Preenchimento rápido (Ambiente de Teste):',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w600,
+                        color: _textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    _buildQuickAccountChip(
+                      label: '👑 Ricardo (Diretor)',
+                      email: 'tecnicorikardo@gmail.com',
+                      password: '',
+                    ),
+                    _buildQuickAccountChip(
+                      label: '🏥 Coord. CCO',
+                      email: 'coord.cco@conectasaude.dev',
+                      password: 'ConectaSUS@2026',
+                    ),
+                    _buildQuickAccountChip(
+                      label: '🔬 Coord. CCDTI',
+                      email: 'coord.ccdti@conectasaude.dev',
+                      password: 'ConectaSUS@2026',
+                    ),
+                    _buildQuickAccountChip(
+                      label: '🩺 Coord. CCE',
+                      email: 'coord.cce@conectasaude.dev',
+                      password: 'ConectaSUS@2026',
+                    ),
+                    _buildQuickAccountChip(
+                      label: '📋 Func. CCO',
+                      email: 'paula.cco@conectasaude.dev',
+                      password: 'ConectaSUS@2026',
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
           // ─── Campo E-mail Institucional ──────────────────────────────────
           TextFormField(
             controller: _emailCtrl,
@@ -499,6 +561,42 @@ class _LoginFormState extends ConsumerState<LoginForm> {
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildQuickAccountChip({
+    required String label,
+    required String email,
+    required String password,
+  }) {
+    return InkWell(
+      onTap: widget.isLoading
+          ? null
+          : () {
+              setState(() {
+                _emailCtrl.text = email;
+                if (password.isNotEmpty) {
+                  _passCtrl.text = password;
+                }
+              });
+            },
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: _borderColor),
+        ),
+        child: Text(
+          label,
+          style: const TextStyle(
+            fontSize: 11.5,
+            fontWeight: FontWeight.w600,
+            color: _primaryBlue,
+          ),
+        ),
       ),
     );
   }

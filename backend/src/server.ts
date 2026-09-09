@@ -9,10 +9,7 @@ async function bootstrap(): Promise<void> {
   // 1. Firebase Admin SDK
   initializeFirebase();
 
-  // 2. Banco de dados
-  await connectDatabase();
-
-  // 3. Servidor HTTP
+  // 2. Servidor HTTP (inicia imediatamente para atender /health e binding do Render)
   const app = createApp();
 
   const server = app.listen(PORT, () => {
@@ -21,6 +18,13 @@ async function bootstrap(): Promise<void> {
     console.log(`   Porta    : ${PORT}`);
     console.log(`   Health   : http://localhost:${PORT}/health\n`);
   });
+
+  // 3. Conexão ao banco de dados PostgreSQL
+  try {
+    await connectDatabase();
+  } catch (dbErr) {
+    console.error('[Database] Alerta ao conectar:', dbErr);
+  }
 
   // ─── Graceful shutdown ─────────────────────────────────────────────────
   const shutdown = async (signal: string): Promise<void> => {
