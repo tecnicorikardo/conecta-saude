@@ -2,7 +2,11 @@
 {{flutter_build_config}}
 
 _flutter.loader.load({
-  serviceWorkerSettings: {
-    serviceWorkerUrl: "firebase-messaging-sw.js"
+  onEntrypointLoaded: async function(engineInitializer) {
+    const appRunner = await engineInitializer.initializeEngine();
+    if (typeof window.dismissAppLoadingScreen === 'function') {
+      window.dismissAppLoadingScreen();
+    }
+    await appRunner.runApp();
   }
 });

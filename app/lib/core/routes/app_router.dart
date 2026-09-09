@@ -1,7 +1,7 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/auth/presentation/pages/register_page.dart';
@@ -59,17 +59,24 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final path = state.matchedLocation;
       final loggedIn = perms.isLoggedIn;
 
-      // 1. Enquanto a autenticação estiver restaurando a sessão local:
-      // Não redireciona prematuramente para /login! Mantém a rota solicitada (ex: /chat/:id).
-      if (userAsync.isLoading) {
-        return null;
-      }
-
       // Rotas públicas
       final isPublic = path == AppRoutes.splash ||
           path == AppRoutes.login ||
           path == AppRoutes.register ||
           path == AppRoutes.forgotPassword;
+
+      // Se não há sessão local ativa no Firebase Auth e a rota é protegida:
+      // Redireciona imediatamente para /login sem esperar cold start ou requisições assíncronas.
+      final hasFirebaseSession = FirebaseAuth.instance.currentUser != null;
+      if (!hasFirebaseSession && !isPublic) {
+        return AppRoutes.login;
+      }
+
+      // 1. Enquanto a autenticação estiver restaurando a sessão local do Firebase:
+      // Não redireciona prematuramente para /login! Mantém a rota solicitada (ex: /chat/:id).
+      if (userAsync.isLoading) {
+        return null;
+      }
 
       // Não logado tentando acessar rota protegida → login
       if (!loggedIn && !isPublic) return AppRoutes.login;

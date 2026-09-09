@@ -1,4 +1,5 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,6 +14,11 @@ import 'core/theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Garante árvore semântica/acessibilidade no DOM Web (bot de testes, leitores de tela e formulários)
+  if (kIsWeb) {
+    WidgetsBinding.instance.ensureSemantics();
+  }
 
   // URL limpa sem '#' para deep linking direto de notificações push
   configureAppUrlStrategy();

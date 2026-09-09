@@ -5,9 +5,6 @@ import 'package:flutter/foundation.dart';
 external void _showHospitalNotification(
     JSString title, JSString body, JSString tag, JSString url);
 
-@JS('playNotificationChime')
-external void _playNotificationChime();
-
 void showNativeNotificationWeb(String title, String body, {String? tag, String? url}) {
   try {
     _showHospitalNotification(

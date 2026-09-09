@@ -13,8 +13,7 @@ import '../../domain/repositories/auth_repository.dart';
 
 
 class AuthRepositoryImpl implements AuthRepository {
-  final Ref? _ref;
-  AuthRepositoryImpl([this._ref]);
+  AuthRepositoryImpl([Ref? _]);
 
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
 
