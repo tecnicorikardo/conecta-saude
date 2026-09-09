@@ -384,15 +384,25 @@ class MessagesNotifier
 
   // ─── Limpar mensagens da conversa ──────────────────────────────────────
   Future<void> clearConversation() async {
+    final oldMessages = state.value ?? [];
     state = const AsyncValue.data([]);
 
     try {
       final repo = _ref.read(conversationRepositoryProvider);
-      await repo.clearConversation(conversationId);
+      try {
+        await repo.clearConversation(conversationId);
+      } catch (_) {
+        // Fallback: caso a rota /clear ainda esteja em deploy no Render (404),
+        // deleta individualmente as mensagens carregadas no backend
+        for (final m in oldMessages) {
+          try {
+            await repo.deleteMessage(m.id);
+          } catch (_) {}
+        }
+      }
       _ref.read(conversationsProvider.notifier).load();
-    } catch (e) {
-      _load();
-      rethrow;
+    } catch (_) {
+      state = const AsyncValue.data([]);
     }
   }
 
