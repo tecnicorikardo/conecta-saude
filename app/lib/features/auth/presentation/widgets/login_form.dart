@@ -204,7 +204,7 @@ class _LoginFormState extends ConsumerState<LoginForm> {
                     _buildQuickAccountChip(
                       label: '👤 Ricardo (Funcionário)',
                       email: 'tecnicorikardo@gmail.com',
-                      password: '',
+                      password: 'ConectaSUS@2026',
                     ),
                     _buildQuickAccountChip(
                       label: '🏥 Coord. CCO',
