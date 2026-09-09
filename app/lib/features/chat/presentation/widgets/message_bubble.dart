@@ -59,13 +59,18 @@ class MessageBubble extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final timeStr = DateFormat('HH:mm').format(message.criadoEm);
 
-    final bubbleColor = isOwn
-        ? AppColors.primary
-        : (isDark ? AppColors.darkSurfaceVariant : AppColors.neutral100);
+    final isExcluido = message.excluido;
+    final bubbleColor = isExcluido
+        ? (isDark ? const Color(0xFF2C2C2C) : const Color(0xFFF0F0F0))
+        : (isOwn
+            ? AppColors.primary
+            : (isDark ? AppColors.darkSurfaceVariant : AppColors.neutral100));
 
-    final textColor = isOwn
-        ? Colors.white
-        : (isDark ? Colors.white : AppColors.textPrimary);
+    final textColor = isExcluido
+        ? (isDark ? Colors.white60 : Colors.black54)
+        : (isOwn
+            ? Colors.white
+            : (isDark ? Colors.white : AppColors.textPrimary));
 
     return Align(
       alignment: isOwn ? Alignment.centerRight : Alignment.centerLeft,
@@ -79,6 +84,9 @@ class MessageBubble extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
             color: bubbleColor,
+            border: isExcluido
+                ? Border.all(color: isDark ? Colors.white12 : Colors.black12)
+                : null,
             borderRadius: BorderRadius.only(
               topLeft: const Radius.circular(16),
               topRight: const Radius.circular(16),

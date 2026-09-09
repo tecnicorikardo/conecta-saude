@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../../auth/presentation/providers/current_user_provider.dart';
@@ -8,6 +9,33 @@ import '../../data/repositories/conversation_repository.dart';
 import '../../data/models/conversation_model.dart';
 import '../../domain/entities/conversation_entity.dart';
 import '../../domain/entities/message_entity.dart';
+
+// Armazena timestamp em memória e cache local de quando cada conversa foi limpa
+final Map<String, DateTime> _conversationClearedAt = {};
+
+Future<DateTime?> _getConversationClearedAt(String conversationId) async {
+  if (_conversationClearedAt.containsKey(conversationId)) {
+    return _conversationClearedAt[conversationId];
+  }
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final ms = prefs.getInt('chat_cleared_at_$conversationId');
+    if (ms != null) {
+      final dt = DateTime.fromMillisecondsSinceEpoch(ms);
+      _conversationClearedAt[conversationId] = dt;
+      return dt;
+    }
+  } catch (_) {}
+  return null;
+}
+
+Future<void> _setConversationClearedAt(String conversationId, DateTime dt) async {
+  _conversationClearedAt[conversationId] = dt;
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('chat_cleared_at_$conversationId', dt.millisecondsSinceEpoch);
+  } catch (_) {}
+}
 
 // ─── Usuário atual ────────────────────────────────────────────────────────────
 final currentUserIdProvider = Provider<String>((ref) {
@@ -50,7 +78,13 @@ class ConversationsNotifier
   }
 
   List<ConversationEntity> _sortConversations(List<ConversationEntity> list) {
-    return List<ConversationEntity>.from(list)
+    return List<ConversationEntity>.from(list.map((c) {
+      final clearedAt = _conversationClearedAt[c.id];
+      if (clearedAt != null && c.lastMessage != null && !c.lastMessage!.criadoEm.isAfter(clearedAt)) {
+        return c.copyWith(lastMessage: null);
+      }
+      return c;
+    }))
       ..sort((a, b) {
         final cmp = b.atualizadoEm.compareTo(a.atualizadoEm);
         if (cmp != 0) return cmp;
@@ -110,6 +144,19 @@ class ConversationsNotifier
     }).toList();
 
     state = AsyncValue.data(_sortConversations(updated));
+  }
+
+  /// Limpa o preview da última mensagem após limpar a conversa
+  void clearConversationLastMessage(String conversationId) {
+    final current = state.value ?? [];
+    final updated = current.map((c) {
+      if (c.id != conversationId) return c;
+      return c.copyWith(
+        lastMessage: null,
+      );
+    }).toList();
+
+    state = AsyncValue.data(updated);
   }
 
   /// Excluir conversa (individual ou grupo)
@@ -179,21 +226,36 @@ class MessagesNotifier
     });
   }
 
-  List<MessageEntity> _filterAutoExcluir(List<MessageEntity> msgs) {
+  List<MessageEntity> _filterMessages(List<MessageEntity> msgs) {
+    var result = msgs;
+
+    // 1. Oculta mensagens enviadas antes do momento em que a conversa foi limpa
+    final clearedAt = _conversationClearedAt[conversationId];
+    if (clearedAt != null) {
+      result = result.where((m) => m.criadoEm.isAfter(clearedAt)).toList();
+    }
+
+    // 2. Oculta mensagens excluídas para não poluir o histórico com balões residuais
+    result = result.where((m) => !m.excluido).toList();
+
+    // 3. Regra de auto-exclusão 24h
     final convs = _ref.read(conversationsProvider).valueOrNull ?? [];
     final thisConv = convs.where((c) => c.id == conversationId).firstOrNull;
-    if (thisConv?.autoExcluir24h != true) return msgs;
+    if (thisConv?.autoExcluir24h == true) {
+      final cutoff = DateTime.now().subtract(const Duration(hours: 24));
+      result = result.where((m) => m.criadoEm.isAfter(cutoff)).toList();
+    }
 
-    final cutoff = DateTime.now().subtract(const Duration(hours: 24));
-    return msgs.where((m) => m.criadoEm.isAfter(cutoff)).toList();
+    return result;
   }
 
   /// Carregamento inicial completo
   Future<void> _load() async {
     try {
+      await _getConversationClearedAt(conversationId);
       final repo = _ref.read(conversationRepositoryProvider);
       final messages = await repo.listMessages(conversationId);
-      final filtered = _filterAutoExcluir(messages);
+      final filtered = _filterMessages(messages);
       if (mounted) state = AsyncValue.data(filtered);
     } catch (e, st) {
       if (mounted) state = AsyncValue.error(e, st);
@@ -208,7 +270,7 @@ class MessagesNotifier
     try {
       final repo = _ref.read(conversationRepositoryProvider);
       final raw = await repo.listMessages(conversationId);
-      final fresh = _filterAutoExcluir(raw);
+      final fresh = _filterMessages(raw);
 
       if (!mounted) return;
 
@@ -384,23 +446,17 @@ class MessagesNotifier
 
   // ─── Limpar mensagens da conversa ──────────────────────────────────────
   Future<void> clearConversation() async {
-    final oldMessages = state.value ?? [];
+    final now = DateTime.now();
+    await _setConversationClearedAt(conversationId, now);
+
     state = const AsyncValue.data([]);
 
     try {
       final repo = _ref.read(conversationRepositoryProvider);
       try {
         await repo.clearConversation(conversationId);
-      } catch (_) {
-        // Fallback: caso a rota /clear ainda esteja em deploy no Render (404),
-        // deleta individualmente as mensagens carregadas no backend
-        for (final m in oldMessages) {
-          try {
-            await repo.deleteMessage(m.id);
-          } catch (_) {}
-        }
-      }
-      _ref.read(conversationsProvider.notifier).load();
+      } catch (_) {}
+      _ref.read(conversationsProvider.notifier).clearConversationLastMessage(conversationId);
     } catch (_) {
       state = const AsyncValue.data([]);
     }
