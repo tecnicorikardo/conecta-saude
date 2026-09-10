@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/routes/app_routes.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_theme_provider.dart';
 import '../../../../core/auth/permissions_provider.dart';
 import '../../../auth/presentation/providers/current_user_provider.dart';
 import '../../../auth/domain/entities/user_entity.dart';
@@ -37,7 +38,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     final perms = ref.watch(permissionsProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: _buildAppBar(context, userAsync.value, perms),
       body: userAsync.when(
         data: (user) => _buildBody(context, user, perms),
@@ -50,12 +51,29 @@ class _HomePageState extends ConsumerState<HomePage> {
   // ─── AppBar com badge de hierarquia ────────────────────────────────────────
   PreferredSizeWidget _buildAppBar(
       BuildContext context, UserEntity? user, UserPermissions perms) {
+    final tokens = context.appTokens;
+
     return AppBar(
-      backgroundColor: AppColors.primaryDeep,
-      systemOverlayStyle: const SystemUiOverlayStyle(
-        statusBarColor: AppColors.navy,
+      backgroundColor: tokens.primaryDark,
+      systemOverlayStyle: SystemUiOverlayStyle(
+        statusBarColor: tokens.primaryDark,
         statusBarIconBrightness: Brightness.light,
       ),
+      bottom: tokens.identityRainbow.isNotEmpty
+          ? PreferredSize(
+              preferredSize: const Size.fromHeight(3.0),
+              child: Row(
+                children: tokens.identityRainbow
+                    .map((c) => Expanded(child: Container(height: 3, color: c)))
+                    .toList(),
+              ),
+            )
+          : (tokens.accent != null
+              ? PreferredSize(
+                  preferredSize: const Size.fromHeight(2.5),
+                  child: Container(height: 2.5, color: tokens.accent),
+                )
+              : null),
       title: Row(
         children: [
           Container(

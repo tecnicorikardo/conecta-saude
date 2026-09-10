@@ -1,9 +1,12 @@
 import 'dart:convert';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_theme_provider.dart';
+import '../../../../core/theme/app_theme_tokens.dart';
 import '../../../../core/services/http_service.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../core/services/web_notification_helper.dart';
@@ -499,13 +502,26 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     final perms = ref.watch(permissionsProvider);
     final pushStatus = ref.watch(pushPermissionStatusProvider);
     final hasPush = pushStatus == AuthorizationStatus.authorized || pushStatus == AuthorizationStatus.provisional;
+    final currentThemeMode = ref.watch(appThemeModeProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
       appBar: AppBar(
-        title: const Text('Meu Perfil Profissional'),
-        backgroundColor: AppColors.primary,
+        title: const Text(
+          'Meu Perfil Profissional',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+            letterSpacing: 0.2,
+          ),
+        ),
+        backgroundColor: AppColors.primaryDeep,
         foregroundColor: Colors.white,
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: AppColors.primaryDeep,
+          statusBarIconBrightness: Brightness.light,
+        ),
         actions: [
           if (user != null)
             IconButton(
@@ -653,6 +669,108 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           label: 'Status do Acesso',
                           value: user.ativo ? 'Ativo e Liberado' : 'Aguardando Aprovação',
                           valueColor: user.ativo ? AppColors.success : AppColors.warning,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ─── Seletor de Temas Visuais ────────────────────────────
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.darkSurface : Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isDark ? Colors.white12 : AppColors.border,
+                        width: 1,
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.palette_outlined, size: 18, color: isDark ? Colors.white70 : AppColors.primary),
+                                const SizedBox(width: 8),
+                                const Text(
+                                  'APARÊNCIA E TEMA VISUAL',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.primary,
+                                    letterSpacing: 0.8,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: isDark ? AppColors.primary.withValues(alpha: 0.2) : AppColors.softBlue,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: isDark ? Colors.white24 : AppColors.primary.withValues(alpha: 0.3),
+                                ),
+                              ),
+                              child: Text(
+                                currentThemeMode.label,
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: isDark ? Colors.white : AppColors.primary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          'Personalize a identidade visual do Conecta Saúde. O padrão institucional do SUS é mantido como base em todos os temas.',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            color: isDark ? Colors.white60 : AppColors.textSecondary,
+                            height: 1.3,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        _buildThemeOption(
+                          context: context,
+                          mode: AppThemeMode.susLight,
+                          isSelected: currentThemeMode == AppThemeMode.susLight,
+                          onTap: () => ref.read(appThemeModeProvider.notifier).setTheme(AppThemeMode.susLight),
+                        ),
+                        const SizedBox(height: 8),
+                        _buildThemeOption(
+                          context: context,
+                          mode: AppThemeMode.dark,
+                          isSelected: currentThemeMode == AppThemeMode.dark,
+                          onTap: () => ref.read(appThemeModeProvider.notifier).setTheme(AppThemeMode.dark),
+                        ),
+                        const SizedBox(height: 8),
+                        _buildThemeOption(
+                          context: context,
+                          mode: AppThemeMode.lgbtq,
+                          isSelected: currentThemeMode == AppThemeMode.lgbtq,
+                          onTap: () => ref.read(appThemeModeProvider.notifier).setTheme(AppThemeMode.lgbtq),
+                        ),
+                        const SizedBox(height: 8),
+                        _buildThemeOption(
+                          context: context,
+                          mode: AppThemeMode.rosa,
+                          isSelected: currentThemeMode == AppThemeMode.rosa,
+                          onTap: () => ref.read(appThemeModeProvider.notifier).setTheme(AppThemeMode.rosa),
+                        ),
+                        const SizedBox(height: 8),
+                        _buildThemeOption(
+                          context: context,
+                          mode: AppThemeMode.system,
+                          isSelected: currentThemeMode == AppThemeMode.system,
+                          onTap: () => ref.read(appThemeModeProvider.notifier).setTheme(AppThemeMode.system),
                         ),
                       ],
                     ),
@@ -833,6 +951,277 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildThemeOption({
+    required BuildContext context,
+    required AppThemeMode mode,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    Widget previewWidget;
+    switch (mode) {
+      case AppThemeMode.susLight:
+        previewWidget = Container(
+          width: 44,
+          height: 36,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF6F8FA),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: const Color(0xFFD8E0E8)),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            children: [
+              Container(
+                height: 10,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF0B3D6E),
+                ),
+              ),
+              Expanded(
+                child: Center(
+                  child: Container(
+                    width: 24,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(2),
+                      border: Border.all(color: const Color(0xFFD8E0E8)),
+                    ),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        width: 4,
+                        color: const Color(0xFF1565C0),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+        break;
+      case AppThemeMode.dark:
+        previewWidget = Container(
+          width: 44,
+          height: 36,
+          decoration: BoxDecoration(
+            color: const Color(0xFF081522),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: const Color(0xFF2A455D)),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            children: [
+              Container(
+                height: 10,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF0F2438),
+                ),
+              ),
+              Expanded(
+                child: Center(
+                  child: Container(
+                    width: 24,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF143450),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        width: 4,
+                        color: const Color(0xFF42A5F5),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+        break;
+      case AppThemeMode.lgbtq:
+        previewWidget = Container(
+          width: 44,
+          height: 36,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF6F8FA),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: const Color(0xFFD8E0E8)),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Expanded(child: Container(height: 2.5, color: const Color(0xFFE85D75))),
+                  Expanded(child: Container(height: 2.5, color: const Color(0xFFE99A45))),
+                  Expanded(child: Container(height: 2.5, color: const Color(0xFFD8B52C))),
+                  Expanded(child: Container(height: 2.5, color: const Color(0xFF4C9B6B))),
+                  Expanded(child: Container(height: 2.5, color: const Color(0xFF3D7CC9))),
+                  Expanded(child: Container(height: 2.5, color: const Color(0xFF7657A6))),
+                ],
+              ),
+              Container(
+                height: 7.5,
+                color: const Color(0xFF0B3D6E),
+              ),
+              Expanded(
+                child: Center(
+                  child: Container(
+                    width: 24,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(2),
+                      border: Border.all(color: const Color(0xFFD8E0E8)),
+                    ),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        width: 4,
+                        color: const Color(0xFF1565C0),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+        break;
+      case AppThemeMode.rosa:
+        previewWidget = Container(
+          width: 44,
+          height: 36,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8F7F9),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: const Color(0xFFE4D6DF)),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            children: [
+              Container(
+                height: 10,
+                decoration: const BoxDecoration(
+                  color: Color(0xFF0B3D6E),
+                ),
+              ),
+              Expanded(
+                child: Center(
+                  child: Container(
+                    width: 24,
+                    height: 12,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(2),
+                      border: Border.all(color: const Color(0xFFE4D6DF)),
+                    ),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        width: 4,
+                        color: const Color(0xFFC04B78),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+        break;
+      case AppThemeMode.system:
+        previewWidget = Container(
+          width: 44,
+          height: 36,
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF0F2438) : const Color(0xFFF1F5F9),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: isDark ? const Color(0xFF2A455D) : const Color(0xFFD8E0E8)),
+          ),
+          child: const Center(
+            child: Icon(Icons.brightness_auto_rounded, size: 20, color: AppColors.primary),
+          ),
+        );
+        break;
+    }
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? (isDark ? const Color(0xFF143450) : const Color(0xFFEAF3FB))
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: isSelected
+                  ? AppColors.primary
+                  : (isDark ? Colors.white12 : const Color(0xFFE2E8F0)),
+              width: isSelected ? 1.5 : 1.0,
+            ),
+          ),
+          child: Row(
+            children: [
+              previewWidget,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      mode.label,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                        color: isDark ? Colors.white : AppColors.navy,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      mode.description,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: isDark ? Colors.white60 : AppColors.textSecondary,
+                        height: 1.25,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isSelected ? AppColors.primary : Colors.transparent,
+                  border: Border.all(
+                    color: isSelected ? AppColors.primary : (isDark ? Colors.white38 : const Color(0xFFCBD5E1)),
+                    width: 2,
+                  ),
+                ),
+                child: isSelected
+                    ? const Icon(Icons.check, size: 14, color: Colors.white)
+                    : null,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

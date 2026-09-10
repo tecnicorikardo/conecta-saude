@@ -11,6 +11,8 @@ import 'core/routes/app_router.dart';
 import 'core/routes/url_strategy.dart';
 import 'core/services/http_service.dart';
 import 'core/theme/app_theme.dart';
+import 'core/theme/app_theme_provider.dart';
+import 'core/theme/app_theme_tokens.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -71,24 +73,24 @@ class ConectaSaudeApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(appRouterProvider);
-    final themeMode = ref.watch(themeModeProvider);
+    final themeMode = ref.watch(appThemeModeProvider);
+
+    final (theme, darkTheme, mode) = switch (themeMode) {
+      AppThemeMode.susLight => (AppTheme.susLight, AppTheme.dark, ThemeMode.light),
+      AppThemeMode.dark => (AppTheme.dark, AppTheme.dark, ThemeMode.dark),
+      AppThemeMode.lgbtq => (AppTheme.lgbtq, AppTheme.dark, ThemeMode.light),
+      AppThemeMode.rosa => (AppTheme.rosa, AppTheme.dark, ThemeMode.light),
+      AppThemeMode.system => (AppTheme.susLight, AppTheme.dark, ThemeMode.system),
+    };
 
     return MaterialApp.router(
       title: 'Conecta Saúde',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
-      themeMode: themeMode,
+      theme: theme,
+      darkTheme: darkTheme,
+      themeMode: mode,
       routerConfig: router,
     );
   }
 }
 
-// Provider para controle de tema
-final themeModeProvider = StateProvider<ThemeMode>((ref) {
-  final prefs = ref.watch(sharedPreferencesProvider);
-  final saved = prefs.getString('theme_mode');
-  if (saved == 'dark') return ThemeMode.dark;
-  if (saved == 'light') return ThemeMode.light;
-  return ThemeMode.system;
-});
