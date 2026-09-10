@@ -137,11 +137,13 @@ class RegisterSuccess extends RegisterState {
   final String nome;
   final String email;
   final String setorNome;
+  final String? unitNome;
   const RegisterSuccess({
     required this.message,
     required this.nome,
     required this.email,
     required this.setorNome,
+    this.unitNome,
   });
 }
 
@@ -160,7 +162,11 @@ class RegisterNotifier extends StateNotifier<RegisterState> {
     required String password,
     required String cargo,
     required String setorId,
+    String? unitId,
     String? matricula,
+    String? jornadaInicio,
+    String? jornadaFim,
+    String? jornadaDias,
   }) async {
     state = const RegisterLoading();
     final repository = _ref.read(authRepositoryProvider);
@@ -170,7 +176,11 @@ class RegisterNotifier extends StateNotifier<RegisterState> {
       password: password,
       cargo: cargo,
       setorId: setorId,
+      unitId: unitId,
       matricula: matricula,
+      jornadaInicio: jornadaInicio,
+      jornadaFim: jornadaFim,
+      jornadaDias: jornadaDias,
     );
 
     if (!mounted) return;
@@ -183,6 +193,7 @@ class RegisterNotifier extends StateNotifier<RegisterState> {
           nome: userData['nome'] as String? ?? nome,
           email: userData['email'] as String? ?? email,
           setorNome: userData['setorNome'] as String? ?? '',
+          unitNome: userData['unitNome'] as String?,
         );
       },
     );

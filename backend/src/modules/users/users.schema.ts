@@ -7,6 +7,11 @@ export const createUserSchema = z.object({
   cargo: z.string().min(2).max(80),
   hierarquiaNivel: z.number().int().min(1).max(4),
   setorId: z.string().uuid('Setor inválido.'),
+  unitId: z.string().uuid('Unidade inválida.').optional(),
+  jornadaInicio: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Formato HH:mm').optional(),
+  jornadaFim: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Formato HH:mm').optional(),
+  jornadaDias: z.string().max(100).optional(),
+  silenciarForaJornada: z.boolean().optional(),
   fotoUrl: z.string().url().optional(),
 });
 
@@ -16,7 +21,21 @@ export const updateUserSchema = z.object({
   matricula: z.string().nullable().optional(),
   hierarquiaNivel: z.number().int().min(1).max(4).optional(),
   setorId: z.string().uuid().optional(),
+  unitId: z.string().uuid().nullable().optional(),
+  jornadaInicio: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/).optional(),
+  jornadaFim: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/).optional(),
+  jornadaDias: z.string().max(100).optional(),
+  emPlantaoExtra: z.boolean().optional(),
+  silenciarForaJornada: z.boolean().optional(),
   fotoUrl: z.string().nullable().optional(),
+});
+
+export const updateScheduleSchema = z.object({
+  jornadaInicio: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Horário de início inválido (HH:mm)').optional(),
+  jornadaFim: z.string().regex(/^([01]\d|2[0-3]):([0-5]\d)$/, 'Horário de término inválido (HH:mm)').optional(),
+  jornadaDias: z.string().max(100).optional(),
+  emPlantaoExtra: z.boolean().optional(),
+  silenciarForaJornada: z.boolean().optional(),
 });
 
 export const updateUserStatusSchema = z.object({
@@ -28,6 +47,7 @@ export const listUsersSchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(30),
   search: z.string().optional(),
   setorId: z.string().uuid().optional(),
+  unitId: z.string().uuid().optional(),
   hierarquiaNivel: z.coerce.number().int().min(1).max(4).optional(),
   ativo: z.enum(['true', 'false']).optional(),
   excludeSelf: z.enum(['true', 'false']).optional(),

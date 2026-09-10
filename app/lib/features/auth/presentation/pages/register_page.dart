@@ -3,9 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/constants/hospital_roles.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../sectors/domain/entities/sector_entity.dart';
 import '../../../sectors/presentation/providers/sectors_provider.dart';
+import '../../../units/domain/entities/hospital_unit_entity.dart';
+import '../../../units/presentation/providers/units_provider.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/login_logo.dart';
 
@@ -22,18 +25,27 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   final _nomeCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _matriculaCtrl = TextEditingController();
-  final _cargoCtrl = TextEditingController();
+  final _cargoCustomCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   final _confirmPassCtrl = TextEditingController();
 
   final _nomeFocus = FocusNode();
   final _emailFocus = FocusNode();
   final _matriculaFocus = FocusNode();
-  final _cargoFocus = FocusNode();
+  final _cargoCustomFocus = FocusNode();
   final _passFocus = FocusNode();
   final _confirmPassFocus = FocusNode();
 
+  String? _selectedUnitId;
   String? _selectedSectorId;
+  String? _selectedRole;
+  bool _isCustomRole = false;
+
+  // Escala inicial sugerida
+  String _jornadaInicio = '07:00';
+  String _jornadaFim = '16:00';
+  final List<String> _selectedDays = ['seg', 'ter', 'qua', 'qui', 'sex'];
+
   bool _obscurePass = true;
   bool _obscureConfirm = true;
 
@@ -57,14 +69,14 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     _nomeCtrl.dispose();
     _emailCtrl.dispose();
     _matriculaCtrl.dispose();
-    _cargoCtrl.dispose();
+    _cargoCustomCtrl.dispose();
     _passCtrl.dispose();
     _confirmPassCtrl.dispose();
 
     _nomeFocus.dispose();
     _emailFocus.dispose();
     _matriculaFocus.dispose();
-    _cargoFocus.dispose();
+    _cargoCustomFocus.dispose();
     _passFocus.dispose();
     _confirmPassFocus.dispose();
     super.dispose();
@@ -72,10 +84,25 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
 
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
+
     if (_selectedSectorId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Por favor, selecione sua Unidade / Setor de lotação.'),
+          content: Text('Por favor, selecione seu Setor de lotação.'),
+          backgroundColor: _errorColor,
+        ),
+      );
+      return;
+    }
+
+    final finalCargo = _isCustomRole
+        ? _cargoCustomCtrl.text.trim()
+        : (_selectedRole ?? '').trim();
+
+    if (finalCargo.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Por favor, selecione ou informe seu cargo / função.'),
           backgroundColor: _errorColor,
         ),
       );
@@ -87,9 +114,13 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
           nome: _nomeCtrl.text.trim(),
           email: _emailCtrl.text.trim(),
           password: _passCtrl.text,
-          cargo: _cargoCtrl.text.trim(),
+          cargo: finalCargo,
           setorId: _selectedSectorId!,
+          unitId: _selectedUnitId,
           matricula: _matriculaCtrl.text.trim(),
+          jornadaInicio: _jornadaInicio,
+          jornadaFim: _jornadaFim,
+          jornadaDias: _selectedDays.join(','),
         );
   }
 
@@ -152,7 +183,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                   SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Assim que seu coordenador ou RH aprovar, seu acesso estará liberado.',
+                      'Assim que seu coordenador ou RH aprovar, seu acesso institucional estará liberado.',
                       style: TextStyle(
                         fontSize: 12.5,
                         color: _primaryBlue,
@@ -219,6 +250,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
 
     final registerState = ref.watch(registerNotifierProvider);
     final isLoading = registerState is RegisterLoading;
+    final unitsAsync = ref.watch(unitsProvider);
     final sectorsAsync = ref.watch(sectorsProvider);
 
     return Scaffold(
@@ -249,7 +281,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
         child: SafeArea(
           child: Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 480),
+              constraints: const BoxConstraints(maxWidth: 520),
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 child: Column(
@@ -289,7 +321,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                             ),
                             const SizedBox(height: 4),
                             const Text(
-                              'Preencha seus dados funcionais para solicitar aprovação na sua unidade.',
+                              'Preencha seus dados funcionais para solicitar aprovação na sua unidade hospitalar.',
                               style: TextStyle(
                                 color: _textSecondary,
                                 fontSize: 12.5,
@@ -355,8 +387,6 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                               textInputAction: TextInputAction.next,
                               enabled: !isLoading,
                               style: const TextStyle(color: _textPrimary, fontSize: 14),
-                              onFieldSubmitted: (_) =>
-                                  FocusScope.of(context).requestFocus(_cargoFocus),
                               decoration: _inputDecoration(
                                 label: 'Matrícula / Registro SUS (opcional)',
                                 hint: 'Ex: 245.890-1',
@@ -365,7 +395,23 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                             ),
                             const SizedBox(height: 12),
 
-                            // Unidade / Setor de Lotação (Dropdown)
+                            // Unidade Hospitalar / Hospital (Dropdown)
+                            unitsAsync.when(
+                              loading: () => const Center(
+                                child: Padding(
+                                  padding: EdgeInsets.all(8.0),
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                ),
+                              ),
+                              error: (_, __) => _buildUnitDropdown(_fallbackUnits, isLoading),
+                              data: (units) => _buildUnitDropdown(
+                                units.isNotEmpty ? units : _fallbackUnits,
+                                isLoading,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+
+                            // Setor de Lotação (Dropdown)
                             sectorsAsync.when(
                               loading: () => const Center(
                                 child: Padding(
@@ -381,28 +427,88 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                             ),
                             const SizedBox(height: 12),
 
-                            // Cargo / Função
-                            TextFormField(
-                              controller: _cargoCtrl,
-                              focusNode: _cargoFocus,
-                              textInputAction: TextInputAction.next,
-                              enabled: !isLoading,
-                              style: const TextStyle(color: _textPrimary, fontSize: 14),
-                              onFieldSubmitted: (_) =>
-                                  FocusScope.of(context).requestFocus(_passFocus),
-                              decoration: _inputDecoration(
-                                label: 'Cargo / Função na Unidade *',
-                                hint: 'Ex: Técnico de Enfermagem, Oftalmologista...',
-                                icon: Icons.work_outline_rounded,
+                            // Cargo / Função Padronizado (SUS CBO)
+                            _buildRoleSelector(isLoading),
+
+                            if (_isCustomRole) ...[
+                              const SizedBox(height: 12),
+                              TextFormField(
+                                controller: _cargoCustomCtrl,
+                                focusNode: _cargoCustomFocus,
+                                textInputAction: TextInputAction.next,
+                                enabled: !isLoading,
+                                style: const TextStyle(color: _textPrimary, fontSize: 14),
+                                decoration: _inputDecoration(
+                                  label: 'Especifique o seu Cargo / Função *',
+                                  hint: 'Digite seu cargo conforme contratação',
+                                  icon: Icons.edit_outlined,
+                                ),
+                                validator: (v) {
+                                  if (_isCustomRole && (v == null || v.trim().length < 2)) {
+                                    return 'Especifique o cargo.';
+                                  }
+                                  return null;
+                                },
                               ),
-                              validator: (v) {
-                                if (v == null || v.trim().length < 2) {
-                                  return 'Informe seu cargo ou função.';
-                                }
-                                return null;
-                              },
+                            ],
+                            const SizedBox(height: 16),
+
+                            // ─── Seção Horário de Trabalho / Plantão ────────────
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF1F5F9),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: _borderColor),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Row(
+                                    children: [
+                                      Icon(Icons.schedule_rounded, size: 18, color: _primaryBlue),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        'Horário de Trabalho / Plantão',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                          color: _textPrimary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  const Text(
+                                    'Define seu status "Em Serviço" e silenciamento de notificações fora da jornada.',
+                                    style: TextStyle(fontSize: 11.5, color: _textSecondary),
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: _buildTimePickerField(
+                                          label: 'Entrada',
+                                          time: _jornadaInicio,
+                                          onSelected: (t) => setState(() => _jornadaInicio = t),
+                                          enabled: !isLoading,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: _buildTimePickerField(
+                                          label: 'Saída',
+                                          time: _jornadaFim,
+                                          onSelected: (t) => setState(() => _jornadaFim = t),
+                                          enabled: !isLoading,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 14),
 
                             // Senha
                             TextFormField(
@@ -556,6 +662,44 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     );
   }
 
+  Widget _buildUnitDropdown(List<HospitalUnitEntity> units, bool isLoading) {
+    return DropdownButtonFormField<String>(
+      initialValue: _selectedUnitId ?? (units.isNotEmpty ? units.first.id : null),
+      isExpanded: true,
+      dropdownColor: Colors.white,
+      style: const TextStyle(
+        fontSize: 13.5,
+        color: _textPrimary,
+        fontWeight: FontWeight.w500,
+      ),
+      icon: const Icon(Icons.arrow_drop_down, color: _primaryBlue),
+      decoration: _inputDecoration(
+        label: 'Unidade Hospitalar / Hospital *',
+        hint: 'Selecione o hospital',
+        icon: Icons.domain_rounded,
+      ),
+      items: units.map((u) {
+        return DropdownMenuItem<String>(
+          value: u.id,
+          child: Text(
+            u.sigla != null ? '${u.nome} (${u.sigla})' : u.nome,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 13.5,
+              color: Color(0xFF263238),
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        );
+      }).toList(),
+      onChanged: isLoading
+          ? null
+          : (val) {
+              setState(() => _selectedUnitId = val);
+            },
+    );
+  }
+
   Widget _buildSectorDropdown(List<SectorEntity> sectors, bool isLoading) {
     return DropdownButtonFormField<String>(
       initialValue: _selectedSectorId,
@@ -568,8 +712,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       ),
       icon: const Icon(Icons.arrow_drop_down, color: _primaryBlue),
       decoration: _inputDecoration(
-        label: 'Unidade / Setor de Lotação *',
-        hint: 'Selecione sua unidade SUS',
+        label: 'Setor de Lotação *',
+        hint: 'Selecione seu setor',
         icon: Icons.local_hospital_outlined,
       ),
       items: sectors.map((s) {
@@ -592,9 +736,116 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
               setState(() => _selectedSectorId = val);
             },
       validator: (v) {
-        if (v == null || v.isEmpty) return 'Selecione sua unidade.';
+        if (v == null || v.isEmpty) return 'Selecione seu setor.';
         return null;
       },
+    );
+  }
+
+  Widget _buildRoleSelector(bool isLoading) {
+    final allRolesWithOther = [...kAllHospitalRoles, kOtherRoleOption];
+
+    return Autocomplete<String>(
+      optionsBuilder: (TextEditingValue textEditingValue) {
+        if (textEditingValue.text.isEmpty) {
+          return allRolesWithOther;
+        }
+        return allRolesWithOther.where((role) =>
+            role.toLowerCase().contains(textEditingValue.text.toLowerCase()));
+      },
+      onSelected: (String selection) {
+        setState(() {
+          _selectedRole = selection;
+          _isCustomRole = (selection == kOtherRoleOption);
+        });
+      },
+      fieldViewBuilder: (context, textEditingController, focusNode, onFieldSubmitted) {
+        return TextFormField(
+          controller: textEditingController,
+          focusNode: focusNode,
+          enabled: !isLoading,
+          style: const TextStyle(color: _textPrimary, fontSize: 14),
+          decoration: _inputDecoration(
+            label: 'Cargo / Função na Unidade (SUS) *',
+            hint: 'Digite ou selecione seu cargo...',
+            icon: Icons.work_outline_rounded,
+            suffix: const Icon(Icons.search, size: 20, color: _textSecondary),
+          ),
+          onChanged: (val) {
+            setState(() {
+              _selectedRole = val;
+              _isCustomRole = (val == kOtherRoleOption);
+            });
+          },
+          validator: (v) {
+            if (v == null || v.trim().isEmpty) {
+              return 'Selecione ou informe seu cargo.';
+            }
+            return null;
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildTimePickerField({
+    required String label,
+    required String time,
+    required ValueChanged<String> onSelected,
+    required bool enabled,
+  }) {
+    return InkWell(
+      onTap: enabled
+          ? () async {
+              final parts = time.split(':').map((e) => int.tryParse(e) ?? 0).toList();
+              final initial = TimeOfDay(
+                hour: parts.isNotEmpty ? parts[0] : 7,
+                minute: parts.length > 1 ? parts[1] : 0,
+              );
+              final picked = await showTimePicker(
+                context: context,
+                initialTime: initial,
+              );
+              if (picked != null) {
+                final h = picked.hour.toString().padLeft(2, '0');
+                final m = picked.minute.toString().padLeft(2, '0');
+                onSelected('$h:$m');
+              }
+            }
+          : null,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: _borderColor),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(fontSize: 11, color: _textSecondary),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  time,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: _textPrimary,
+                  ),
+                ),
+              ],
+            ),
+            const Icon(Icons.access_time_rounded, size: 18, color: _primaryBlue),
+          ],
+        ),
+      ),
     );
   }
 
@@ -636,6 +887,24 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       ),
     );
   }
+
+  static const List<HospitalUnitEntity> _fallbackUnits = [
+    HospitalUnitEntity(
+      id: 'unit-chc-centro',
+      nome: 'Complexo Hospitalar Carioca (Central)',
+      sigla: 'CHC-Centro',
+    ),
+    HospitalUnitEntity(
+      id: 'unit-hmzs',
+      nome: 'Hospital Municipal Zona Sul',
+      sigla: 'HMZS',
+    ),
+    HospitalUnitEntity(
+      id: 'unit-upa24h',
+      nome: 'UPA 24h Regional',
+      sigla: 'UPA-24H',
+    ),
+  ];
 
   static const List<SectorEntity> _fallbackSectors = [
     SectorEntity(

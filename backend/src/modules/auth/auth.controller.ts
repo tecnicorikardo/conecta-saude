@@ -26,6 +26,7 @@ export async function verifyToken(req: Request, res: Response): Promise<void> {
     where: { firebaseUid: decodedToken.uid },
     include: {
       setor: { select: { id: true, nome: true } },
+      unit: { select: { id: true, nome: true, sigla: true } },
     },
   });
 
@@ -34,6 +35,7 @@ export async function verifyToken(req: Request, res: Response): Promise<void> {
       where: { email: decodedToken.email },
       include: {
         setor: { select: { id: true, nome: true } },
+        unit: { select: { id: true, nome: true, sigla: true } },
       },
     });
 
@@ -43,6 +45,7 @@ export async function verifyToken(req: Request, res: Response): Promise<void> {
         data: { firebaseUid: decodedToken.uid },
         include: {
           setor: { select: { id: true, nome: true } },
+          unit: { select: { id: true, nome: true, sigla: true } },
         },
       });
     }
@@ -85,6 +88,14 @@ export async function verifyToken(req: Request, res: Response): Promise<void> {
       hierarquiaNome: getHierarquiaNome(user.hierarquiaNivel),
       setorId: user.setorId,
       setorNome: user.setor.nome,
+      unitId: user.unitId,
+      unitNome: user.unit?.nome ?? 'Complexo Hospitalar Carioca (Central)',
+      unitSigla: user.unit?.sigla ?? 'CHC-Centro',
+      jornadaInicio: user.jornadaInicio ?? '07:00',
+      jornadaFim: user.jornadaFim ?? '16:00',
+      jornadaDias: user.jornadaDias ?? 'seg,ter,qua,qui,sex',
+      emPlantaoExtra: user.emPlantaoExtra ?? false,
+      silenciarForaJornada: user.silenciarForaJornada ?? true,
       fotoUrl: user.fotoUrl,
       ativo: user.ativo,
       criadoEm: user.criadoEm,
@@ -103,6 +114,7 @@ export async function getMe(req: Request, res: Response): Promise<void> {
     where: { id: userId },
     include: {
       setor: { select: { id: true, nome: true } },
+      unit: { select: { id: true, nome: true, sigla: true } },
     },
   });
 
@@ -118,6 +130,14 @@ export async function getMe(req: Request, res: Response): Promise<void> {
       hierarquiaNome: getHierarquiaNome(user.hierarquiaNivel),
       setorId: user.setorId,
       setorNome: user.setor.nome,
+      unitId: user.unitId,
+      unitNome: user.unit?.nome ?? 'Complexo Hospitalar Carioca (Central)',
+      unitSigla: user.unit?.sigla ?? 'CHC-Centro',
+      jornadaInicio: user.jornadaInicio ?? '07:00',
+      jornadaFim: user.jornadaFim ?? '16:00',
+      jornadaDias: user.jornadaDias ?? 'seg,ter,qua,qui,sex',
+      emPlantaoExtra: user.emPlantaoExtra ?? false,
+      silenciarForaJornada: user.silenciarForaJornada ?? true,
       fotoUrl: user.fotoUrl,
       ativo: user.ativo,
       criadoEm: user.criadoEm,
@@ -275,6 +295,7 @@ export async function registerUser(req: Request, res: Response): Promise<void> {
   }
 
   // 4. Criar no banco de dados como PENDENTE (ativo: false)
+  const unitId = data.unitId ?? setor.unitId ?? null;
   const user = await prisma.user.create({
     data: {
       firebaseUid: firebaseUser.uid,
@@ -284,10 +305,15 @@ export async function registerUser(req: Request, res: Response): Promise<void> {
       matricula: data.matricula ?? null,
       hierarquiaNivel: HierarquiaNivel.FUNCIONARIO,
       setorId: data.setorId,
+      unitId,
+      jornadaInicio: data.jornadaInicio ?? '07:00',
+      jornadaFim: data.jornadaFim ?? '16:00',
+      jornadaDias: data.jornadaDias ?? 'seg,ter,qua,qui,sex',
       ativo: false,
     },
     include: {
       setor: { select: { nome: true } },
+      unit: { select: { nome: true } },
     },
   });
 

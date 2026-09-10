@@ -8,6 +8,7 @@ import {
   createUserSchema,
   updateUserSchema,
   updateUserStatusSchema,
+  updateScheduleSchema,
   listUsersSchema,
 } from './users.schema';
 
@@ -29,6 +30,7 @@ export async function listUsers(req: Request, res: Response): Promise<void> {
     where.setorId = query.setorId;
   }
 
+  if (query.unitId) where.unitId = query.unitId;
   if (query.hierarquiaNivel) where.hierarquiaNivel = query.hierarquiaNivel;
   if (query.ativo !== undefined) where.ativo = query.ativo === 'true';
   if (query.excludeSelf === 'true') where.id = { not: actor.id };
@@ -57,8 +59,15 @@ export async function listUsers(req: Request, res: Response): Promise<void> {
         hierarquiaNivel: true,
         fotoUrl: true,
         ativo: true,
+        unitId: true,
+        jornadaInicio: true,
+        jornadaFim: true,
+        jornadaDias: true,
+        emPlantaoExtra: true,
+        silenciarForaJornada: true,
         criadoEm: true,
         setor: { select: { id: true, nome: true } },
+        unit: { select: { id: true, nome: true, sigla: true } },
       },
     }),
     prisma.user.count({ where }),
@@ -67,7 +76,11 @@ export async function listUsers(req: Request, res: Response): Promise<void> {
   res.json({
     success: true,
     data: {
-      items: users,
+      items: users.map(u => ({
+        ...u,
+        unitNome: u.unit?.nome ?? null,
+        unitSigla: u.unit?.sigla ?? null,
+      })),
       total,
       page: query.page,
       limit: query.limit,
@@ -86,7 +99,10 @@ export async function getUser(req: Request, res: Response): Promise<void> {
 
   const user = await prisma.user.findUnique({
     where: { id },
-    include: { setor: { select: { id: true, nome: true } } },
+    include: {
+      setor: { select: { id: true, nome: true } },
+      unit: { select: { id: true, nome: true, sigla: true } },
+    },
   });
 
   if (!user) throw new AppError('Usuário não encontrado.', 404);
@@ -101,6 +117,14 @@ export async function getUser(req: Request, res: Response): Promise<void> {
       hierarquiaNivel: user.hierarquiaNivel,
       setorId: user.setorId,
       setorNome: user.setor.nome,
+      unitId: user.unitId,
+      unitNome: user.unit?.nome ?? null,
+      unitSigla: user.unit?.sigla ?? null,
+      jornadaInicio: user.jornadaInicio,
+      jornadaFim: user.jornadaFim,
+      jornadaDias: user.jornadaDias,
+      emPlantaoExtra: user.emPlantaoExtra,
+      silenciarForaJornada: user.silenciarForaJornada,
       fotoUrl: user.fotoUrl,
       matricula: user.matricula,
       ativo: user.ativo,
@@ -159,10 +183,18 @@ export async function createUser(req: Request, res: Response): Promise<void> {
       cargo: data.cargo,
       hierarquiaNivel: data.hierarquiaNivel,
       setorId: data.setorId,
+      unitId: data.unitId ?? null,
+      jornadaInicio: data.jornadaInicio ?? '07:00',
+      jornadaFim: data.jornadaFim ?? '16:00',
+      jornadaDias: data.jornadaDias ?? 'seg,ter,qua,qui,sex',
+      silenciarForaJornada: data.silenciarForaJornada ?? true,
       fotoUrl: data.fotoUrl ?? null,
       ativo: true,
     },
-    include: { setor: { select: { id: true, nome: true } } },
+    include: {
+      setor: { select: { id: true, nome: true } },
+      unit: { select: { id: true, nome: true, sigla: true } },
+    },
   });
 
   await auditLog({
@@ -170,7 +202,7 @@ export async function createUser(req: Request, res: Response): Promise<void> {
     acao: 'criar_usuario',
     entidade: 'user',
     entidadeId: user.id,
-    detalhes: { nome: user.nome, email: user.email, cargo: user.cargo },
+    detalhes: { nome: user.nome, email: user.email, cargo: user.cargo, unitId: user.unitId },
     req,
   });
 
@@ -184,6 +216,14 @@ export async function createUser(req: Request, res: Response): Promise<void> {
       cargo: user.cargo,
       hierarquiaNivel: user.hierarquiaNivel,
       setorNome: user.setor.nome,
+      unitId: user.unitId,
+      unitNome: user.unit?.nome ?? null,
+      unitSigla: user.unit?.sigla ?? null,
+      jornadaInicio: user.jornadaInicio,
+      jornadaFim: user.jornadaFim,
+      jornadaDias: user.jornadaDias,
+      emPlantaoExtra: user.emPlantaoExtra,
+      silenciarForaJornada: user.silenciarForaJornada,
       ativo: user.ativo,
     },
   });
@@ -216,6 +256,11 @@ export async function updateUser(req: Request, res: Response): Promise<void> {
     if (!setor) throw new AppError('Setor não encontrado.', 404);
   }
 
+  if (data.unitId && isDirecao) {
+    const unit = await prisma.hospitalUnit.findUnique({ where: { id: data.unitId } });
+    if (!unit) throw new AppError('Unidade hospitalar não encontrada.', 404);
+  }
+
   const updated = await prisma.user.update({
     where: { id },
     data: {
@@ -224,9 +269,18 @@ export async function updateUser(req: Request, res: Response): Promise<void> {
       ...(data.matricula !== undefined && { matricula: data.matricula }),
       ...(isDirecao && data.hierarquiaNivel && { hierarquiaNivel: data.hierarquiaNivel }),
       ...(isDirecao && data.setorId && { setorId: data.setorId }),
+      ...(isDirecao && data.unitId !== undefined && { unitId: data.unitId }),
+      ...(data.jornadaInicio && { jornadaInicio: data.jornadaInicio }),
+      ...(data.jornadaFim && { jornadaFim: data.jornadaFim }),
+      ...(data.jornadaDias && { jornadaDias: data.jornadaDias }),
+      ...(data.emPlantaoExtra !== undefined && { emPlantaoExtra: data.emPlantaoExtra }),
+      ...(data.silenciarForaJornada !== undefined && { silenciarForaJornada: data.silenciarForaJornada }),
       ...(data.fotoUrl !== undefined && { fotoUrl: data.fotoUrl }),
     },
-    include: { setor: { select: { id: true, nome: true } } },
+    include: {
+      setor: { select: { id: true, nome: true } },
+      unit: { select: { id: true, nome: true, sigla: true } },
+    },
   });
 
   await auditLog({
@@ -241,7 +295,11 @@ export async function updateUser(req: Request, res: Response): Promise<void> {
   res.json({
     success: true,
     message: 'Funcionário atualizado com sucesso.',
-    data: updated,
+    data: {
+      ...updated,
+      unitNome: updated.unit?.nome ?? null,
+      unitSigla: updated.unit?.sigla ?? null,
+    },
   });
 }
 
@@ -312,9 +370,12 @@ export async function getPendingUsers(req: Request, res: Response): Promise<void
     aprovadoEm: null,
   };
 
-  // Coordenação só vê pendentes da sua unidade
+  // Coordenação só vê pendentes da sua unidade / setor
   if (actor.hierarquiaNivel === HierarquiaNivel.COORDENACAO) {
     where.setorId = actor.setorId;
+    if (actor.unitId) {
+      where.unitId = actor.unitId;
+    }
   }
 
   const pendingUsers = await prisma.user.findMany({
@@ -329,15 +390,24 @@ export async function getPendingUsers(req: Request, res: Response): Promise<void
       hierarquiaNivel: true,
       fotoUrl: true,
       ativo: true,
+      unitId: true,
+      jornadaInicio: true,
+      jornadaFim: true,
+      jornadaDias: true,
       criadoEm: true,
       setor: { select: { id: true, nome: true } },
+      unit: { select: { id: true, nome: true, sigla: true } },
     },
   });
 
   res.json({
     success: true,
     data: {
-      items: pendingUsers,
+      items: pendingUsers.map(u => ({
+        ...u,
+        unitNome: u.unit?.nome ?? null,
+        unitSigla: u.unit?.sigla ?? null,
+      })),
       total: pendingUsers.length,
     },
   });
@@ -358,7 +428,7 @@ export async function approveUser(req: Request, res: Response): Promise<void> {
 
   const user = await prisma.user.findUnique({
     where: { id },
-    include: { setor: true },
+    include: { setor: true, unit: true },
   });
 
   if (!user) throw new AppError('Colaborador não encontrado.', 404);
@@ -380,6 +450,7 @@ export async function approveUser(req: Request, res: Response): Promise<void> {
     },
     include: {
       setor: { select: { id: true, nome: true } },
+      unit: { select: { id: true, nome: true, sigla: true } },
       aprovador: { select: { id: true, nome: true, cargo: true } },
     },
   });
@@ -394,6 +465,7 @@ export async function approveUser(req: Request, res: Response): Promise<void> {
       email: user.email,
       cargo: user.cargo,
       setor: user.setor.nome,
+      unitNome: user.unit?.nome ?? null,
       matricula: user.matricula,
       aprovadoPor: actor.nome,
     },
@@ -409,6 +481,8 @@ export async function approveUser(req: Request, res: Response): Promise<void> {
       email: updatedUser.email,
       cargo: updatedUser.cargo,
       setorNome: updatedUser.setor.nome,
+      unitNome: updatedUser.unit?.nome ?? null,
+      unitSigla: updatedUser.unit?.sigla ?? null,
       ativo: updatedUser.ativo,
       aprovadoEm: updatedUser.aprovadoEm,
       aprovadoPorNome: updatedUser.aprovador?.nome,
@@ -471,5 +545,49 @@ export async function rejectUser(req: Request, res: Response): Promise<void> {
   res.json({
     success: true,
     message: `Solicitação de ${user.nome} rejeitada e removida com sucesso.`,
+  });
+}
+
+/**
+ * PATCH /api/users/me/schedule
+ * Atualiza o horário de trabalho, dias de escala e status de plantão do próprio usuário autenticado.
+ */
+export async function updateMySchedule(req: Request, res: Response): Promise<void> {
+  const actor = req.user!;
+  const data = updateScheduleSchema.parse(req.body);
+
+  const updatedUser = await prisma.user.update({
+    where: { id: actor.id },
+    data: {
+      ...(data.jornadaInicio !== undefined && { jornadaInicio: data.jornadaInicio }),
+      ...(data.jornadaFim !== undefined && { jornadaFim: data.jornadaFim }),
+      ...(data.jornadaDias !== undefined && { jornadaDias: data.jornadaDias }),
+      ...(data.emPlantaoExtra !== undefined && { emPlantaoExtra: data.emPlantaoExtra }),
+      ...(data.silenciarForaJornada !== undefined && { silenciarForaJornada: data.silenciarForaJornada }),
+    },
+    select: {
+      id: true,
+      nome: true,
+      jornadaInicio: true,
+      jornadaFim: true,
+      jornadaDias: true,
+      emPlantaoExtra: true,
+      silenciarForaJornada: true,
+    },
+  });
+
+  await auditLog({
+    userId: actor.id,
+    acao: 'atualizar_escala',
+    entidade: 'user',
+    entidadeId: actor.id,
+    detalhes: data,
+    req,
+  });
+
+  res.json({
+    success: true,
+    message: 'Configurações de jornada e escala atualizadas com sucesso.',
+    data: updatedUser,
   });
 }

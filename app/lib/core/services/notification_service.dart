@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../config/firebase_options.dart';
+import '../../features/auth/presentation/providers/current_user_provider.dart';
 import 'http_service.dart';
 import 'web_notification_helper.dart';
 
@@ -83,6 +84,21 @@ class NotificationService {
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
         final title = message.notification?.title ?? message.data['title'] ?? 'Conecta Saúde - SUS';
         final body = message.notification?.body ?? message.data['body'] ?? 'Nova mensagem institucional recebida.';
+        final isEmergency = message.data['tipo'] == 'emergencia' ||
+            message.data['tag'] == 'emergencia' ||
+            title.contains('🚨') ||
+            title.toLowerCase().contains('emergência') ||
+            title.toLowerCase().contains('urgente');
+
+        final currentUser = _ref.read(currentUserProvider).valueOrNull;
+        if (currentUser != null &&
+            currentUser.silenciarForaJornada &&
+            !currentUser.isCurrentlyWorking &&
+            !isEmergency) {
+          debugPrint('[FCM Foreground] Notificação de rotina silenciada (fora da jornada de trabalho).');
+          return;
+        }
+
         debugPrint('[FCM Foreground] Push recebido: $title - $body');
         notifyHospitalUser(title, body, tag: message.data['conversationId'] ?? 'chat', url: '/conversations');
       });

@@ -119,7 +119,11 @@ class AuthRepositoryImpl implements AuthRepository {
     required String password,
     required String cargo,
     required String setorId,
+    String? unitId,
     String? matricula,
+    String? jornadaInicio,
+    String? jornadaFim,
+    String? jornadaDias,
   }) async {
     try {
       final response = await _buildDio().post(
@@ -130,8 +134,15 @@ class AuthRepositoryImpl implements AuthRepository {
           'password': password,
           'cargo': cargo.trim(),
           'setorId': setorId,
+          if (unitId != null && unitId.trim().isNotEmpty) 'unitId': unitId.trim(),
           if (matricula != null && matricula.trim().isNotEmpty)
             'matricula': matricula.trim(),
+          if (jornadaInicio != null && jornadaInicio.trim().isNotEmpty)
+            'jornadaInicio': jornadaInicio.trim(),
+          if (jornadaFim != null && jornadaFim.trim().isNotEmpty)
+            'jornadaFim': jornadaFim.trim(),
+          if (jornadaDias != null && jornadaDias.trim().isNotEmpty)
+            'jornadaDias': jornadaDias.trim(),
         },
       );
 
@@ -262,8 +273,16 @@ class AuthRepositoryImpl implements AuthRepository {
       hierarquiaNivel: data['hierarquiaNivel'] as int? ?? 4,
       setorId: data['setorId'] as String? ?? '',
       setorNome: data['setorNome'] as String? ?? '',
+      unitId: data['unitId'] as String?,
+      unitNome: data['unitNome'] as String?,
+      unitSigla: data['unitSigla'] as String?,
       fotoUrl: data['fotoUrl'] as String?,
       matricula: data['matricula'] as String?,
+      jornadaInicio: data['jornadaInicio'] as String? ?? '07:00',
+      jornadaFim: data['jornadaFim'] as String? ?? '16:00',
+      jornadaDias: data['jornadaDias'] as String? ?? 'seg,ter,qua,qui,sex',
+      emPlantaoExtra: data['emPlantaoExtra'] as bool? ?? false,
+      silenciarForaJornada: data['silenciarForaJornada'] as bool? ?? true,
       ativo: data['ativo'] as bool? ?? true,
       aprovadoPor: data['aprovadoPor'] as String?,
       aprovadoEm: data['aprovadoEm'] != null

@@ -17,7 +17,11 @@ abstract class AuthRepository {
     required String password,
     required String cargo,
     required String setorId,
+    String? unitId,
     String? matricula,
+    String? jornadaInicio,
+    String? jornadaFim,
+    String? jornadaDias,
   });
 
   /// Envia e-mail de recuperação de senha via Firebase Auth.

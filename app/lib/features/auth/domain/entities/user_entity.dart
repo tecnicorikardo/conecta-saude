@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:flutter/material.dart';
 
 class UserEntity extends Equatable {
   final String id;
@@ -9,8 +10,16 @@ class UserEntity extends Equatable {
   final int hierarquiaNivel;
   final String setorId;
   final String setorNome;
+  final String? unitId;
+  final String? unitNome;
+  final String? unitSigla;
   final String? fotoUrl;
   final String? matricula;
+  final String jornadaInicio; // "HH:mm", default "07:00"
+  final String jornadaFim;    // "HH:mm", default "16:00"
+  final String jornadaDias;   // "seg,ter,qua,qui,sex"
+  final bool emPlantaoExtra;
+  final bool silenciarForaJornada;
   final bool ativo;
   final String? aprovadoPor;
   final DateTime? aprovadoEm;
@@ -25,8 +34,16 @@ class UserEntity extends Equatable {
     required this.hierarquiaNivel,
     required this.setorId,
     required this.setorNome,
+    this.unitId,
+    this.unitNome,
+    this.unitSigla,
     this.fotoUrl,
     this.matricula,
+    this.jornadaInicio = '07:00',
+    this.jornadaFim = '16:00',
+    this.jornadaDias = 'seg,ter,qua,qui,sex',
+    this.emPlantaoExtra = false,
+    this.silenciarForaJornada = true,
     required this.ativo,
     this.aprovadoPor,
     this.aprovadoEm,
@@ -54,6 +71,61 @@ class UserEntity extends Equatable {
     }
   }
 
+  /// Verifica se o usuário está atualmente dentro de sua escala/jornada de trabalho
+  bool get isCurrentlyWorking {
+    if (emPlantaoExtra) return true;
+    if (!ativo) return false;
+
+    final now = DateTime.now();
+    // 1=seg, 2=ter, 3=qua, 4=qui, 5=sex, 6=sab, 7=dom
+    final dayCodes = {
+      1: 'seg',
+      2: 'ter',
+      3: 'qua',
+      4: 'qui',
+      5: 'sex',
+      6: 'sab',
+      7: 'dom',
+    };
+    final todayCode = dayCodes[now.weekday] ?? 'seg';
+    final dias = jornadaDias.toLowerCase().split(',').map((d) => d.trim()).toList();
+
+    if (!dias.contains(todayCode)) {
+      return false;
+    }
+
+    final startParts = jornadaInicio.split(':').map((e) => int.tryParse(e) ?? 0).toList();
+    final endParts = jornadaFim.split(':').map((e) => int.tryParse(e) ?? 0).toList();
+
+    final startMinutes = (startParts.isNotEmpty ? startParts[0] : 7) * 60 +
+        (startParts.length > 1 ? startParts[1] : 0);
+    final endMinutes = (endParts.isNotEmpty ? endParts[0] : 16) * 60 +
+        (endParts.length > 1 ? endParts[1] : 0);
+    final nowMinutes = now.hour * 60 + now.minute;
+
+    if (endMinutes >= startMinutes) {
+      // Turno regular diurno (ex: 07:00 as 16:00)
+      return nowMinutes >= startMinutes && nowMinutes <= endMinutes;
+    } else {
+      // Turno noturno / cruza meia-noite (ex: 19:00 as 07:00)
+      return nowMinutes >= startMinutes || nowMinutes <= endMinutes;
+    }
+  }
+
+  String get workStatusLabel {
+    if (!ativo) return 'Inativo';
+    if (emPlantaoExtra) return 'Em Plantão Extra';
+    if (isCurrentlyWorking) return 'Em Serviço';
+    return 'Fora de Escala';
+  }
+
+  Color get workStatusColor {
+    if (!ativo) return const Color(0xFF9E9E9E);
+    if (emPlantaoExtra) return const Color(0xFF0288D1); // Azul plantão extra
+    if (isCurrentlyWorking) return const Color(0xFF2E7D32); // Verde SUS em serviço
+    return const Color(0xFFF57C00); // Laranja fora de escala
+  }
+
   UserEntity copyWith({
     String? id,
     String? firebaseUid,
@@ -63,8 +135,16 @@ class UserEntity extends Equatable {
     int? hierarquiaNivel,
     String? setorId,
     String? setorNome,
+    String? unitId,
+    String? unitNome,
+    String? unitSigla,
     String? fotoUrl,
     String? matricula,
+    String? jornadaInicio,
+    String? jornadaFim,
+    String? jornadaDias,
+    bool? emPlantaoExtra,
+    bool? silenciarForaJornada,
     bool? ativo,
     String? aprovadoPor,
     DateTime? aprovadoEm,
@@ -79,8 +159,16 @@ class UserEntity extends Equatable {
       hierarquiaNivel: hierarquiaNivel ?? this.hierarquiaNivel,
       setorId: setorId ?? this.setorId,
       setorNome: setorNome ?? this.setorNome,
+      unitId: unitId ?? this.unitId,
+      unitNome: unitNome ?? this.unitNome,
+      unitSigla: unitSigla ?? this.unitSigla,
       fotoUrl: fotoUrl ?? this.fotoUrl,
       matricula: matricula ?? this.matricula,
+      jornadaInicio: jornadaInicio ?? this.jornadaInicio,
+      jornadaFim: jornadaFim ?? this.jornadaFim,
+      jornadaDias: jornadaDias ?? this.jornadaDias,
+      emPlantaoExtra: emPlantaoExtra ?? this.emPlantaoExtra,
+      silenciarForaJornada: silenciarForaJornada ?? this.silenciarForaJornada,
       ativo: ativo ?? this.ativo,
       aprovadoPor: aprovadoPor ?? this.aprovadoPor,
       aprovadoEm: aprovadoEm ?? this.aprovadoEm,
@@ -98,8 +186,16 @@ class UserEntity extends Equatable {
         hierarquiaNivel,
         setorId,
         setorNome,
+        unitId,
+        unitNome,
+        unitSigla,
         fotoUrl,
         matricula,
+        jornadaInicio,
+        jornadaFim,
+        jornadaDias,
+        emPlantaoExtra,
+        silenciarForaJornada,
         ativo,
         aprovadoPor,
         aprovadoEm,

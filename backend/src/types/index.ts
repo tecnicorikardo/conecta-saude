@@ -15,6 +15,7 @@ export interface AuthenticatedUser {
   cargo: string;
   hierarquiaNivel: HierarquiaNivel;
   setorId: string;
+  unitId?: string | null;
   ativo: boolean;
 }
 

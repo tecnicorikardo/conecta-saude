@@ -13,6 +13,7 @@ import reportsRoutes from './modules/reports/reports.routes';
 import auditRoutes from './modules/audit/audit.routes';
 import channelsRoutes from './modules/channels/channels.routes';
 import { emergencyRouter } from './modules/emergency/emergency.routes';
+import { unitsRouter } from './modules/units/units.routes';
 
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { authenticate } from './middleware/authenticate';
@@ -107,6 +108,7 @@ export function createApp(): express.Application {
   // ─── Rotas da API ─────────────────────────────────────────────────────────
   app.use('/api/auth', authLimiter, authRoutes);
   app.get('/api/me', authenticate, getMe);
+  app.use('/api/units', unitsRouter);
   app.use('/api/users', usersRoutes);
   app.use('/api/sectors', sectorsRoutes);
   app.use('/api/conversations', conversationsRoutes);

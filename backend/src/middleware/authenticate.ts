@@ -64,6 +64,7 @@ export async function authenticate(
         cargo: true,
         hierarquiaNivel: true,
         setorId: true,
+        unitId: true,
         ativo: true,
       },
     });
@@ -84,6 +85,7 @@ export async function authenticate(
             cargo: true,
             hierarquiaNivel: true,
             setorId: true,
+            unitId: true,
             ativo: true,
           },
         });
@@ -116,6 +118,7 @@ export async function authenticate(
       cargo: user.cargo,
       hierarquiaNivel: user.hierarquiaNivel as HierarquiaNivel,
       setorId: user.setorId,
+      unitId: user.unitId,
       ativo: user.ativo,
     } satisfies AuthenticatedUser;
 

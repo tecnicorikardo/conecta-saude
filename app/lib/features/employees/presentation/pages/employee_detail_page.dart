@@ -147,12 +147,44 @@ class _EmployeeDetailPageState extends ConsumerState<EmployeeDetailPage> {
                                   ),
                                 ),
                                 const SizedBox(height: 12),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
+                                Wrap(
+                                  alignment: WrapAlignment.center,
+                                  spacing: 8,
+                                  runSpacing: 8,
                                   children: [
                                     HierarchyBadge(hierarquiaNivel: user.hierarquiaNivel),
-                                    const SizedBox(width: 8),
                                     StatusBadge(ativo: user.ativo),
+                                    // Status de Plantão / Jornada em Tempo Real
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: user.workStatusColor.withValues(alpha: 0.12),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(color: user.workStatusColor, width: 1),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Container(
+                                            width: 8,
+                                            height: 8,
+                                            decoration: BoxDecoration(
+                                              color: user.workStatusColor,
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            user.workStatusLabel,
+                                            style: TextStyle(
+                                              color: user.workStatusColor,
+                                              fontSize: 11.5,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ],
@@ -201,10 +233,38 @@ class _EmployeeDetailPageState extends ConsumerState<EmployeeDetailPage> {
                                   contentPadding: EdgeInsets.zero,
                                   leading: const CircleAvatar(
                                     backgroundColor: Color(0xFFE8F5E9),
-                                    child: Icon(Icons.apartment_outlined, color: AppColors.success),
+                                    child: Icon(Icons.domain_rounded, color: AppColors.success),
                                   ),
-                                  title: const Text('Setor / Unidade', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                                  title: const Text('Hospital / Unidade', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                                  subtitle: Text(
+                                    user.unitNome != null && user.unitNome!.isNotEmpty
+                                        ? '${user.unitNome!}${user.unitSigla != null ? ' (${user.unitSigla!})' : ''}'
+                                        : 'Complexo Hospitalar Carioca (Central)',
+                                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.neutral900),
+                                  ),
+                                ),
+                                const Divider(height: 16, color: Color(0xFFF1F5F9)),
+                                ListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  leading: const CircleAvatar(
+                                    backgroundColor: Color(0xFFEDE7F6),
+                                    child: Icon(Icons.local_hospital_outlined, color: Color(0xFF5E35B1)),
+                                  ),
+                                  title: const Text('Setor de Lotação', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
                                   subtitle: Text(user.setorNome, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.neutral900)),
+                                ),
+                                const Divider(height: 16, color: Color(0xFFF1F5F9)),
+                                ListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  leading: const CircleAvatar(
+                                    backgroundColor: Color(0xFFE0F2F1),
+                                    child: Icon(Icons.schedule_rounded, color: Color(0xFF00897B)),
+                                  ),
+                                  title: const Text('Escala & Horário de Trabalho', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                                  subtitle: Text(
+                                    '${user.jornadaInicio} às ${user.jornadaFim} (${user.jornadaDias.toUpperCase()})',
+                                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.neutral900),
+                                  ),
                                 ),
                                 if (user.matricula != null && user.matricula!.isNotEmpty) ...[
                                   const Divider(height: 16, color: Color(0xFFF1F5F9)),

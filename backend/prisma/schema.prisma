@@ -12,17 +12,39 @@ datasource db {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SETORES
+// UNIDADES HOSPITALARES
 // ─────────────────────────────────────────────────────────────────────────────
-model Sector {
-  id          String   @id @default(uuid())
-  nome        String   @unique
-  descricao   String?
-  ativo       Boolean  @default(true)
-  criadoEm   DateTime @default(now()) @map("criado_em")
+model HospitalUnit {
+  id          String    @id @default(uuid())
+  nome        String    @unique
+  sigla       String?
+  endereco    String?
+  cidade      String?   @default("São Paulo")
+  ativo       Boolean   @default(true)
+  criadoEm   DateTime  @default(now()) @map("criado_em")
   atualizadoEm DateTime @updatedAt @map("atualizado_em")
 
   // Relacionamentos
+  users       User[]
+  sectors     Sector[]
+
+  @@map("hospital_units")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SETORES
+// ─────────────────────────────────────────────────────────────────────────────
+model Sector {
+  id          String        @id @default(uuid())
+  nome        String        @unique
+  descricao   String?
+  unitId      String?       @map("unit_id")
+  ativo       Boolean       @default(true)
+  criadoEm   DateTime      @default(now()) @map("criado_em")
+  atualizadoEm DateTime     @updatedAt @map("atualizado_em")
+
+  // Relacionamentos
+  unit          HospitalUnit? @relation(fields: [unitId], references: [id])
   users         User[]
   conversations Conversation[]
   channels      Channel[]
@@ -35,25 +57,32 @@ model Sector {
 // USUÁRIOS
 // ─────────────────────────────────────────────────────────────────────────────
 model User {
-  id            String   @id @default(uuid())
-  firebaseUid   String   @unique @map("firebase_uid")
-  nome          String
-  email         String   @unique
-  cargo         String
+  id                    String                @id @default(uuid())
+  firebaseUid           String                @unique @map("firebase_uid")
+  nome                  String
+  email                 String                @unique
+  cargo                 String
   /// 1=Direção 2=Coordenação 3=Supervisão 4=Funcionário
-  hierarquiaNivel Int    @map("hierarquia_nivel")
-  setorId       String   @map("setor_id")
-  fotoUrl       String?  @map("foto_url")
-  matricula     String?
-  ativo         Boolean  @default(true)
-  aprovadoPor   String?  @map("aprovado_por")
-  aprovadoEm    DateTime? @map("aprovado_em")
-  fcmToken      String?  @map("fcm_token")
-  criadoEm     DateTime @default(now()) @map("criado_em")
-  atualizadoEm DateTime @updatedAt @map("atualizado_em")
+  hierarquiaNivel       Int                   @map("hierarquia_nivel")
+  setorId               String                @map("setor_id")
+  unitId                String?               @map("unit_id")
+  fotoUrl               String?               @map("foto_url")
+  matricula             String?
+  jornadaInicio         String?               @default("07:00") @map("jornada_inicio")
+  jornadaFim            String?               @default("16:00") @map("jornada_fim")
+  jornadaDias           String?               @default("seg,ter,qua,qui,sex") @map("jornada_dias")
+  emPlantaoExtra        Boolean               @default(false) @map("em_plantao_extra")
+  silenciarForaJornada  Boolean               @default(true) @map("silenciar_fora_jornada")
+  ativo                 Boolean               @default(true)
+  aprovadoPor           String?               @map("aprovado_por")
+  aprovadoEm            DateTime?             @map("aprovado_em")
+  fcmToken              String?               @map("fcm_token")
+  criadoEm             DateTime              @default(now()) @map("criado_em")
+  atualizadoEm         DateTime              @updatedAt @map("atualizado_em")
 
   // Relacionamentos
   setor                  Sector                @relation(fields: [setorId], references: [id])
+  unit                   HospitalUnit?         @relation(fields: [unitId], references: [id])
   aprovador              User?                 @relation("UserApprovals", fields: [aprovadoPor], references: [id])
   usuariosAprovados      User[]                @relation("UserApprovals")
   sentMessages           Message[]             @relation("MessageRemetente")
@@ -76,6 +105,7 @@ model User {
   @@index([firebaseUid])
   @@index([email])
   @@index([setorId])
+  @@index([unitId])
   @@index([hierarquiaNivel])
   @@index([ativo])
   @@map("users")

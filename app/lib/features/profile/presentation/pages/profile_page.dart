@@ -174,6 +174,53 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     );
   }
 
+  Future<void> _updateSchedule({
+    required UserEntity user,
+    String? jornadaInicio,
+    String? jornadaFim,
+    String? jornadaDias,
+    bool? emPlantaoExtra,
+    bool? silenciarForaJornada,
+  }) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final resp = await HttpService.instance.patch(
+        '/users/me/schedule',
+        data: {
+          if (jornadaInicio != null) 'jornadaInicio': jornadaInicio,
+          if (jornadaFim != null) 'jornadaFim': jornadaFim,
+          if (jornadaDias != null) 'jornadaDias': jornadaDias,
+          if (emPlantaoExtra != null) 'emPlantaoExtra': emPlantaoExtra,
+          if (silenciarForaJornada != null) 'silenciarForaJornada': silenciarForaJornada,
+        },
+      );
+      if (resp.data['success'] == true) {
+        final updatedUser = user.copyWith(
+          jornadaInicio: jornadaInicio ?? user.jornadaInicio,
+          jornadaFim: jornadaFim ?? user.jornadaFim,
+          jornadaDias: jornadaDias ?? user.jornadaDias,
+          emPlantaoExtra: emPlantaoExtra ?? user.emPlantaoExtra,
+          silenciarForaJornada: silenciarForaJornada ?? user.silenciarForaJornada,
+        );
+        ref.read(currentUserProvider.notifier).setUser(updatedUser);
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Configurações de escala e plantão salvas!'),
+            backgroundColor: AppColors.success,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Erro ao atualizar escala: $e'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+
   Future<void> _updateProfilePhoto(UserEntity user, String? newPhotoUrl) async {
     final messenger = ScaffoldMessenger.of(context);
     setState(() => _isSaving = true);
@@ -673,6 +720,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       ],
                     ),
                   ),
+                  const SizedBox(height: 16),
+
+                  // ─── Minha Escala & Horário de Plantão ───────────────────
+                  _buildScheduleCard(user, isDark),
                   const SizedBox(height: 16),
 
                   // ─── Seletor de Temas Visuais ────────────────────────────
@@ -1220,6 +1271,317 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildScheduleCard(UserEntity user, bool isDark) {
+    final diasList = user.jornadaDias.toLowerCase().split(',').map((d) => d.trim()).toList();
+    final allDays = [
+      {'code': 'seg', 'label': 'Seg'},
+      {'code': 'ter', 'label': 'Ter'},
+      {'code': 'qua', 'label': 'Qua'},
+      {'code': 'qui', 'label': 'Qui'},
+      {'code': 'sex', 'label': 'Sex'},
+      {'code': 'sab', 'label': 'Sáb'},
+      {'code': 'dom', 'label': 'Dom'},
+    ];
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurface : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? Colors.white12 : AppColors.border,
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.schedule_rounded, size: 18, color: user.workStatusColor),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'MINHA ESCALA & PLANTÃO',
+                    style: TextStyle(
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: user.workStatusColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: user.workStatusColor, width: 1),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: user.workStatusColor,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      user.workStatusLabel,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: user.workStatusColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Configure sua jornada para que supervisores e colegas vejam quando você está em serviço. Fora do horário, suas notificações podem ser silenciadas automaticamente (exceto emergências críticas).',
+            style: TextStyle(
+              fontSize: 12.5,
+              color: isDark ? Colors.white60 : AppColors.textSecondary,
+              height: 1.3,
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Plantão Extra Switch
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: user.emPlantaoExtra
+                  ? const Color(0xFFE1F5FE)
+                  : (isDark ? Colors.white10 : const Color(0xFFF8FAFC)),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: user.emPlantaoExtra
+                    ? const Color(0xFF0288D1)
+                    : (isDark ? Colors.white12 : const Color(0xFFE2E8F0)),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Plantão Extra Agora',
+                        style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Ative se estiver cobrindo turno ou plantão adicional',
+                        style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: user.emPlantaoExtra,
+                  activeColor: const Color(0xFF0288D1),
+                  onChanged: (val) {
+                    _updateSchedule(user: user, emPlantaoExtra: val);
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // Horários de Entrada e Saída
+          const Text(
+            'Horário de Trabalho Habitual',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _buildTimeButton(
+                  label: 'Entrada',
+                  time: user.jornadaInicio,
+                  isDark: isDark,
+                  onTap: () async {
+                    final parts = user.jornadaInicio.split(':').map((e) => int.tryParse(e) ?? 0).toList();
+                    final initial = TimeOfDay(hour: parts.isNotEmpty ? parts[0] : 7, minute: parts.length > 1 ? parts[1] : 0);
+                    final picked = await showTimePicker(context: context, initialTime: initial);
+                    if (picked != null) {
+                      final h = picked.hour.toString().padLeft(2, '0');
+                      final m = picked.minute.toString().padLeft(2, '0');
+                      _updateSchedule(user: user, jornadaInicio: '$h:$m');
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildTimeButton(
+                  label: 'Saída',
+                  time: user.jornadaFim,
+                  isDark: isDark,
+                  onTap: () async {
+                    final parts = user.jornadaFim.split(':').map((e) => int.tryParse(e) ?? 0).toList();
+                    final initial = TimeOfDay(hour: parts.isNotEmpty ? parts[0] : 16, minute: parts.length > 1 ? parts[1] : 0);
+                    final picked = await showTimePicker(context: context, initialTime: initial);
+                    if (picked != null) {
+                      final h = picked.hour.toString().padLeft(2, '0');
+                      final m = picked.minute.toString().padLeft(2, '0');
+                      _updateSchedule(user: user, jornadaFim: '$h:$m');
+                    }
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Dias de Trabalho
+          const Text(
+            'Dias de Escala / Plantão',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: allDays.map((d) {
+              final code = d['code']!;
+              final isSelected = diasList.contains(code);
+              return FilterChip(
+                label: Text(d['label']!),
+                selected: isSelected,
+                selectedColor: AppColors.primary.withValues(alpha: 0.15),
+                checkmarkColor: AppColors.primary,
+                labelStyle: TextStyle(
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  color: isSelected ? AppColors.primary : (isDark ? Colors.white70 : AppColors.neutral900),
+                ),
+                onSelected: (selected) {
+                  final newDias = List<String>.from(diasList);
+                  if (selected) {
+                    if (!newDias.contains(code)) newDias.add(code);
+                  } else {
+                    newDias.remove(code);
+                  }
+                  if (newDias.isNotEmpty) {
+                    _updateSchedule(user: user, jornadaDias: newDias.join(','));
+                  }
+                },
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 14),
+
+          // Silenciar Notificações Fora da Jornada
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white10 : const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: isDark ? Colors.white12 : const Color(0xFFE2E8F0)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Silenciar Fora da Jornada',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Não emitir som de mensagens comuns fora do plantão (Alertas de emergência não são afetados)',
+                        style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: user.silenciarForaJornada,
+                  activeColor: AppColors.primary,
+                  onChanged: (val) {
+                    _updateSchedule(user: user, silenciarForaJornada: val);
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimeButton({
+    required String label,
+    required String time,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF0F2438) : const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: isDark ? const Color(0xFF2A455D) : const Color(0xFFD8E0E8)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(fontSize: 11, color: isDark ? Colors.white60 : AppColors.textSecondary),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  time,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : AppColors.neutral900,
+                  ),
+                ),
+              ],
+            ),
+            const Icon(Icons.access_time_rounded, size: 18, color: AppColors.primary),
+          ],
         ),
       ),
     );

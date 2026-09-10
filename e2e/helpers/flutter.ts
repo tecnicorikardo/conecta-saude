@@ -5,8 +5,8 @@ import { Page, expect } from '@playwright/test';
  * permitindo que o Playwright interaja diretamente com inputs, botões e labels.
  */
 export async function initFlutterPage(page: Page, path: string = '/') {
-  await page.goto(path, { waitUntil: 'networkidle' });
-  await page.waitForTimeout(2500);
+  await page.goto(path, { waitUntil: 'domcontentloaded' });
+  await page.waitForTimeout(2000);
 
   // Ativa a semântica do Flutter Web clicando no placeholder de acessibilidade
   await page.waitForFunction(() => {
@@ -18,7 +18,7 @@ export async function initFlutterPage(page: Page, path: string = '/') {
     return false;
   }, { timeout: 15000 }).catch(() => {});
 
-  await page.waitForTimeout(1200);
+  await page.waitForTimeout(1000);
 }
 
 /**
