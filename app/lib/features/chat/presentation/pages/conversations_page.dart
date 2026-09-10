@@ -518,137 +518,147 @@ class _ConversationTile extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Nome + Destaque Grupo + Auto-exclusão + Horário
+                            // Linha 1: Nome + Destaque Grupo + Auto-exclusão + Horário
                             Row(
                               children: [
-                                Flexible(
-                                  child: Text(
-                                    displayName,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: hasUnread
-                                          ? FontWeight.w700
-                                          : FontWeight.w600,
-                                      color: tokens.textPrimary,
-                                    ),
+                                Expanded(
+                                  child: Row(
+                                    children: [
+                                      Flexible(
+                                        child: Text(
+                                          displayName,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: hasUnread
+                                                ? FontWeight.w700
+                                                : FontWeight.w600,
+                                            color: tokens.textPrimary,
+                                          ),
+                                        ),
+                                      ),
+                                      if (isGroup) ...[
+                                        const SizedBox(width: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: tokens.iconContainerColor,
+                                            borderRadius: BorderRadius.circular(4),
+                                            border: Border.all(
+                                                color: tokens.themeAccentColor.withValues(alpha: 0.25)),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(Icons.groups,
+                                                  size: 12, color: tokens.themeAccentColor),
+                                              const SizedBox(width: 3),
+                                              Text(
+                                                'GRUPO • ${conversation.participantes.length}',
+                                                style: TextStyle(
+                                                  color: tokens.themeAccentColor,
+                                                  fontWeight: FontWeight.bold,
+                                                  fontSize: 10,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                      if (conversation.autoExcluir24h) ...[
+                                        const SizedBox(width: 4),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 5, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: Colors.amber.shade50,
+                                            borderRadius: BorderRadius.circular(4),
+                                            border: Border.all(color: Colors.amber.shade200),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(Icons.timer_outlined,
+                                                  size: 11,
+                                                  color: Colors.amber.shade900),
+                                              const SizedBox(width: 2),
+                                              Text(
+                                                '24h',
+                                                style: TextStyle(
+                                                  fontSize: 9,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.amber.shade900,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ],
                                   ),
                                 ),
-                                if (isGroup) ...[
-                                  const SizedBox(width: 6),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 6, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: tokens.iconContainerColor,
-                                      borderRadius: BorderRadius.circular(4),
-                                      border: Border.all(
-                                          color: tokens.themeAccentColor.withValues(alpha: 0.25)),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(Icons.groups,
-                                            size: 12, color: tokens.themeAccentColor),
-                                        const SizedBox(width: 3),
-                                        Text(
-                                          'GRUPO • ${conversation.participantes.length}',
-                                          style: TextStyle(
-                                            color: tokens.themeAccentColor,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 10,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                                if (conversation.autoExcluir24h) ...[
-                                  const SizedBox(width: 4),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 5, vertical: 2),
-                                    decoration: BoxDecoration(
-                                      color: Colors.amber.shade50,
-                                      borderRadius: BorderRadius.circular(4),
-                                      border: Border.all(color: Colors.amber.shade200),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(Icons.timer_outlined,
-                                            size: 11,
-                                            color: Colors.amber.shade900),
-                                        const SizedBox(width: 2),
-                                        Text(
-                                          '24h',
-                                          style: TextStyle(
-                                            fontSize: 9,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.amber.shade900,
-                                          ),
-                                        ),
-                                      ],
+                                if (lastMsg != null) ...[
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    _formatTime(lastMsg.criadoEm),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: hasUnread
+                                          ? tokens.themeAccentColor
+                                          : tokens.textSecondary,
+                                      fontWeight: hasUnread
+                                          ? FontWeight.w700
+                                          : FontWeight.w400,
                                     ),
                                   ),
                                 ],
                               ],
                             ),
-                            if (lastMsg != null)
-                              Text(
-                                _formatTime(lastMsg.criadoEm),
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: hasUnread
-                                      ? tokens.themeAccentColor
-                                      : tokens.textSecondary,
-                                  fontWeight: hasUnread
-                                      ? FontWeight.w700
-                                      : FontWeight.w400,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 3),
+                            const SizedBox(height: 4),
 
-                      // Cargo/setor + última mensagem + badge
-                      Row(
-                        children: [
-                          Expanded(
-                            child: lastMsg != null
-                                ? _buildLastMessage(lastMsg, currentUserId, isDark)
-                                : Text(
-                                    subtitle,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: tokens.textSecondary,
+                            // Linha 2: Cargo/setor + última mensagem + badge
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: lastMsg != null
+                                      ? _buildLastMessage(lastMsg, currentUserId, isDark)
+                                      : Text(
+                                          subtitle,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: tokens.textSecondary,
+                                          ),
+                                        ),
+                                ),
+                                if (hasUnread) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 7, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: tokens.themeAccentColor,
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      conversation.unreadCount > 99
+                                          ? '99+'
+                                          : '${conversation.unreadCount}',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                      ),
                                     ),
                                   ),
-                          ),
-                          if (hasUnread)
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 7, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: tokens.themeAccentColor,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text(
-                                conversation.unreadCount > 99
-                                    ? '99+'
-                                    : '${conversation.unreadCount}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
+                                ],
+                              ],
                             ),
-                        ],
+                          ],
+                        ),
                       ),
                     ],
                   ),
