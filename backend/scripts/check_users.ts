@@ -37,10 +37,13 @@ async function run() {
         conversationMemberships: { include: { conversation: true } },
       },
     });
-    console.log('\n--- RICARDO DATA ---');
-    console.log('User:', ricardo?.nome, '| Setor:', ricardo?.setorId);
-    console.log('Channels:', ricardo?.channelMemberships.map(m => m.channel.nome));
-    console.log('Conversations:', ricardo?.conversationMemberships.length);
+    try {
+      const fbUser = await auth.getUserByEmail('tecnicorikardo@gmail.com');
+      console.log('Firebase Auth UID:', fbUser.uid, '| DB firebaseUid:', ricardo?.firebaseUid);
+      console.log('UIDs match?', fbUser.uid === ricardo?.firebaseUid);
+    } catch (fbErr) {
+      console.log('Error fetching from Firebase Auth:', fbErr);
+    }
   } catch (e) {
     console.log('Error checking ricardo:', e);
   }

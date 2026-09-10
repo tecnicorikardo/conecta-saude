@@ -1,9 +1,9 @@
 # Status do projeto Conecta Saúde
 
-**Data e hora do registro:** 09/09/2026 20:39:24 (UTC−03:00, São Paulo)  
+**Data e hora do registro:** 09/09/2026 21:12:00 (UTC−03:00, São Paulo)  
 **Ambiente:** demonstração gratuita  
 **Branch local:** `main`  
-**Último commit remoto conhecido:** `b71a39d`
+**Último commit remoto:** `e111401`
 
 ## Objetivo
 
@@ -85,8 +85,8 @@ O redeploy registrado no log falhou antes de publicar porque usou o commit antig
 Ainda é necessário enviar o código atualizado ao GitHub e executar um novo deploy. Depois, verificar `/ready` no domínio público e testar login e mensagens.
 
 ## Firebase Hosting
-
-O build web local está pronto, mas ainda precisa ser publicado após a atualização do backend. O Firebase Hosting continua configurado para `app/build/web`.
+ 
+O build web release foi publicado com sucesso em `https://conecta-hospital.web.app` em 09/09/2026 23:55 UTC (41 arquivos sincronizados).
 
 ## Segurança
 

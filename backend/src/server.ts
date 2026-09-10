@@ -10,11 +10,13 @@ async function bootstrap(): Promise<void> {
   // 1. Servidor HTTP (inicia imediatamente para atender /health e binding do Render)
   const app = createApp();
 
-  const server = app.listen(PORT, () => {
+  const HOST = '0.0.0.0';
+  const server = app.listen(PORT, HOST, () => {
     console.log(`\n🚀 Conecta Saúde API`);
     console.log(`   Ambiente : ${process.env.NODE_ENV ?? 'development'}`);
+    console.log(`   Host     : ${HOST}`);
     console.log(`   Porta    : ${PORT}`);
-    console.log(`   Health   : http://localhost:${PORT}/health\n`);
+    console.log(`   Health   : http://${HOST}:${PORT}/health\n`);
   });
   const realtime = startRealtime(server);
 
