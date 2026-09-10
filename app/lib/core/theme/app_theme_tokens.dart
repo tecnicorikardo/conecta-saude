@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 enum AppThemeMode {
   susLight,
@@ -90,6 +90,52 @@ class AppThemeTokens extends ThemeExtension<AppThemeTokens> {
     this.accent,
     this.accentSoft,
   });
+
+  bool get isDark => mode == AppThemeMode.dark;
+  bool get isLgbtq => mode == AppThemeMode.lgbtq;
+  bool get isRosa => mode == AppThemeMode.rosa;
+
+  /// Retorna a cor de destaque principal de acordo com o tema selecionado
+  Color get themeAccentColor => accent ?? primary;
+
+  /// Retorna o fundo suave para contêineres de ícones, badges e chips
+  Color get iconContainerColor => accentSoft ?? surfaceMuted;
+
+  /// Constrói a faixa lateral de 3.5px para identificação de tema nos cards
+  Widget buildVerticalStripe({double width = 3.5, Color? overrideColor}) {
+    if (overrideColor != null) {
+      return Container(width: width, color: overrideColor);
+    }
+    if (identityRainbow.isNotEmpty) {
+      return SizedBox(
+        width: width,
+        child: Column(
+          children: identityRainbow
+              .map((c) => Expanded(child: Container(color: c)))
+              .toList(),
+        ),
+      );
+    }
+    return Container(width: width, color: themeAccentColor);
+  }
+
+  /// Constrói a faixa horizontal fina para cabeçalhos ou bordas superiores de cards
+  Widget buildHorizontalAccent({double height = 2.5}) {
+    if (identityRainbow.isNotEmpty) {
+      return SizedBox(
+        height: height,
+        child: Row(
+          children: identityRainbow
+              .map((c) => Expanded(child: Container(color: c)))
+              .toList(),
+        ),
+      );
+    }
+    if (accent != null) {
+      return Container(height: height, color: accent);
+    }
+    return const SizedBox.shrink();
+  }
 
   // ─── Preset: SUS Claro ──────────────────────────────────────────────────────
   static const susLight = AppThemeTokens(

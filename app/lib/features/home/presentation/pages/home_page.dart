@@ -10,6 +10,9 @@ import '../../../../core/auth/permissions_provider.dart';
 import '../../../auth/presentation/providers/current_user_provider.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../chat/presentation/providers/chat_provider.dart';
+import '../../../chat/domain/entities/conversation_entity.dart';
+import '../../../chat/domain/entities/message_entity.dart';
+import '../../../chat/presentation/widgets/conversation_avatar.dart';
 import '../../../channels/presentation/providers/channels_provider.dart';
 import '../../../announcements/presentation/providers/announcements_provider.dart';
 import '../../../emergency/presentation/providers/emergency_provider.dart';
@@ -160,15 +163,20 @@ class _HomePageState extends ConsumerState<HomePage> {
   // ─── Body adaptado por hierarquia ──────────────────────────────────────────
   Widget _buildBody(
       BuildContext context, UserEntity? user, UserPermissions perms) {
+    final tokens = context.appTokens;
     final nome = user?.nome ?? 'Usuário';
     final primeiroNome = nome.split(' ').first;
     final cargo = user?.cargo ?? '';
     final setor = user?.setorNome ?? '';
     final announcementsState = ref.watch(announcementsProvider);
     final recentAnnouncements = announcementsState.filteredAnnouncements.take(3).toList();
+    final convsAsync = ref.watch(conversationsProvider);
+    final allConvs = convsAsync.valueOrNull ?? [];
+    final recentConvs = allConvs.take(3).toList();
+    final currentUserId = ref.watch(currentUserIdProvider);
 
     return RefreshIndicator(
-      color: AppColors.primary,
+      color: tokens.primary,
       onRefresh: () async {
         ref.invalidate(currentUserProvider);
         ref.invalidate(announcementsProvider);
@@ -197,7 +205,7 @@ class _HomePageState extends ConsumerState<HomePage> {
             Text(
               'Acesso Rápido',
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: AppColors.neutral600,
+                    color: tokens.textSecondary,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.5,
                   ),
@@ -214,6 +222,66 @@ class _HomePageState extends ConsumerState<HomePage> {
               const SizedBox(height: 20),
             ],
 
+            // ─── Mensagens Recentes ──────────────────────────────────────
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Mensagens Recentes',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: tokens.textSecondary,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.5,
+                      ),
+                ),
+                TextButton(
+                  onPressed: () => context.go(AppRoutes.conversations),
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: Text(
+                    'Ver todas',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: tokens.themeAccentColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (recentConvs.isEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: tokens.surface,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: tokens.border, width: 1),
+                ),
+                child: Center(
+                  child: Text(
+                    'Nenhuma mensagem recente.',
+                    style: TextStyle(fontSize: 13, color: tokens.textSecondary),
+                  ),
+                ),
+              )
+            else
+              ...recentConvs.map(
+                (conv) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: _RecentMessageCard(
+                    conv: conv,
+                    currentUserId: currentUserId,
+                    onTap: () => context.push('/chat/${conv.id}', extra: conv),
+                  ),
+                ),
+              ),
+            const SizedBox(height: 20),
+
             // ─── Comunicados recentes ────────────────────────────────────
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -221,7 +289,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 Text(
                   'Comunicados Recentes',
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: AppColors.neutral600,
+                        color: tokens.textSecondary,
                         fontWeight: FontWeight.w600,
                         letterSpacing: 0.5,
                       ),
@@ -233,27 +301,31 @@ class _HomePageState extends ConsumerState<HomePage> {
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                  child: const Text('Ver todos',
-                      style: TextStyle(fontSize: 12)),
+                  child: Text(
+                    'Ver todos',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: tokens.themeAccentColor,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ],
             ),
             const SizedBox(height: 8),
             if (recentAnnouncements.isEmpty)
-              Card(
-                elevation: 0,
-                color: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: const BorderSide(color: AppColors.outlineVariant),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: tokens.surface,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: tokens.border, width: 1),
                 ),
-                child: const Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Center(
-                    child: Text(
-                      'Nenhum comunicado disponível no momento.',
-                      style: TextStyle(fontSize: 13, color: AppColors.neutral600),
-                    ),
+                child: Center(
+                  child: Text(
+                    'Nenhum comunicado disponível no momento.',
+                    style: TextStyle(fontSize: 13, color: tokens.textSecondary),
                   ),
                 ),
               )
@@ -407,101 +479,103 @@ class _WelcomeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.appTokens;
+
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: tokens.surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border, width: 1),
+        border: Border.all(color: tokens.border, width: 1),
       ),
       clipBehavior: Clip.antiAlias,
-      child: IntrinsicHeight(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Faixa lateral institucional azul SUS
-            Container(
-              width: 3.5,
-              color: AppColors.primary,
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                child: Row(
-                  children: [
-                    // Avatar clínico institucional
-                    CircleAvatar(
-                      radius: 24,
-                      backgroundColor: AppColors.softBlue,
-                      child: Text(
-                        nome.isNotEmpty ? nome[0].toUpperCase() : 'U',
-                        style: const TextStyle(
-                          color: AppColors.primary,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'Olá, $nome',
-                            style: const TextStyle(
-                              color: AppColors.navy,
-                              fontSize: 16.5,
+      child: Column(
+        children: [
+          if (tokens.identityRainbow.isNotEmpty)
+            tokens.buildHorizontalAccent(height: 2.5),
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                tokens.buildVerticalStripe(width: 3.5),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 24,
+                          backgroundColor: tokens.iconContainerColor,
+                          child: Text(
+                            nome.isNotEmpty ? nome[0].toUpperCase() : 'U',
+                            style: TextStyle(
+                              color: tokens.themeAccentColor,
+                              fontSize: 18,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
-                          if (cargo.isNotEmpty || setor.isNotEmpty) ...[
-                            const SizedBox(height: 2),
-                            Text(
-                              [cargo, setor]
-                                  .where((s) => s.isNotEmpty)
-                                  .join(' • '),
-                              style: const TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w400,
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'Olá, $nome',
+                                style: TextStyle(
+                                  color: tokens.textPrimary,
+                                  fontSize: 16.5,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                              if (cargo.isNotEmpty || setor.isNotEmpty) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  [cargo, setor]
+                                      .where((s) => s.isNotEmpty)
+                                      .join(' • '),
+                                  style: TextStyle(
+                                    color: tokens.textSecondary,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: tokens.iconContainerColor,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: tokens.themeAccentColor.withValues(alpha: 0.3),
+                              width: 1,
                             ),
-                          ],
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Badge de hierarquia institucional
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.softBlue,
-                        borderRadius: BorderRadius.circular(6),
-                        border: Border.all(
-                          color: AppColors.primary.withValues(alpha: 0.25),
-                          width: 1,
+                          ),
+                          child: Text(
+                            perms.hierarquiaLabel.toUpperCase(),
+                            style: TextStyle(
+                              color: tokens.themeAccentColor,
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
                         ),
-                      ),
-                      child: Text(
-                        perms.hierarquiaLabel.toUpperCase(),
-                        style: const TextStyle(
-                          color: AppColors.primary,
-                          fontSize: 9.5,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -514,36 +588,35 @@ class _AdminPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.appTokens;
+
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: tokens.surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border, width: 1),
+        border: Border.all(color: tokens.border, width: 1),
       ),
       clipBehavior: Clip.antiAlias,
       child: IntrinsicHeight(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Container(
-              width: 3.5,
-              color: AppColors.primaryDeep,
-            ),
+            tokens.buildVerticalStripe(width: 3.5, overrideColor: tokens.primaryDark),
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Row(
+                    Row(
                       children: [
                         Icon(Icons.admin_panel_settings_outlined,
-                            color: AppColors.primaryDeep, size: 18),
-                        SizedBox(width: 8),
+                            color: tokens.themeAccentColor, size: 18),
+                        const SizedBox(width: 8),
                         Text(
                           'Painel Administrativo',
                           style: TextStyle(
-                            color: AppColors.navy,
+                            color: tokens.textPrimary,
                             fontSize: 13.5,
                             fontWeight: FontWeight.w700,
                           ),
@@ -604,25 +677,27 @@ class _AdminChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.appTokens;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: AppColors.background,
+          color: tokens.iconContainerColor,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: AppColors.border, width: 1),
+          border: Border.all(color: tokens.border, width: 1),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 14, color: AppColors.primary),
+            Icon(icon, size: 14, color: tokens.themeAccentColor),
             const SizedBox(width: 6),
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
-                color: AppColors.navy,
+                color: tokens.textPrimary,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -657,67 +732,75 @@ class _QuickAccessCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.appTokens;
     final isEmergency = data.color == AppColors.emergency;
-    final iconBg = isEmergency ? const Color(0xFFFFEBEE) : AppColors.softBlue;
-    final iconColor = isEmergency ? AppColors.emergency : AppColors.primary;
-    final badgeBg = isEmergency ? AppColors.emergency : AppColors.primary;
+    final iconBg = isEmergency ? const Color(0xFFFFEBEE) : tokens.iconContainerColor;
+    final iconColor = isEmergency ? tokens.critical : tokens.themeAccentColor;
+    final badgeBg = isEmergency ? tokens.critical : tokens.themeAccentColor;
 
     return Card(
       elevation: 0,
-      color: Colors.white,
+      color: tokens.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(10),
-        side: const BorderSide(color: AppColors.border, width: 1),
+        side: BorderSide(color: tokens.border, width: 1),
       ),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: data.onTap,
         borderRadius: BorderRadius.circular(10),
-        child: Padding(
-          padding: const EdgeInsets.all(15),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Column(
+          children: [
+            if (!isEmergency)
+              tokens.buildHorizontalAccent(height: 2.5),
+            Padding(
+              padding: const EdgeInsets.all(15),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: iconBg,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(data.icon, color: iconColor, size: 20),
-                  ),
-                  if (data.badge > 0)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 7, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: badgeBg,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '${data.badge}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: iconBg,
+                          borderRadius: BorderRadius.circular(8),
                         ),
+                        child: Icon(data.icon, color: iconColor, size: 20),
                       ),
+                      if (data.badge > 0)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: badgeBg,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            '${data.badge}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    data.label,
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w600,
+                      color: tokens.textPrimary,
                     ),
+                  ),
                 ],
               ),
-              const SizedBox(height: 12),
-              Text(
-                data.label,
-                style: const TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.navy,
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -731,6 +814,7 @@ class _EmergencyBanner extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final tokens = context.appTokens;
     final emergencyState = ref.watch(emergencyProvider);
     final activeAlert = emergencyState.activeAlert;
     final isAtivo = activeAlert != null && activeAlert.isAtivo;
@@ -743,19 +827,16 @@ class _EmergencyBanner extends ConsumerWidget {
           borderRadius: BorderRadius.circular(10),
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: tokens.surface,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.emergency, width: 1.5),
+              border: Border.all(color: tokens.critical, width: 1.5),
             ),
             clipBehavior: Clip.antiAlias,
             child: IntrinsicHeight(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Container(
-                    width: 4,
-                    color: AppColors.emergency,
-                  ),
+                  tokens.buildVerticalStripe(width: 4, overrideColor: tokens.critical),
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.all(14),
@@ -767,8 +848,8 @@ class _EmergencyBanner extends ConsumerWidget {
                               color: const Color(0xFFFFEBEE),
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Icon(Icons.error_outline_rounded,
-                                color: AppColors.emergency, size: 24),
+                            child: Icon(Icons.error_outline_rounded,
+                                color: tokens.critical, size: 24),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -777,8 +858,8 @@ class _EmergencyBanner extends ConsumerWidget {
                               children: [
                                 Text(
                                   '🚨 PROTOCOLO CRÍTICO: ${activeAlert.tipo.shortLabel.toUpperCase()}',
-                                  style: const TextStyle(
-                                    color: AppColors.emergency,
+                                  style: TextStyle(
+                                    color: tokens.critical,
                                     fontSize: 13,
                                     fontWeight: FontWeight.w900,
                                     letterSpacing: 0.3,
@@ -787,8 +868,8 @@ class _EmergencyBanner extends ConsumerWidget {
                                 const SizedBox(height: 2),
                                 Text(
                                   '📍 ${activeAlert.localizacao} • ${activeAlert.criadorNome}',
-                                  style: const TextStyle(
-                                    color: AppColors.navy,
+                                  style: TextStyle(
+                                    color: tokens.textPrimary,
                                     fontSize: 12,
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -797,7 +878,7 @@ class _EmergencyBanner extends ConsumerWidget {
                               ],
                             ),
                           ),
-                          const Icon(Icons.chevron_right, color: AppColors.emergency, size: 22),
+                          Icon(Icons.chevron_right, color: tokens.critical, size: 22),
                         ],
                       ),
                     ),
@@ -812,6 +893,167 @@ class _EmergencyBanner extends ConsumerWidget {
 
     // Estado normal (sem emergência) -> não ocupa espaço na Home
     return const SizedBox.shrink();
+  }
+}
+
+// ─── Card de mensagem recente ─────────────────────────────────────────────────
+class _RecentMessageCard extends StatelessWidget {
+  final ConversationEntity conv;
+  final String currentUserId;
+  final VoidCallback onTap;
+
+  const _RecentMessageCard({
+    required this.conv,
+    required this.currentUserId,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.appTokens;
+    final isGroup = conv.isGroup;
+    final displayName = conv.displayName(currentUserId);
+    final photoUrl = conv.displayPhoto(currentUserId);
+    final lastMsg = conv.lastMessage;
+    final hasUnread = conv.unreadCount > 0;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: tokens.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: hasUnread ? tokens.themeAccentColor.withValues(alpha: 0.5) : tokens.border,
+          width: 1,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          child: Column(
+            children: [
+              if (tokens.identityRainbow.isNotEmpty)
+                tokens.buildHorizontalAccent(height: 2.0),
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    tokens.buildVerticalStripe(
+                      width: 3.5,
+                      overrideColor: hasUnread ? null : tokens.border.withValues(alpha: 0.5),
+                    ),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        child: Row(
+                          children: [
+                            ConversationAvatar(
+                              name: displayName,
+                              photoUrl: photoUrl,
+                              isGroup: isGroup,
+                              size: 40,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          displayName,
+                                          style: TextStyle(
+                                            fontSize: 13.5,
+                                            fontWeight: hasUnread ? FontWeight.w700 : FontWeight.w600,
+                                            color: tokens.textPrimary,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      if (lastMsg != null) ...[
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          _formatMsgDate(lastMsg.criadoEm),
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            color: tokens.textSecondary,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          _getMessagePreview(lastMsg),
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: hasUnread ? tokens.textPrimary : tokens.textSecondary,
+                                            fontWeight: hasUnread ? FontWeight.w500 : FontWeight.w400,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      if (hasUnread) ...[
+                                        const SizedBox(width: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: tokens.themeAccentColor,
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          child: Text(
+                                            '${conv.unreadCount}',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 10.5,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _getMessagePreview(MessageEntity? msg) {
+    if (msg == null) return 'Nenhuma mensagem ainda';
+    if (msg.tipo == MessageType.audio) return '🎤 Mensagem de voz';
+    if (msg.tipo == MessageType.image) return '📷 Imagem';
+    return msg.texto.isNotEmpty ? msg.texto : 'Mensagem';
+  }
+
+  String _formatMsgDate(DateTime dt) {
+    final now = DateTime.now();
+    final diff = now.difference(dt);
+    if (diff.inMinutes < 60) {
+      return '${diff.inMinutes <= 0 ? 1 : diff.inMinutes}min';
+    } else if (diff.inHours < 24) {
+      return '${diff.inHours}h';
+    } else {
+      return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}';
+    }
   }
 }
 
@@ -833,124 +1075,130 @@ class _AnnouncementCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.appTokens;
     final isUrgente = prioridade == 'urgente';
     final isAlta = prioridade == 'alta';
-    final stripeColor = isUrgente
-        ? AppColors.emergency
-        : (isAlta ? AppColors.warning : AppColors.border);
+    final overrideStripe = isUrgente
+        ? tokens.critical
+        : (isAlta ? tokens.warning : null);
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: tokens.surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border, width: 1),
+        border: Border.all(color: tokens.border, width: 1),
       ),
       clipBehavior: Clip.antiAlias,
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          child: IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Faixa lateral de prioridade
-                Container(
-                  width: 3.5,
-                  color: stripeColor,
-                ),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: AppColors.softBlue,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(Icons.article_outlined,
-                              color: AppColors.primary, size: 20),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
+          child: Column(
+            children: [
+              if (!isUrgente && !isAlta && tokens.identityRainbow.isNotEmpty)
+                tokens.buildHorizontalAccent(height: 2.0),
+              IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    tokens.buildVerticalStripe(
+                      width: 3.5,
+                      overrideColor: overrideStripe,
+                    ),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: tokens.iconContainerColor,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(Icons.article_outlined,
+                                  color: tokens.themeAccentColor, size: 20),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Expanded(
-                                    child: Text(
-                                      titulo,
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w700,
-                                        color: AppColors.navy,
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          titulo,
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w700,
+                                            color: tokens.textPrimary,
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
                                       ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
+                                      if (isUrgente || isAlta) ...[
+                                        const SizedBox(width: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 6, vertical: 2),
+                                          decoration: BoxDecoration(
+                                            color: isUrgente
+                                                ? const Color(0xFFFFEBEE)
+                                                : const Color(0xFFFFF3E0),
+                                            borderRadius: BorderRadius.circular(4),
+                                            border: Border.all(
+                                              color: isUrgente
+                                                  ? tokens.critical.withValues(alpha: 0.3)
+                                                  : tokens.warning.withValues(alpha: 0.3),
+                                              width: 0.8,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            isUrgente ? 'URGENTE' : 'ALTA',
+                                            style: TextStyle(
+                                              color: isUrgente
+                                                  ? tokens.critical
+                                                  : tokens.warning,
+                                              fontSize: 9.5,
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    descricao,
+                                    style: TextStyle(
+                                      fontSize: 12.5,
+                                      color: tokens.textSecondary,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    tempo,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: tokens.textSecondary,
                                     ),
                                   ),
-                                  if (isUrgente || isAlta) ...[
-                                    const SizedBox(width: 6),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: isUrgente
-                                            ? const Color(0xFFFFEBEE)
-                                            : const Color(0xFFFFF3E0),
-                                        borderRadius: BorderRadius.circular(4),
-                                        border: Border.all(
-                                          color: isUrgente
-                                              ? AppColors.emergency.withValues(alpha: 0.3)
-                                              : AppColors.warning.withValues(alpha: 0.3),
-                                          width: 0.8,
-                                        ),
-                                      ),
-                                      child: Text(
-                                        isUrgente ? 'URGENTE' : 'ALTA',
-                                        style: TextStyle(
-                                          color: isUrgente
-                                              ? AppColors.emergency
-                                              : AppColors.warning,
-                                          fontSize: 9.5,
-                                          fontWeight: FontWeight.w800,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
                                 ],
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                descricao,
-                                style: const TextStyle(
-                                  fontSize: 12.5,
-                                  color: AppColors.textSecondary,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                tempo,
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

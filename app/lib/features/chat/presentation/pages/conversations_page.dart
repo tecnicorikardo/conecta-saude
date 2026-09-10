@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_theme_provider.dart';
 import '../../domain/entities/conversation_entity.dart';
 import '../../domain/entities/message_entity.dart';
 import '../providers/chat_provider.dart';
@@ -31,17 +32,17 @@ class _ConversationsPageState extends ConsumerState<ConversationsPage>
   }
 
   Widget _buildFilterTabs(List<ConversationEntity> allConvs) {
+    final tokens = context.appTokens;
     final directCount = allConvs.where((c) => !c.isGroup).length;
     final groupCount = allConvs.where((c) => c.isGroup).length;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : Colors.white,
+        color: tokens.surface,
         border: Border(
           bottom: BorderSide(
-            color: isDark ? Colors.white12 : AppColors.border,
+            color: tokens.border,
             width: 1,
           ),
         ),
@@ -62,7 +63,7 @@ class _ConversationsPageState extends ConsumerState<ConversationsPage>
   }
 
   Widget _filterChip({required String label, required int count, required int index, bool isGroupTag = false}) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final tokens = context.appTokens;
     final isSelected = _selectedFilterTab == index;
     return ChoiceChip(
       showCheckmark: false,
@@ -70,21 +71,21 @@ class _ConversationsPageState extends ConsumerState<ConversationsPage>
         mainAxisSize: MainAxisSize.min,
         children: [
           if (isGroupTag) ...[
-            Icon(Icons.groups, size: 14, color: isSelected ? (isDark ? Colors.white : AppColors.primary) : (isDark ? Colors.white70 : AppColors.textSecondary)),
+            Icon(Icons.groups, size: 14, color: isSelected ? tokens.themeAccentColor : tokens.textSecondary),
             const SizedBox(width: 4),
           ],
           Text('$label ($count)'),
         ],
       ),
       selected: isSelected,
-      selectedColor: isDark ? AppColors.primary.withValues(alpha: 0.25) : AppColors.softBlue,
-      backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
+      selectedColor: tokens.iconContainerColor,
+      backgroundColor: tokens.surface,
       side: BorderSide(
-        color: isSelected ? AppColors.primary : (isDark ? Colors.white24 : AppColors.border),
+        color: isSelected ? tokens.themeAccentColor : tokens.border,
         width: 1,
       ),
       labelStyle: TextStyle(
-        color: isSelected ? (isDark ? Colors.white : AppColors.primary) : (isDark ? Colors.white70 : AppColors.neutral700),
+        color: isSelected ? tokens.themeAccentColor : tokens.textSecondary,
         fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
         fontSize: 12,
       ),
@@ -207,7 +208,6 @@ class _ConversationsPageState extends ConsumerState<ConversationsPage>
   Widget build(BuildContext context) {
     final conversationsAsync = ref.watch(conversationsProvider);
     final currentUserId = ref.watch(currentUserIdProvider);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -247,11 +247,12 @@ class _ConversationsPageState extends ConsumerState<ConversationsPage>
                   return _buildEmpty(context);
                 }
 
+                final tokens = context.appTokens;
                 return ListView.separated(
                   itemCount: filtered.length,
                   separatorBuilder: (_, __) => Divider(
                     height: 1,
-                    color: isDark ? Colors.white10 : AppColors.border,
+                    color: tokens.border,
                     indent: 76,
                   ),
                   itemBuilder: (context, index) {
@@ -275,6 +276,8 @@ class _ConversationsPageState extends ConsumerState<ConversationsPage>
         ],
       ),
       floatingActionButton: FloatingActionButton(
+        backgroundColor: context.appTokens.themeAccentColor,
+        foregroundColor: Colors.white,
         onPressed: () {
           showModalBottomSheet(
             context: context,
@@ -299,9 +302,21 @@ class _ConversationsPageState extends ConsumerState<ConversationsPage>
   }
 
   PreferredSizeWidget _buildAppBar(BuildContext context) {
+    final tokens = context.appTokens;
     return AppBar(
-      backgroundColor: AppColors.primaryDeep,
+      backgroundColor: tokens.primaryDark,
       foregroundColor: Colors.white,
+      bottom: tokens.identityRainbow.isNotEmpty
+          ? PreferredSize(
+              preferredSize: const Size.fromHeight(3.0),
+              child: tokens.buildHorizontalAccent(height: 3.0),
+            )
+          : (tokens.accent != null
+              ? PreferredSize(
+                  preferredSize: const Size.fromHeight(2.5),
+                  child: tokens.buildHorizontalAccent(height: 2.5),
+                )
+              : null),
       title: _isSearching
           ? null
           : const Text(
@@ -312,8 +327,8 @@ class _ConversationsPageState extends ConsumerState<ConversationsPage>
                 letterSpacing: 0.2,
               ),
             ),
-      systemOverlayStyle: const SystemUiOverlayStyle(
-        statusBarColor: AppColors.primaryDeep,
+      systemOverlayStyle: SystemUiOverlayStyle(
+        statusBarColor: tokens.primaryDark,
         statusBarIconBrightness: Brightness.light,
       ),
       actions: [
@@ -464,6 +479,7 @@ class _ConversationTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.appTokens;
     final isGroup = conversation.tipo == 'grupo' || conversation.tipo == 'setor';
     final displayName = conversation.displayName(currentUserId);
     final photoUrl = conversation.displayPhoto(currentUserId);
@@ -476,165 +492,170 @@ class _ConversationTile extends StatelessWidget {
       onTap: onTap,
       onLongPress: onLongPress,
       child: Container(
-        color: isDark ? AppColors.darkSurface : Colors.white,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            // ─── Avatar ───────────────────────────────────────────────────
-            ConversationAvatar(
-              name: displayName,
-              photoUrl: photoUrl,
-              isGroup: isGroup,
-              size: 50,
-            ),
-            const SizedBox(width: 12),
-
-            // ─── Conteúdo ─────────────────────────────────────────────────
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Nome + Destaque Grupo + Auto-exclusão + Horário
-                  Row(
+        color: tokens.surface,
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (hasUnread)
+                tokens.buildVerticalStripe(width: 3.5),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
                     children: [
+                      // ─── Avatar ───────────────────────────────────────────────────
+                      ConversationAvatar(
+                        name: displayName,
+                        photoUrl: photoUrl,
+                        isGroup: isGroup,
+                        size: 50,
+                      ),
+                      const SizedBox(width: 12),
+
+                      // ─── Conteúdo ─────────────────────────────────────────────────
                       Expanded(
-                        child: Row(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Flexible(
-                              child: Text(
-                                displayName,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                            // Nome + Destaque Grupo + Auto-exclusão + Horário
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    displayName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: hasUnread
+                                          ? FontWeight.w700
+                                          : FontWeight.w600,
+                                      color: tokens.textPrimary,
+                                    ),
+                                  ),
+                                ),
+                                if (isGroup) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: tokens.iconContainerColor,
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(
+                                          color: tokens.themeAccentColor.withValues(alpha: 0.25)),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.groups,
+                                            size: 12, color: tokens.themeAccentColor),
+                                        const SizedBox(width: 3),
+                                        Text(
+                                          'GRUPO • ${conversation.participantes.length}',
+                                          style: TextStyle(
+                                            color: tokens.themeAccentColor,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 10,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                                if (conversation.autoExcluir24h) ...[
+                                  const SizedBox(width: 4),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 5, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.amber.shade50,
+                                      borderRadius: BorderRadius.circular(4),
+                                      border: Border.all(color: Colors.amber.shade200),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.timer_outlined,
+                                            size: 11,
+                                            color: Colors.amber.shade900),
+                                        const SizedBox(width: 2),
+                                        Text(
+                                          '24h',
+                                          style: TextStyle(
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.amber.shade900,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            if (lastMsg != null)
+                              Text(
+                                _formatTime(lastMsg.criadoEm),
                                 style: TextStyle(
-                                  fontSize: 15,
+                                  fontSize: 12,
+                                  color: hasUnread
+                                      ? tokens.themeAccentColor
+                                      : tokens.textSecondary,
                                   fontWeight: hasUnread
                                       ? FontWeight.w700
-                                      : FontWeight.w600,
-                                  color: isDark
-                                      ? AppColors.onDarkSurface
-                                      : AppColors.navy,
+                                      : FontWeight.w400,
                                 ),
                               ),
-                            ),
-                            if (isGroup) ...[
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: isDark ? AppColors.primary.withValues(alpha: 0.2) : AppColors.softBlue,
-                                  borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(
-                                      color: isDark ? Colors.white24 : AppColors.primary.withValues(alpha: 0.25)),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.groups,
-                                        size: 12, color: isDark ? Colors.white70 : AppColors.primary),
-                                    const SizedBox(width: 3),
-                                    Text(
-                                      'GRUPO • ${conversation.participantes.length}',
-                                      style: TextStyle(
-                                        color: isDark ? Colors.white70 : AppColors.primary,
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 10,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                            if (conversation.autoExcluir24h) ...[
-                              const SizedBox(width: 4),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 5, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: Colors.amber.shade50,
-                                  borderRadius: BorderRadius.circular(4),
-                                  border: Border.all(color: Colors.amber.shade200),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(Icons.timer_outlined,
-                                        size: 11,
-                                        color: Colors.amber.shade900),
-                                    const SizedBox(width: 2),
-                                    Text(
-                                      '24h',
-                                      style: TextStyle(
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.amber.shade900,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
                           ],
                         ),
                       ),
-                      if (lastMsg != null)
-                        Text(
-                          _formatTime(lastMsg.criadoEm),
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: hasUnread
-                                ? AppColors.primary
-                                : (isDark ? AppColors.neutral400 : AppColors.textSecondary),
-                            fontWeight: hasUnread
-                                ? FontWeight.w700
-                                : FontWeight.w400,
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 3),
+                      const SizedBox(height: 3),
 
-                  // Cargo/setor + última mensagem + badge
-                  Row(
-                    children: [
-                      Expanded(
-                        child: lastMsg != null
-                            ? _buildLastMessage(lastMsg, currentUserId, isDark)
-                            : Text(
-                                subtitle,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  color: isDark ? AppColors.neutral400 : AppColors.textSecondary,
+                      // Cargo/setor + última mensagem + badge
+                      Row(
+                        children: [
+                          Expanded(
+                            child: lastMsg != null
+                                ? _buildLastMessage(lastMsg, currentUserId, isDark)
+                                : Text(
+                                    subtitle,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: tokens.textSecondary,
+                                    ),
+                                  ),
+                          ),
+                          if (hasUnread)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: tokens.themeAccentColor,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                conversation.unreadCount > 99
+                                    ? '99+'
+                                    : '${conversation.unreadCount}',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
-                      ),
-                      if (hasUnread)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 7, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            conversation.unreadCount > 99
-                                ? '99+'
-                                : '${conversation.unreadCount}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
                             ),
-                          ),
-                        ),
+                        ],
+                      ),
                     ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
