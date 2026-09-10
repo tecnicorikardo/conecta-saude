@@ -253,7 +253,27 @@ class _HomePageState extends ConsumerState<HomePage> {
               ],
             ),
             const SizedBox(height: 8),
-            if (recentConvs.isEmpty)
+            if (convsAsync.isLoading && recentConvs.isEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: tokens.surface,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: tokens.border, width: 1),
+                ),
+                child: Center(
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: tokens.primary,
+                    ),
+                  ),
+                ),
+              )
+            else if (recentConvs.isEmpty)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
@@ -313,7 +333,27 @@ class _HomePageState extends ConsumerState<HomePage> {
               ],
             ),
             const SizedBox(height: 8),
-            if (recentAnnouncements.isEmpty)
+            if (announcementsState.isLoading && recentAnnouncements.isEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: tokens.surface,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: tokens.border, width: 1),
+                ),
+                child: Center(
+                  child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: tokens.primary,
+                    ),
+                  ),
+                ),
+              )
+            else if (recentAnnouncements.isEmpty)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),

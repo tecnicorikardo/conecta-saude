@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart' show XFile;
 import 'package:path_provider/path_provider.dart';
@@ -256,21 +257,33 @@ class _ChatInputBarState extends ConsumerState<ChatInputBar> {
               borderRadius: BorderRadius.circular(24),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: TextField(
-              controller: _textCtrl,
-              maxLines: 4,
-              minLines: 1,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: const InputDecoration(
-                hintText: 'Mensagem institucional...',
-                border: InputBorder.none,
-                isDense: true,
-                contentPadding: EdgeInsets.symmetric(vertical: 10),
-              ),
-              onChanged: (text) {
-                setState(() => _isComposing = text.trim().isNotEmpty);
+            child: Focus(
+              onKeyEvent: (node, event) {
+                if (event is KeyDownEvent &&
+                    event.logicalKey == LogicalKeyboardKey.enter &&
+                    !HardwareKeyboard.instance.isShiftPressed) {
+                  _send();
+                  return KeyEventResult.handled;
+                }
+                return KeyEventResult.ignored;
               },
-              onSubmitted: (_) => _send(),
+              child: TextField(
+                controller: _textCtrl,
+                maxLines: 4,
+                minLines: 1,
+                keyboardType: TextInputType.multiline,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: const InputDecoration(
+                  hintText: 'Mensagem institucional...',
+                  border: InputBorder.none,
+                  isDense: true,
+                  contentPadding: EdgeInsets.symmetric(vertical: 10),
+                ),
+                onChanged: (text) {
+                  setState(() => _isComposing = text.trim().isNotEmpty);
+                },
+                onSubmitted: (_) => _send(),
+              ),
             ),
           ),
         ),

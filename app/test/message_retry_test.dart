@@ -22,4 +22,24 @@ void main() {
     ))));
     expect(find.text('Falha no envio · Tentar novamente'), findsNothing);
   });
+
+  testWidgets('mensagem com colchetes preserva caracteres especiais intactos', (tester) async {
+    final message = MessageEntity(
+      id: 'test_brackets',
+      conversationId: 'conversation',
+      texto: '[TESTE FUNCIONAL] Validação de colchetes',
+      remetente: const MessageSender(id: 'sender', nome: 'Demo', cargo: 'Equipe'),
+      criadoEm: DateTime(2026, 9, 9, 10),
+      status: MessageStatus.sent,
+    );
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: MessageBubble(
+          message: message,
+          isOwn: true,
+        ),
+      ),
+    ));
+    expect(find.text('[TESTE FUNCIONAL] Validação de colchetes'), findsOneWidget);
+  });
 }

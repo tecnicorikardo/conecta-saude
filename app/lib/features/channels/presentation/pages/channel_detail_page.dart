@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
@@ -492,22 +493,34 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Expanded(
-                child: TextField(
-                  controller: _textController,
-                  maxLines: 4,
-                  minLines: 1,
-                  decoration: InputDecoration(
-                    hintText: 'Escreva um aviso ou comunicado...',
-                    hintStyle: const TextStyle(fontSize: 13.5),
-                    filled: true,
-                    fillColor: AppColors.surfaceVariant,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 10,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
+                child: Focus(
+                  onKeyEvent: (node, event) {
+                    if (event is KeyDownEvent &&
+                        event.logicalKey == LogicalKeyboardKey.enter &&
+                        !HardwareKeyboard.instance.isShiftPressed) {
+                      if (!isSending) _handleSend();
+                      return KeyEventResult.handled;
+                    }
+                    return KeyEventResult.ignored;
+                  },
+                  child: TextField(
+                    controller: _textController,
+                    maxLines: 4,
+                    minLines: 1,
+                    keyboardType: TextInputType.multiline,
+                    decoration: InputDecoration(
+                      hintText: 'Escreva um aviso ou comunicado...',
+                      hintStyle: const TextStyle(fontSize: 13.5),
+                      filled: true,
+                      fillColor: AppColors.surfaceVariant,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
                     ),
                   ),
                 ),

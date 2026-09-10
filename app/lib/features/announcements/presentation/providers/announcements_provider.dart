@@ -86,7 +86,7 @@ class AnnouncementsNotifier extends StateNotifier<AnnouncementsState> {
   Timer? _pollingTimer;
 
   AnnouncementsNotifier(this._repository, UserEntity? currentUser)
-      : super(AnnouncementsState(currentUser: currentUser)) {
+      : super(AnnouncementsState(isLoading: true, currentUser: currentUser)) {
     loadAnnouncements();
     _startPolling();
   }
