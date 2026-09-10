@@ -26,13 +26,22 @@ export async function listMessages(req: Request, res: Response): Promise<void> {
     where: {
       conversationId_userId: { conversationId, userId: actor.id },
     },
+    include: {
+      conversation: {
+        select: { autoExcluir24h: true },
+      },
+    },
   });
   if (!membership) throw new AppError('Você não participa desta conversa.', 403);
+
+  const isAutoExcluir = membership.conversation?.autoExcluir24h ?? false;
+  const cutoffTime = isAutoExcluir ? new Date(Date.now() - 24 * 60 * 60 * 1000) : undefined;
 
   const messages = await prisma.message.findMany({
     where: {
       conversationId,
       ...(query.cursor && { id: { lt: query.cursor } }),
+      ...(cutoffTime && { criadoEm: { gte: cutoffTime } }),
     },
     orderBy: { criadoEm: 'desc' },
     take: query.limit,

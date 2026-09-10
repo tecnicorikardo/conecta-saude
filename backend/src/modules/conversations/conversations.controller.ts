@@ -10,6 +10,7 @@ const createConversationSchema = z.object({
   nome: z.string().max(80).optional(),
   descricao: z.string().max(500).optional().nullable(),
   fotoUrl: z.string().optional().nullable(),
+  autoExcluir24h: z.boolean().optional(),
   participantIds: z.array(z.string().uuid()).min(1).max(50),
 });
 
@@ -17,6 +18,7 @@ const updateConversationSchema = z.object({
   nome: z.string().min(1).max(80).optional(),
   descricao: z.string().max(500).optional().nullable(),
   fotoUrl: z.string().optional().nullable(),
+  autoExcluir24h: z.boolean().optional(),
 });
 
 const addMembersSchema = z.object({
@@ -92,6 +94,7 @@ export async function listConversations(req: Request, res: Response): Promise<vo
       descricao: c.descricao,
       fotoUrl: c.fotoUrl,
       criadoPor: c.criadoPor,
+      autoExcluir24h: c.autoExcluir24h,
       members: c.members.map((m) => ({
         id: m.user.id,
         nome: m.user.nome,
@@ -162,6 +165,7 @@ export async function getConversation(req: Request, res: Response): Promise<void
       fotoUrl: conversation.fotoUrl,
       criadoPor: conversation.criadoPor,
       setorId: conversation.setorId,
+      autoExcluir24h: conversation.autoExcluir24h,
       atualizadoEm: conversation.atualizadoEm,
       currentUserIsAdmin: isActorAdmin,
       members: conversation.members.map((m) => ({
@@ -281,6 +285,7 @@ export async function createConversation(req: Request, res: Response): Promise<v
       nome: data.nome ?? null,
       descricao: data.descricao ?? null,
       fotoUrl: data.fotoUrl ?? null,
+      autoExcluir24h: data.autoExcluir24h ?? false,
       criadoPor: actor.id,
       setorId: actor.setorId,
       ativo: true,
@@ -318,6 +323,7 @@ export async function createConversation(req: Request, res: Response): Promise<v
       descricao: conversation.descricao,
       fotoUrl: conversation.fotoUrl,
       criadoPor: conversation.criadoPor,
+      autoExcluir24h: conversation.autoExcluir24h,
       members: conversation.members.map((m) => ({
         id: m.user.id,
         nome: m.user.nome,
@@ -336,7 +342,7 @@ export async function createConversation(req: Request, res: Response): Promise<v
 
 /**
  * PATCH /api/conversations/:id
- * Atualiza nome, descrição ou foto de um grupo. Apenas Admins do grupo ou Direção Geral.
+ * Atualiza nome, descrição, foto ou auto-exclusão de um grupo. Apenas Admins do grupo ou Direção Geral.
  */
 export async function updateConversation(req: Request, res: Response): Promise<void> {
   const actor = req.user!;
@@ -372,6 +378,7 @@ export async function updateConversation(req: Request, res: Response): Promise<v
       ...(data.nome !== undefined ? { nome: data.nome } : {}),
       ...(data.descricao !== undefined ? { descricao: data.descricao } : {}),
       ...(data.fotoUrl !== undefined ? { fotoUrl: data.fotoUrl } : {}),
+      ...(data.autoExcluir24h !== undefined ? { autoExcluir24h: data.autoExcluir24h } : {}),
     },
   });
 
@@ -382,6 +389,7 @@ export async function updateConversation(req: Request, res: Response): Promise<v
       nome: updated.nome,
       descricao: updated.descricao,
       fotoUrl: updated.fotoUrl,
+      autoExcluir24h: updated.autoExcluir24h,
     },
   });
 }
