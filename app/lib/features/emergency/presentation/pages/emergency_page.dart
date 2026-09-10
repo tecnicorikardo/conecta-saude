@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -116,13 +117,25 @@ class _EmergencyPageState extends ConsumerState<EmergencyPage>
     final user = ref.watch(currentUserProvider).valueOrNull;
     final canResolve = user != null && user.hierarquiaNivel <= 2;
     final activeAlert = state.activeAlert;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: isDark ? AppColors.darkBackground : AppColors.background,
       appBar: AppBar(
-        title: const Text('Central de Emergência'),
-        backgroundColor: activeAlert != null ? AppColors.emergency : AppColors.primary,
+        title: const Text(
+          'Central de Emergência',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
+            letterSpacing: 0.2,
+          ),
+        ),
+        backgroundColor: activeAlert != null ? AppColors.emergency : AppColors.primaryDeep,
         foregroundColor: Colors.white,
+        systemOverlayStyle: SystemUiOverlayStyle(
+          statusBarColor: activeAlert != null ? AppColors.emergency : AppColors.primaryDeep,
+          statusBarIconBrightness: Brightness.light,
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
@@ -142,122 +155,145 @@ class _EmergencyPageState extends ConsumerState<EmergencyPage>
               ScaleTransition(
                 scale: _pulseAnimation,
                 child: Container(
-                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: AppColors.emergency,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.emergency.withValues(alpha: 0.4),
-                        blurRadius: 14,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+                    color: isDark ? AppColors.darkSurface : Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.emergency, width: 1.5),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.error_outline_rounded,
-                              color: Colors.white, size: 32),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              activeAlert.tipo.label.toUpperCase(),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 16,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.25),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Text(
-                              'EM ANDAMENTO',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.location_on_rounded,
-                                color: Colors.white, size: 18),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                activeAlert.localizacao,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 14,
+                  clipBehavior: Clip.antiAlias,
+                  child: IntrinsicHeight(
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Container(width: 4, color: AppColors.emergency),
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.emergencyLight,
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: const Icon(Icons.error_outline_rounded,
+                                          color: AppColors.emergency, size: 24),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        activeAlert.tipo.label.toUpperCase(),
+                                        style: const TextStyle(
+                                          color: AppColors.emergency,
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 15,
+                                          letterSpacing: 0.3,
+                                        ),
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 8, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.emergencyLight,
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(
+                                            color: AppColors.emergency.withValues(alpha: 0.3)),
+                                      ),
+                                      child: const Text(
+                                        'EM ANDAMENTO',
+                                        style: TextStyle(
+                                          color: AppColors.emergency,
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
+                                const SizedBox(height: 12),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: isDark ? Colors.white10 : AppColors.softBlue,
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                        color: isDark ? Colors.white24 : AppColors.border),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.location_on_rounded,
+                                          color: AppColors.emergency, size: 18),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: Text(
+                                          activeAlert.localizacao,
+                                          style: TextStyle(
+                                            color: isDark ? Colors.white : AppColors.navy,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (activeAlert.descricao != null &&
+                                    activeAlert.descricao!.isNotEmpty) ...[
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    activeAlert.descricao!,
+                                    style: TextStyle(
+                                      color: isDark
+                                          ? AppColors.onDarkSurfaceVariant
+                                          : AppColors.textSecondary,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Acionado por: ${activeAlert.criadorNome} (${activeAlert.criadorCargo}) • ${DateFormat('HH:mm').format(activeAlert.criadoEm)}',
+                                  style: TextStyle(
+                                    color: isDark ? Colors.white60 : AppColors.textSecondary,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                if (canResolve) ...[
+                                  const SizedBox(height: 14),
+                                  SizedBox(
+                                    width: double.infinity,
+                                    child: ElevatedButton.icon(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.emergency,
+                                        foregroundColor: Colors.white,
+                                        elevation: 0,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                      ),
+                                      icon: const Icon(Icons.check_circle_rounded, size: 18),
+                                      label: const Text(
+                                        'ENCERRAR PROTOCOLO DE EMERGÊNCIA',
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.bold, fontSize: 13),
+                                      ),
+                                      onPressed: () =>
+                                          _confirmResolveEmergency(activeAlert),
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
-                          ],
-                        ),
-                      ),
-                      if (activeAlert.descricao != null &&
-                          activeAlert.descricao!.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          activeAlert.descricao!,
-                          style: const TextStyle(
-                              color: Colors.white, fontSize: 13),
-                        ),
-                      ],
-                      const SizedBox(height: 8),
-                      Text(
-                        'Acionado por: ${activeAlert.criadorNome} (${activeAlert.criadorCargo}) • ${DateFormat('HH:mm').format(activeAlert.criadoEm)}',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.85),
-                          fontSize: 12,
-                        ),
-                      ),
-                      if (canResolve) ...[
-                        const SizedBox(height: 14),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: AppColors.emergency,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                            icon: const Icon(Icons.check_circle_rounded),
-                            label: const Text(
-                              'ENCERRAR PROTOCOLO DE EMERGÊNCIA',
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold, fontSize: 13),
-                            ),
-                            onPressed: () =>
-                                _confirmResolveEmergency(activeAlert),
                           ),
                         ),
                       ],
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -265,9 +301,12 @@ class _EmergencyPageState extends ConsumerState<EmergencyPage>
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.outlineVariant),
+                  color: isDark ? AppColors.darkSurface : Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: isDark ? Colors.white12 : AppColors.border,
+                    width: 1,
+                  ),
                 ),
                 child: Row(
                   children: [
@@ -275,29 +314,33 @@ class _EmergencyPageState extends ConsumerState<EmergencyPage>
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
                         color: AppColors.success.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Icon(Icons.shield_rounded,
-                          color: AppColors.success, size: 28),
+                          color: AppColors.success, size: 26),
                     ),
                     const SizedBox(width: 14),
-                    const Expanded(
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             'Unidade em Estado Normal',
                             style: TextStyle(
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w700,
                               fontSize: 15,
-                              color: AppColors.neutral900,
+                              color: isDark ? AppColors.onDarkSurface : AppColors.navy,
                             ),
                           ),
-                          SizedBox(height: 2),
+                          const SizedBox(height: 2),
                           Text(
                             'Nenhum protocolo vermelho ou emergência ativa no momento.',
                             style: TextStyle(
-                                fontSize: 12, color: AppColors.neutral600),
+                              fontSize: 12,
+                              color: isDark
+                                  ? AppColors.onDarkSurfaceVariant
+                                  : AppColors.textSecondary,
+                            ),
                           ),
                         ],
                       ),
@@ -306,79 +349,90 @@ class _EmergencyPageState extends ConsumerState<EmergencyPage>
                 ),
               ),
             ],
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
 
             // ─── Botão Principal: Disparar Chamado de Emergência ───────────
             SizedBox(
               width: double.infinity,
-              height: 52,
+              height: 48,
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.emergency,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  elevation: 2,
+                  elevation: 0,
                 ),
-                icon: const Icon(Icons.add_alert_rounded, size: 22),
+                icon: const Icon(Icons.add_alert_rounded, size: 20),
                 label: const Text(
                   'DISPARAR CHAMADO DE EMERGÊNCIA',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  style: TextStyle(
+                      fontWeight: FontWeight.w800, fontSize: 13, letterSpacing: 0.5),
                 ),
                 onPressed: _openTriggerEmergencyModal,
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
 
             // ─── Acesso Rápido ao Canal de Emergência ──────────────────────
-            Card(
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-                side: const BorderSide(color: AppColors.emergency, width: 1.2),
+            Container(
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.darkSurface : Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: isDark ? Colors.white12 : AppColors.border,
+                  width: 1,
+                ),
               ),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(14),
-                onTap: () => context.go(AppRoutes.channels),
-                child: Padding(
-                  padding: const EdgeInsets.all(14),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: AppColors.emergencyLight,
-                          borderRadius: BorderRadius.circular(10),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: () => context.go(AppRoutes.channels),
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: AppColors.emergencyLight,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.campaign_rounded,
+                              color: AppColors.emergency, size: 24),
                         ),
-                        child: const Icon(Icons.campaign_rounded,
-                            color: AppColors.emergency, size: 26),
-                      ),
-                      const SizedBox(width: 14),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Canal Geral de Transmissão',
-                              style: TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.emergency,
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Canal Geral de Transmissão',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: isDark ? AppColors.onDarkSurface : AppColors.navy,
+                                ),
                               ),
-                            ),
-                            SizedBox(height: 2),
-                            Text(
-                              'Transmissão de avisos em tempo real para as equipes.',
-                              style: TextStyle(
-                                  fontSize: 12, color: AppColors.neutral700),
-                            ),
-                          ],
+                              const SizedBox(height: 2),
+                              Text(
+                                'Transmissão de avisos em tempo real para as equipes.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isDark
+                                      ? AppColors.onDarkSurfaceVariant
+                                      : AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      const Icon(Icons.chevron_right,
-                          color: AppColors.emergency),
-                    ],
+                        const Icon(Icons.chevron_right,
+                            color: AppColors.emergency, size: 20),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -388,10 +442,12 @@ class _EmergencyPageState extends ConsumerState<EmergencyPage>
             // ─── Ramais e Contatos de Emergência ───────────────────────────
             Text(
               'Ramais e Contatos de Emergência',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.neutral900,
-                  ),
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: isDark ? AppColors.onDarkSurface : AppColors.navy,
+                letterSpacing: 0.1,
+              ),
             ),
             const SizedBox(height: 10),
             const _EmergencyContactTile(
@@ -421,29 +477,37 @@ class _EmergencyPageState extends ConsumerState<EmergencyPage>
               ramal: 'Ramal 4301',
               icon: Icons.healing_rounded,
             ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 24),
 
             // ─── Histórico de Ocorrências Recentes ─────────────────────────
             Text(
               'Histórico de Ocorrências da Unidade',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.neutral900,
-                  ),
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
+                color: isDark ? AppColors.onDarkSurface : AppColors.navy,
+                letterSpacing: 0.1,
+              ),
             ),
             const SizedBox(height: 10),
             if (state.history.isEmpty)
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.outlineVariant),
+                  color: isDark ? AppColors.darkSurface : Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isDark ? Colors.white12 : AppColors.border,
+                    width: 1,
+                  ),
                 ),
-                child: const Center(
+                child: Center(
                   child: Text(
                     'Nenhuma ocorrência registrada no histórico.',
-                    style: TextStyle(color: AppColors.neutral600, fontSize: 13),
+                    style: TextStyle(
+                      color: isDark ? AppColors.onDarkSurfaceVariant : AppColors.textSecondary,
+                      fontSize: 13,
+                    ),
                   ),
                 ),
               )
@@ -657,12 +721,16 @@ class _EmergencyContactTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      color: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: AppColors.outlineVariant),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurface : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isDark ? Colors.white12 : AppColors.border,
+          width: 1,
+        ),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -671,8 +739,8 @@ class _EmergencyContactTile extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: AppColors.emergency.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
+                color: AppColors.emergencyLight,
+                borderRadius: BorderRadius.circular(6),
               ),
               child: Icon(icon, color: AppColors.emergency, size: 20),
             ),
@@ -683,13 +751,18 @@ class _EmergencyContactTile extends StatelessWidget {
                 children: [
                   Text(
                     titulo,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 13),
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                      color: isDark ? AppColors.onDarkSurface : AppColors.navy,
+                    ),
                   ),
                   Text(
                     subtitulo,
-                    style: const TextStyle(
-                        fontSize: 11, color: AppColors.neutral600),
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: isDark ? AppColors.onDarkSurfaceVariant : AppColors.textSecondary,
+                    ),
                   ),
                 ],
               ),
@@ -697,15 +770,18 @@ class _EmergencyContactTile extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: AppColors.surfaceVariant,
-                borderRadius: BorderRadius.circular(6),
+                color: isDark ? Colors.white10 : AppColors.softBlue,
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(
+                  color: isDark ? Colors.white24 : AppColors.primary.withValues(alpha: 0.25),
+                ),
               ),
               child: Text(
                 ramal,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
                   fontSize: 11,
-                  color: AppColors.neutral800,
+                  color: isDark ? Colors.white70 : AppColors.primary,
                 ),
               ),
             ),
@@ -724,80 +800,107 @@ class _HistoryAlertCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isAtivo = alert.isAtivo;
 
-    return Card(
+    return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      elevation: 0,
-      color: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: BorderSide(
-          color: isAtivo ? AppColors.emergency : AppColors.outlineVariant,
-          width: isAtivo ? 1.5 : 1.0,
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurface : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isAtivo
+              ? AppColors.emergency
+              : (isDark ? Colors.white12 : AppColors.border),
+          width: 1.0,
         ),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+      clipBehavior: Clip.antiAlias,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                Icon(
-                  isAtivo
-                      ? Icons.error_outline_rounded
-                      : Icons.check_circle_outline_rounded,
-                  color: isAtivo ? AppColors.emergency : AppColors.success,
-                  size: 18,
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    alert.tipo.shortLabel,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
-                      color: isAtivo ? AppColors.emergency : AppColors.neutral900,
-                    ),
-                  ),
-                ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: isAtivo
-                        ? AppColors.emergencyLight
-                        : AppColors.success.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    isAtivo ? 'ATIVO' : 'RESOLVIDO',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: isAtivo ? AppColors.emergency : AppColors.success,
-                    ),
-                  ),
-                ),
-              ],
+            Container(
+              width: 3.5,
+              color: isAtivo ? AppColors.emergency : AppColors.success,
             ),
-            const SizedBox(height: 6),
-            Text(
-              '📍 ${alert.localizacao}',
-              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
-            ),
-            if (alert.descricao != null && alert.descricao!.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Text(
-                alert.descricao!,
-                style: const TextStyle(fontSize: 12, color: AppColors.neutral700),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          isAtivo
+                              ? Icons.error_outline_rounded
+                              : Icons.check_circle_outline_rounded,
+                          color: isAtivo ? AppColors.emergency : AppColors.success,
+                          size: 16,
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            alert.tipo.shortLabel,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                              color: isAtivo
+                                  ? AppColors.emergency
+                                  : (isDark ? AppColors.onDarkSurface : AppColors.navy),
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isAtivo
+                                ? AppColors.emergencyLight
+                                : AppColors.success.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            isAtivo ? 'ATIVO' : 'RESOLVIDO',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: isAtivo ? AppColors.emergency : AppColors.success,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      '📍 ${alert.localizacao}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                        color: isDark ? AppColors.onDarkSurface : AppColors.navy,
+                      ),
+                    ),
+                    if (alert.descricao != null && alert.descricao!.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        alert.descricao!,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? AppColors.onDarkSurfaceVariant : AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 6),
+                    Text(
+                      'Acionado por ${alert.criadorNome} • ${DateFormat('dd/MM HH:mm').format(alert.criadoEm)}${alert.resolvidoEm != null ? ' • Encerrado às ${DateFormat('HH:mm').format(alert.resolvidoEm!)}' : ''}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isDark ? Colors.white38 : AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ],
-            const SizedBox(height: 6),
-            Text(
-              'Acionado por ${alert.criadorNome} • ${DateFormat('dd/MM HH:mm').format(alert.criadoEm)}${alert.resolvidoEm != null ? ' • Encerrado às ${DateFormat('HH:mm').format(alert.resolvidoEm!)}' : ''}',
-              style: const TextStyle(fontSize: 11, color: AppColors.neutral500),
             ),
           ],
         ),

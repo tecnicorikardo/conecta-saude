@@ -51,9 +51,9 @@ class _HomePageState extends ConsumerState<HomePage> {
   PreferredSizeWidget _buildAppBar(
       BuildContext context, UserEntity? user, UserPermissions perms) {
     return AppBar(
-      backgroundColor: AppColors.primary,
+      backgroundColor: AppColors.primaryDeep,
       systemOverlayStyle: const SystemUiOverlayStyle(
-        statusBarColor: AppColors.primaryDark,
+        statusBarColor: AppColors.navy,
         statusBarIconBrightness: Brightness.light,
       ),
       title: Row(
@@ -283,7 +283,7 @@ class _HomePageState extends ConsumerState<HomePage> {
 
     final cards = <_QuickCard>[];
 
-    // Todos têm acesso
+    // Todos têm acesso — paleta institucional padronizada
     cards.add(_QuickCard(
       icon: Icons.chat_bubble_outline_rounded,
       label: 'Conversas',
@@ -296,7 +296,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       icon: Icons.campaign_outlined,
       label: 'Canais',
       badge: unreadChannels,
-      color: const Color(0xFF0277BD),
+      color: AppColors.primary,
       onTap: () => context.go(AppRoutes.channels),
     ));
 
@@ -304,19 +304,19 @@ class _HomePageState extends ConsumerState<HomePage> {
       icon: Icons.article_outlined,
       label: 'Comunicados',
       badge: unreadAnnouncements,
-      color: const Color(0xFF2E7D32),
+      color: AppColors.primary,
       onTap: () => context.go(AppRoutes.announcements),
     ));
 
     // Notificações — todos
     cards.add(_QuickCard(
-      icon: Icons.notifications_active_outlined,
+      icon: Icons.notifications_none_rounded,
       label: 'Notificações',
-      color: const Color(0xFFE65100),
+      color: AppColors.primary,
       onTap: () => context.push(AppRoutes.notifications),
     ));
 
-    // Emergência — todos
+    // Emergência — todos (vermelho de estado crítico)
     cards.add(_QuickCard(
       icon: Icons.local_hospital_outlined,
       label: 'Emergência',
@@ -327,19 +327,19 @@ class _HomePageState extends ConsumerState<HomePage> {
     // Funcionários — somente Direção
     if (perms.canManageEmployees) {
       cards.add(_QuickCard(
-        icon: Icons.people_outlined,
+        icon: Icons.people_outline_rounded,
         label: 'Funcionários',
-        color: const Color(0xFF6A5ACD),
+        color: AppColors.primary,
         onTap: () => context.push(AppRoutes.employees),
       ));
     }
 
-    // Ouvidoria / Denúncias — todos os colaboradores têm acesso para registrar relatos; Direção modera
+    // Ouvidoria / Denúncias
     cards.add(_QuickCard(
       icon: Icons.shield_outlined,
       label: perms.isDirecao ? 'Ouvidoria / Moderação' : 'Ouvidoria',
       badge: 0,
-      color: const Color(0xFF673AB7),
+      color: AppColors.primary,
       onTap: () => context.push(AppRoutes.reports),
     ));
 
@@ -391,83 +391,99 @@ class _WelcomeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.primary, AppColors.primaryLight],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.3),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border, width: 1),
       ),
-      child: Row(
-        children: [
-          // Avatar
-          CircleAvatar(
-            radius: 26,
-            backgroundColor: Colors.white.withValues(alpha: 0.2),
-            child: Text(
-              nome.isNotEmpty ? nome[0].toUpperCase() : 'U',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-              ),
+      clipBehavior: Clip.antiAlias,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Faixa lateral institucional azul SUS
+            Container(
+              width: 3.5,
+              color: AppColors.primary,
             ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Olá, $nome',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                if (cargo.isNotEmpty || setor.isNotEmpty)
-                  Text(
-                    [cargo, setor]
-                        .where((s) => s.isNotEmpty)
-                        .join(' · '),
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.8),
-                      fontSize: 12,
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                child: Row(
+                  children: [
+                    // Avatar clínico institucional
+                    CircleAvatar(
+                      radius: 24,
+                      backgroundColor: AppColors.softBlue,
+                      child: Text(
+                        nome.isNotEmpty ? nome[0].toUpperCase() : 'U',
+                        style: const TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
-                  ),
-              ],
-            ),
-          ),
-          // Badge de hierarquia
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.4)),
-            ),
-            child: Text(
-              perms.hierarquiaLabel,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 9,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.5,
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Olá, $nome',
+                            style: const TextStyle(
+                              color: AppColors.navy,
+                              fontSize: 16.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          if (cargo.isNotEmpty || setor.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              [cargo, setor]
+                                  .where((s) => s.isNotEmpty)
+                                  .join(' • '),
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w400,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Badge de hierarquia institucional
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.softBlue,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.25),
+                          width: 1,
+                        ),
+                      ),
+                      child: Text(
+                        perms.hierarquiaLabel.toUpperCase(),
+                        style: const TextStyle(
+                          color: AppColors.primary,
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -481,62 +497,77 @@ class _AdminPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.primaryContainer,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-            color: AppColors.primary.withValues(alpha: 0.3)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border, width: 1),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(Icons.admin_panel_settings_outlined,
-                  color: AppColors.primary, size: 18),
-              SizedBox(width: 8),
-              Text(
-                'Painel Administrativo',
-                style: TextStyle(
-                  color: AppColors.primary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
+      clipBehavior: Clip.antiAlias,
+      child: IntrinsicHeight(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Container(
+              width: 3.5,
+              color: AppColors.primaryDeep,
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.admin_panel_settings_outlined,
+                            color: AppColors.primaryDeep, size: 18),
+                        SizedBox(width: 8),
+                        Text(
+                          'Painel Administrativo',
+                          style: TextStyle(
+                            color: AppColors.navy,
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        if (perms.canManageEmployees)
+                          _AdminChip(
+                            icon: Icons.people_outline,
+                            label: 'Funcionários',
+                            onTap: () => context.push(AppRoutes.employees),
+                          ),
+                        if (perms.canViewReports)
+                          _AdminChip(
+                            icon: Icons.flag_outlined,
+                            label: 'Denúncias',
+                            onTap: () => context.push(AppRoutes.reports),
+                          ),
+                        if (perms.canViewAudit)
+                          _AdminChip(
+                            icon: Icons.history_outlined,
+                            label: 'Auditoria',
+                            onTap: () => context.push(AppRoutes.auditLogs),
+                          ),
+                        _AdminChip(
+                          icon: Icons.bar_chart_outlined,
+                          label: 'Relatórios',
+                          onTap: () => context.push(AppRoutes.administration),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              if (perms.canManageEmployees)
-                _AdminChip(
-                  icon: Icons.people_outline,
-                  label: 'Funcionários',
-                  onTap: () => context.push(AppRoutes.employees),
-                ),
-              if (perms.canViewReports)
-                _AdminChip(
-                  icon: Icons.flag_outlined,
-                  label: 'Denúncias',
-                  onTap: () => context.push(AppRoutes.reports),
-                ),
-              if (perms.canViewAudit)
-                _AdminChip(
-                  icon: Icons.history_outlined,
-                  label: 'Auditoria',
-                  onTap: () => context.push(AppRoutes.auditLogs),
-                ),
-              _AdminChip(
-                icon: Icons.bar_chart_outlined,
-                label: 'Relatórios',
-                onTap: () => context.push(AppRoutes.administration),
-              ),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -560,10 +591,9 @@ class _AdminChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-              color: AppColors.primary.withValues(alpha: 0.3)),
+          color: AppColors.background,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.border, width: 1),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -574,7 +604,7 @@ class _AdminChip extends StatelessWidget {
               label,
               style: const TextStyle(
                 fontSize: 12,
-                color: AppColors.primary,
+                color: AppColors.navy,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -609,12 +639,23 @@ class _QuickAccessCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isEmergency = data.color == AppColors.emergency;
+    final iconBg = isEmergency ? const Color(0xFFFFEBEE) : AppColors.softBlue;
+    final iconColor = isEmergency ? AppColors.emergency : AppColors.primary;
+    final badgeBg = isEmergency ? AppColors.emergency : AppColors.primary;
+
     return Card(
+      elevation: 0,
+      color: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: const BorderSide(color: AppColors.border, width: 1),
+      ),
       child: InkWell(
         onTap: data.onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(15),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -624,17 +665,17 @@ class _QuickAccessCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: data.color.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
+                      color: iconBg,
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Icon(data.icon, color: data.color, size: 20),
+                    child: Icon(data.icon, color: iconColor, size: 20),
                   ),
                   if (data.badge > 0)
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 7, vertical: 2),
                       decoration: BoxDecoration(
-                        color: AppColors.error,
+                        color: badgeBg,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
@@ -648,12 +689,14 @@ class _QuickAccessCard extends StatelessWidget {
                     ),
                 ],
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               Text(
                 data.label,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                style: const TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.navy,
+                ),
               ),
             ],
           ),
@@ -679,57 +722,70 @@ class _EmergencyBanner extends ConsumerWidget {
         padding: const EdgeInsets.only(bottom: 20),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
           child: Container(
-            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: AppColors.emergency,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.emergency.withValues(alpha: 0.35),
-                  blurRadius: 10,
-                  offset: const Offset(0, 3),
-                ),
-              ],
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.emergency, width: 1.5),
             ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(9),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(10),
+            clipBehavior: Clip.antiAlias,
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Container(
+                    width: 4,
+                    color: AppColors.emergency,
                   ),
-                  child: const Icon(Icons.error_outline_rounded,
-                      color: Colors.white, size: 24),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '🚨 PROTOCOLO VERMELHO: ${activeAlert.tipo.shortLabel.toUpperCase()}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 0.3,
-                        ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFEBEE),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.error_outline_rounded,
+                                color: AppColors.emergency, size: 24),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '🚨 PROTOCOLO CRÍTICO: ${activeAlert.tipo.shortLabel.toUpperCase()}',
+                                  style: const TextStyle(
+                                    color: AppColors.emergency,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 0.3,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '📍 ${activeAlert.localizacao} • ${activeAlert.criadorNome}',
+                                  style: const TextStyle(
+                                    color: AppColors.navy,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.chevron_right, color: AppColors.emergency, size: 22),
+                        ],
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '📍 ${activeAlert.localizacao} • Acionado por ${activeAlert.criadorNome}',
-                        style: const TextStyle(
-                            color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-                const Icon(Icons.chevron_right, color: Colors.white, size: 22),
-              ],
+                ],
+              ),
             ),
           ),
         ),
@@ -760,81 +816,123 @@ class _AnnouncementCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isUrgente = prioridade == 'urgente';
-    final badgeColor = isUrgente ? AppColors.error : AppColors.warning;
-    final badgeLabel = isUrgente ? 'URGENTE' : 'ALTA';
+    final isAlta = prioridade == 'alta';
+    final stripeColor = isUrgente
+        ? AppColors.emergency
+        : (isAlta ? AppColors.warning : AppColors.border);
 
-    return Card(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: AppColors.primaryContainer,
-                  borderRadius: BorderRadius.circular(8),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.border, width: 1),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Faixa lateral de prioridade
+                Container(
+                  width: 3.5,
+                  color: stripeColor,
                 ),
-                child: const Icon(Icons.article_outlined,
-                    color: AppColors.primary, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Text(
-                            titulo,
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
-                                ?.copyWith(fontWeight: FontWeight.w600),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: badgeColor.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(4),
+                            color: AppColors.softBlue,
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Text(
-                            badgeLabel,
-                            style: TextStyle(
-                              color: badgeColor,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w700,
-                            ),
+                          child: const Icon(Icons.article_outlined,
+                              color: AppColors.primary, size: 20),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      titulo,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        color: AppColors.navy,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  if (isUrgente || isAlta) ...[
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: isUrgente
+                                            ? const Color(0xFFFFEBEE)
+                                            : const Color(0xFFFFF3E0),
+                                        borderRadius: BorderRadius.circular(4),
+                                        border: Border.all(
+                                          color: isUrgente
+                                              ? AppColors.emergency.withValues(alpha: 0.3)
+                                              : AppColors.warning.withValues(alpha: 0.3),
+                                          width: 0.8,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        isUrgente ? 'URGENTE' : 'ALTA',
+                                        style: TextStyle(
+                                          color: isUrgente
+                                              ? AppColors.emergency
+                                              : AppColors.warning,
+                                          fontSize: 9.5,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                descricao,
+                                style: const TextStyle(
+                                  fontSize: 12.5,
+                                  color: AppColors.textSecondary,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                tempo,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      descricao,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.neutral600),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      tempo,
-                      style: const TextStyle(
-                          fontSize: 11, color: AppColors.neutral500),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

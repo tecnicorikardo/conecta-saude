@@ -33,18 +33,16 @@ class _ConversationsPageState extends ConsumerState<ConversationsPage>
   Widget _buildFilterTabs(List<ConversationEntity> allConvs) {
     final directCount = allConvs.where((c) => !c.isGroup).length;
     final groupCount = allConvs.where((c) => c.isGroup).length;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Theme.of(context).brightness == Brightness.dark
-            ? AppColors.darkSurface
-            : Colors.white,
+        color: isDark ? AppColors.darkSurface : Colors.white,
         border: Border(
           bottom: BorderSide(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.white12
-                : Colors.black.withValues(alpha: 0.06),
+            color: isDark ? Colors.white12 : AppColors.border,
+            width: 1,
           ),
         ),
       ),
@@ -64,23 +62,29 @@ class _ConversationsPageState extends ConsumerState<ConversationsPage>
   }
 
   Widget _filterChip({required String label, required int count, required int index, bool isGroupTag = false}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isSelected = _selectedFilterTab == index;
     return ChoiceChip(
+      showCheckmark: false,
       label: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (isGroupTag) ...[
-            Icon(Icons.groups, size: 14, color: isSelected ? Colors.white : AppColors.primary),
+            Icon(Icons.groups, size: 14, color: isSelected ? (isDark ? Colors.white : AppColors.primary) : (isDark ? Colors.white70 : AppColors.textSecondary)),
             const SizedBox(width: 4),
           ],
           Text('$label ($count)'),
         ],
       ),
       selected: isSelected,
-      selectedColor: AppColors.primary,
-      backgroundColor: Colors.transparent,
+      selectedColor: isDark ? AppColors.primary.withValues(alpha: 0.25) : AppColors.softBlue,
+      backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
+      side: BorderSide(
+        color: isSelected ? AppColors.primary : (isDark ? Colors.white24 : AppColors.border),
+        width: 1,
+      ),
       labelStyle: TextStyle(
-        color: isSelected ? Colors.white : AppColors.neutral700,
+        color: isSelected ? (isDark ? Colors.white : AppColors.primary) : (isDark ? Colors.white70 : AppColors.neutral700),
         fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
         fontSize: 12,
       ),
@@ -203,6 +207,7 @@ class _ConversationsPageState extends ConsumerState<ConversationsPage>
   Widget build(BuildContext context) {
     final conversationsAsync = ref.watch(conversationsProvider);
     final currentUserId = ref.watch(currentUserIdProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -242,8 +247,13 @@ class _ConversationsPageState extends ConsumerState<ConversationsPage>
                   return _buildEmpty(context);
                 }
 
-                return ListView.builder(
+                return ListView.separated(
                   itemCount: filtered.length,
+                  separatorBuilder: (_, __) => Divider(
+                    height: 1,
+                    color: isDark ? Colors.white10 : AppColors.border,
+                    indent: 76,
+                  ),
                   itemBuilder: (context, index) {
                     return _ConversationTile(
                       key: ValueKey(filtered[index].id),
@@ -290,13 +300,20 @@ class _ConversationsPageState extends ConsumerState<ConversationsPage>
 
   PreferredSizeWidget _buildAppBar(BuildContext context) {
     return AppBar(
-      backgroundColor: AppColors.primary,
+      backgroundColor: AppColors.primaryDeep,
       foregroundColor: Colors.white,
       title: _isSearching
           ? null
-          : const Text('Conversas'),
+          : const Text(
+              'Conversas',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                fontSize: 18,
+                letterSpacing: 0.2,
+              ),
+            ),
       systemOverlayStyle: const SystemUiOverlayStyle(
-        statusBarColor: AppColors.primaryDark,
+        statusBarColor: AppColors.primaryDeep,
         statusBarIconBrightness: Brightness.light,
       ),
       actions: [
@@ -347,8 +364,8 @@ class _ConversationsPageState extends ConsumerState<ConversationsPage>
 
   Widget _buildSearchBar() {
     return Container(
-      color: AppColors.primary,
-      padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+      color: AppColors.primaryDeep,
+      padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
       child: TextField(
         controller: _searchController,
         autofocus: true,
@@ -358,11 +375,19 @@ class _ConversationsPageState extends ConsumerState<ConversationsPage>
           hintText: 'Buscar conversa...',
           hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
           filled: true,
-          fillColor: Colors.white.withValues(alpha: 0.15),
+          fillColor: Colors.white.withValues(alpha: 0.12),
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(24),
-            borderSide: BorderSide.none,
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.25)),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.25)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: Colors.white, width: 1.5),
           ),
           prefixIcon: Icon(Icons.search, color: Colors.white.withValues(alpha: 0.7)),
         ),
@@ -481,13 +506,13 @@ class _ConversationTile extends StatelessWidget {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  fontSize: 16,
+                                  fontSize: 15,
                                   fontWeight: hasUnread
-                                      ? FontWeight.w600
-                                      : FontWeight.w500,
+                                      ? FontWeight.w700
+                                      : FontWeight.w600,
                                   color: isDark
                                       ? AppColors.onDarkSurface
-                                      : AppColors.neutral900,
+                                      : AppColors.navy,
                                 ),
                               ),
                             ),
@@ -497,21 +522,21 @@ class _ConversationTile extends StatelessWidget {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFE0F2FE),
-                                  borderRadius: BorderRadius.circular(6),
+                                  color: isDark ? AppColors.primary.withValues(alpha: 0.2) : AppColors.softBlue,
+                                  borderRadius: BorderRadius.circular(4),
                                   border: Border.all(
-                                      color: const Color(0xFFBAE6FD)),
+                                      color: isDark ? Colors.white24 : AppColors.primary.withValues(alpha: 0.25)),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Icon(Icons.groups,
-                                        size: 12, color: Color(0xFF0369A1)),
+                                    Icon(Icons.groups,
+                                        size: 12, color: isDark ? Colors.white70 : AppColors.primary),
                                     const SizedBox(width: 3),
                                     Text(
                                       'GRUPO • ${conversation.participantes.length}',
-                                      style: const TextStyle(
-                                        color: Color(0xFF0369A1),
+                                      style: TextStyle(
+                                        color: isDark ? Colors.white70 : AppColors.primary,
                                         fontWeight: FontWeight.bold,
                                         fontSize: 10,
                                       ),
@@ -526,8 +551,9 @@ class _ConversationTile extends StatelessWidget {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 5, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: Colors.amber.shade100,
+                                  color: Colors.amber.shade50,
                                   borderRadius: BorderRadius.circular(4),
+                                  border: Border.all(color: Colors.amber.shade200),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
@@ -558,9 +584,9 @@ class _ConversationTile extends StatelessWidget {
                             fontSize: 12,
                             color: hasUnread
                                 ? AppColors.primary
-                                : AppColors.neutral500,
+                                : (isDark ? AppColors.neutral400 : AppColors.textSecondary),
                             fontWeight: hasUnread
-                                ? FontWeight.w600
+                                ? FontWeight.w700
                                 : FontWeight.w400,
                           ),
                         ),
@@ -578,16 +604,16 @@ class _ConversationTile extends StatelessWidget {
                                 subtitle,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 13,
-                                  color: AppColors.neutral500,
+                                  color: isDark ? AppColors.neutral400 : AppColors.textSecondary,
                                 ),
                               ),
                       ),
                       if (hasUnread)
                         Container(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
+                              horizontal: 7, vertical: 2),
                           decoration: BoxDecoration(
                             color: AppColors.primary,
                             borderRadius: BorderRadius.circular(10),
@@ -617,7 +643,7 @@ class _ConversationTile extends StatelessWidget {
   Widget _buildLastMessage(
       MessageEntity msg, String currentUserId, bool isDark) {
     final isMe = msg.remetente.id == currentUserId;
-    final color = isDark ? AppColors.onDarkSurfaceVariant : AppColors.neutral600;
+    final color = isDark ? AppColors.onDarkSurfaceVariant : AppColors.textSecondary;
 
     if (msg.excluido) {
       return Row(
@@ -702,7 +728,7 @@ class _StatusIcon extends StatelessWidget {
       case MessageStatus.delivered:
         return Icon(Icons.done_all, size: size, color: AppColors.neutral400);
       case MessageStatus.read:
-        return Icon(Icons.done_all, size: size, color: AppColors.primaryLight);
+        return Icon(Icons.done_all, size: size, color: AppColors.primary);
       case MessageStatus.error:
         return Icon(Icons.error_outline, size: size, color: AppColors.error);
     }
