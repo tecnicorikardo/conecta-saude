@@ -73,27 +73,26 @@ O fallback que criava um perfil local a partir do e-mail foi removido. Se a API 
 
 ## Render
 
-O usuário atualizou `DATABASE_URL` no serviço `conecta-saude-backende` para a conexão Session pooler do Supabase e iniciou um redeploy.
-
-O redeploy registrado no log falhou antes de publicar porque usou o commit antigo `b71a39d` e executou a compilação antes de gerar o Prisma Client. A configuração local já foi corrigida:
-
-- `npm ci --include=dev` instala dependências de desenvolvimento no build.
-- `npm run build` gera o Prisma Client antes do TypeScript.
-- Os testes não entram na compilação de produção.
-- O manifesto Render não contém valores de segredos.
-
-Ainda é necessário enviar o código atualizado ao GitHub e executar um novo deploy. Depois, verificar `/ready` no domínio público e testar login e mensagens.
+O deploy foi concluído com sucesso e está **LIVE**:
+- Endpoint `/ready`: retornou `status: ready`, `database: supabase`, `revision: 3e849f49b354`.
+- Endpoint `/api/me`: autenticado com ID token real do Firebase, retornou dados de Ricardo no CCO (Nível 4).
 
 ## Firebase Hosting
  
-O build web release foi publicado com sucesso em `https://conecta-hospital.web.app` em 09/09/2026 23:55 UTC (41 arquivos sincronizados).
+O build web release foi publicado com sucesso em `https://conecta-hospital.web.app` (41 arquivos sincronizados).
 
 ## Segurança
 
 - Não versionar `backend/.env`, senhas, chaves Firebase ou chaves Supabase.
 - A senha do banco foi usada apenas na configuração local e não deve ser enviada na conversa.
 - A chave secreta do Supabase compartilhada anteriormente deve ser rotacionada no painel do Supabase.
-- O `render.yaml` foi ajustado para não carregar segredos diretamente no repositório.
+
+## Estado geral
+
+**Migração para Supabase:** concluída e conferida.  
+**Render público:** ONLINE (`status: ready`, `database: supabase`).  
+**Autenticação e sincronização com banco:** validada com sucesso em produção para `tecnicorikardo@gmail.com`.  
+**Flutter Web público:** publicado e operacional em `https://conecta-hospital.web.app`.
 
 ## Pendências imediatas
 
@@ -122,12 +121,3 @@ O build web release foi publicado com sucesso em `https://conecta-hospital.web.a
 - `backend/package.json`
 - `backend/tsconfig.json`
 - `status.md`
-
-## Estado geral
-
-**Migração local para Supabase:** concluída e conferida.  
-**Login e hierarquia local:** corrigidos.  
-**Mensagens em tempo real local:** implementadas e testadas.  
-**Render público:** pendente de novo deploy com o código atualizado.  
-**Flutter Web público:** pendente de publicação.  
-**Pronto para apresentação:** após concluir as duas publicações e os testes entre dois dispositivos.
