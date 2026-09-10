@@ -20,19 +20,31 @@ class EmployeesPage extends ConsumerStatefulWidget {
   ConsumerState<EmployeesPage> createState() => _EmployeesPageState();
 }
 
-class _EmployeesPageState extends ConsumerState<EmployeesPage> {
+class _EmployeesPageState extends ConsumerState<EmployeesPage>
+    with SingleTickerProviderStateMixin {
   final _searchController = TextEditingController();
   final _scrollController = ScrollController();
+  late final TabController _tabController;
+  int _currentTabIndex = 0;
   Timer? _debounceTimer;
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (_tabController.index != _currentTabIndex) {
+        setState(() {
+          _currentTabIndex = _tabController.index;
+        });
+      }
+    });
     _scrollController.addListener(_onScroll);
   }
 
   @override
   void dispose() {
+    _tabController.dispose();
     _searchController.dispose();
     _scrollController.dispose();
     _debounceTimer?.cancel();
@@ -62,80 +74,82 @@ class _EmployeesPageState extends ConsumerState<EmployeesPage> {
     final pendingAsync = ref.watch(pendingApprovalsProvider);
     final pendingCount = pendingAsync.valueOrNull?.length ?? 0;
 
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Gestão de Pessoal'),
-          bottom: TabBar(
-            indicatorColor: Colors.white,
-            indicatorWeight: 3,
-            labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-            unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal),
-            tabs: [
-              const Tab(
-                icon: Icon(Icons.people_alt_outlined, size: 20),
-                text: 'Colaboradores',
-              ),
-              Tab(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.how_to_reg_outlined, size: 20),
-                    const SizedBox(width: 8),
-                    const Text('Aprovações'),
-                    if (pendingCount > 0) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFF5252),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          '$pendingCount',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
-                          ),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Gestão de Pessoal'),
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: Colors.white,
+          indicatorWeight: 3,
+          labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal),
+          tabs: [
+            const Tab(
+              icon: Icon(Icons.people_alt_outlined, size: 20),
+              text: 'Colaboradores',
+            ),
+            Tab(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.how_to_reg_outlined, size: 20),
+                  const SizedBox(width: 8),
+                  const Text('Aprovações'),
+                  if (pendingCount > 0) ...[
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF5252),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '$pendingCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
-                    ],
+                    ),
                   ],
-                ),
+                ],
               ),
-            ],
-          ),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh_rounded),
-              tooltip: 'Atualizar dados',
-              onPressed: () {
-                ref.read(employeesProvider.notifier).fetchEmployees(isRefresh: true);
-                ref.read(pendingApprovalsProvider.notifier).fetchPending();
-              },
             ),
           ],
         ),
-        floatingActionButton: isDirecao
-            ? FloatingActionButton.extended(
-                onPressed: () {
-                  showDialog<UserEntity>(
-                    context: context,
-                    builder: (ctx) => const EmployeeFormDialog(),
-                  );
-                },
-                icon: const Icon(Icons.person_add_rounded),
-                label: const Text('Novo'),
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-              )
-            : null,
-        body: TabBarView(
-          children: [
-            // ─── ABA 1: Colaboradores Ativos ────────────────────────────────
-            Column(
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            tooltip: 'Atualizar dados',
+            onPressed: () {
+              ref.read(employeesProvider.notifier).fetchEmployees(isRefresh: true);
+              ref.read(pendingApprovalsProvider.notifier).fetchPending();
+            },
+          ),
+        ],
+      ),
+      floatingActionButton: isDirecao
+          ? FloatingActionButton.extended(
+              onPressed: () {
+                showDialog<UserEntity>(
+                  context: context,
+                  builder: (ctx) => const EmployeeFormDialog(),
+                );
+              },
+              icon: const Icon(Icons.person_add_rounded),
+              label: const Text('Novo'),
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+            )
+          : null,
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          // ─── ABA 1: Colaboradores Ativos ────────────────────────────────
+          ExcludeSemantics(
+            excluding: _currentTabIndex != 0,
+            child: Column(
               children: [
                 // Barra de Pesquisa
                 Padding(
@@ -258,11 +272,14 @@ class _EmployeesPageState extends ConsumerState<EmployeesPage> {
                 ),
               ],
             ),
+          ),
 
-            // ─── ABA 2: Aprovações Pendentes ────────────────────────────────
-            _PendingApprovalsTab(pendingAsync: pendingAsync),
-          ],
-        ),
+          // ─── ABA 2: Aprovações Pendentes ────────────────────────────────
+          ExcludeSemantics(
+            excluding: _currentTabIndex != 1,
+            child: _PendingApprovalsTab(pendingAsync: pendingAsync),
+          ),
+        ],
       ),
     );
   }

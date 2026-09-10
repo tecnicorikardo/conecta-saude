@@ -10,11 +10,12 @@ test.describe('02 - Navegação e Varredura de Erros de Console (Pente Fino)', (
     page.on('console', (msg) => {
       if (msg.type() === 'error') {
         const txt = msg.text();
-        // Ignora avisos esperados de ambiente como Noto fonts ou notificações bloqueadas pelo navegador de teste
+        // Ignora avisos esperados de ambiente como Noto fonts, ServiceWorker ou navigator.vibrate em headless
         if (
           !txt.includes('Noto fonts') &&
           !txt.includes('ServiceWorker') &&
-          !txt.includes('permission-blocked')
+          !txt.includes('permission-blocked') &&
+          !txt.includes('navigator.vibrate')
         ) {
           consoleErrors.push(txt);
         }

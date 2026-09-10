@@ -37,17 +37,24 @@ export async function loginAs(
 
   await emailInput.waitFor({ state: 'visible', timeout: 15000 });
   await emailInput.click();
+  await emailInput.clear();
   await emailInput.fill(email);
-  await page.waitForTimeout(400);
+  await page.waitForTimeout(500);
 
   await passwordInput.waitFor({ state: 'visible', timeout: 15000 });
   await passwordInput.click();
+  await passwordInput.clear();
   await passwordInput.fill(password);
-  await page.waitForTimeout(600);
+  await page.waitForTimeout(800);
 
-  await entrarBtn.click();
+  // Submete o formulário
+  if (await entrarBtn.isVisible()) {
+    await entrarBtn.click();
+  } else {
+    await passwordInput.press('Enter');
+  }
 
-  // Aguarda transição para /home com timeout estendido para conexões lentas
-  await expect.poll(() => page.url(), { timeout: 30000 }).toContain('/home');
+  // Aguarda transição para /home com timeout estendido
+  await expect.poll(() => page.url(), { timeout: 40000 }).toContain('/home');
   await page.waitForTimeout(2000);
 }

@@ -23,7 +23,7 @@ class _LoginFormState extends ConsumerState<LoginForm> {
   final _emailFocus = FocusNode();
   final _passFocus  = FocusNode();
   bool _obscure     = true;
-  bool _rememberMe  = true;
+  bool _rememberMe  = false;
 
   // ─── Cores Institucionais ──────────────────────────────────────────────────
   static const Color _primaryBlue    = Color(0xFF1565C0);
@@ -43,17 +43,13 @@ class _LoginFormState extends ConsumerState<LoginForm> {
   Future<void> _loadSavedCredentials() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final remember = prefs.getBool('conecta_remember_me') ?? true;
+      final remember = prefs.getBool('conecta_remember_me') ?? false;
       final savedEmail = prefs.getString('conecta_saved_email');
-      final savedPassword = prefs.getString('conecta_saved_password');
       if (mounted) {
         setState(() {
           _rememberMe = remember;
           if (remember && savedEmail != null && savedEmail.isNotEmpty) {
             _emailCtrl.text = savedEmail;
-            if (savedPassword != null) {
-              _passCtrl.text = savedPassword;
-            }
           }
         });
       }
@@ -78,12 +74,12 @@ class _LoginFormState extends ConsumerState<LoginForm> {
       if (_rememberMe) {
         await prefs.setBool('conecta_remember_me', true);
         await prefs.setString('conecta_saved_email', _emailCtrl.text.trim());
-        await prefs.setString('conecta_saved_password', _passCtrl.text);
       } else {
         await prefs.setBool('conecta_remember_me', false);
         await prefs.remove('conecta_saved_email');
-        await prefs.remove('conecta_saved_password');
       }
+      // Sempre remove qualquer resquício de senha salva anteriormente
+      await prefs.remove('conecta_saved_password');
     } catch (_) {}
 
     ref.read(loginNotifierProvider.notifier).signIn(
@@ -168,68 +164,6 @@ class _LoginFormState extends ConsumerState<LoginForm> {
               }
               return const SizedBox.shrink();
             },
-          ),
-
-          // ─── Acesso Rápido para Teste / Demonstração ────────────────────
-          Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: _borderColor),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Row(
-                  children: [
-                    Icon(Icons.bolt_rounded, size: 15, color: _primaryBlue),
-                    SizedBox(width: 4),
-                    Text(
-                      'Preenchimento rápido (Ambiente de Teste):',
-                      style: TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w600,
-                        color: _textPrimary,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    _buildQuickAccountChip(
-                      label: '👤 Ricardo (Funcionário)',
-                      email: 'tecnicorikardo@gmail.com',
-                      password: 'ConectaSUS@2026',
-                    ),
-                    _buildQuickAccountChip(
-                      label: '🏥 Coord. CCO',
-                      email: 'coord.cco@conectasaude.dev',
-                      password: 'ConectaSUS@2026',
-                    ),
-                    _buildQuickAccountChip(
-                      label: '🔬 Coord. CCDTI',
-                      email: 'coord.ccdti@conectasaude.dev',
-                      password: 'ConectaSUS@2026',
-                    ),
-                    _buildQuickAccountChip(
-                      label: '🩺 Coord. CCE',
-                      email: 'coord.cce@conectasaude.dev',
-                      password: 'ConectaSUS@2026',
-                    ),
-                    _buildQuickAccountChip(
-                      label: '📋 Func. CCO',
-                      email: 'paula.cco@conectasaude.dev',
-                      password: 'ConectaSUS@2026',
-                    ),
-                  ],
-                ),
-              ],
-            ),
           ),
 
           // ─── Campo E-mail Institucional ──────────────────────────────────
@@ -409,7 +343,7 @@ class _LoginFormState extends ConsumerState<LoginForm> {
                       ),
                       const SizedBox(width: 6),
                       const Text(
-                        'Lembrar login e senha',
+                        'Lembrar meu e-mail institucional',
                         style: TextStyle(
                           color: _textSecondary,
                           fontSize: 12.5,
@@ -561,42 +495,6 @@ class _LoginFormState extends ConsumerState<LoginForm> {
             ],
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildQuickAccountChip({
-    required String label,
-    required String email,
-    required String password,
-  }) {
-    return InkWell(
-      onTap: widget.isLoading
-          ? null
-          : () {
-              setState(() {
-                _emailCtrl.text = email;
-                if (password.isNotEmpty) {
-                  _passCtrl.text = password;
-                }
-              });
-            },
-      borderRadius: BorderRadius.circular(6),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: _borderColor),
-        ),
-        child: Text(
-          label,
-          style: const TextStyle(
-            fontSize: 11.5,
-            fontWeight: FontWeight.w600,
-            color: _primaryBlue,
-          ),
-        ),
       ),
     );
   }

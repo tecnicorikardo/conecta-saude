@@ -164,8 +164,8 @@ class _HomePageState extends ConsumerState<HomePage> {
   Widget _buildBody(
       BuildContext context, UserEntity? user, UserPermissions perms) {
     final tokens = context.appTokens;
-    final nome = user?.nome ?? 'Usuário';
-    final primeiroNome = nome.split(' ').first;
+    final nomeCompleto = user?.nome ?? 'Usuário';
+    final saudacaoNome = _formatGreetingName(nomeCompleto);
     final cargo = user?.cargo ?? '';
     final setor = user?.setorNome ?? '';
     final announcementsState = ref.watch(announcementsProvider);
@@ -190,7 +190,8 @@ class _HomePageState extends ConsumerState<HomePage> {
           children: [
             // ─── Card de boas-vindas com badge de nível ──────────────────
             _WelcomeCard(
-              nome: primeiroNome,
+              nome: saudacaoNome,
+              nomeCompleto: nomeCompleto,
               cargo: cargo,
               setor: setor,
               perms: perms,
@@ -494,24 +495,61 @@ class _HomePageState extends ConsumerState<HomePage> {
     return Column(children: rows);
   }
 
-  String _initials(String name) {
-    final parts = name.trim().split(' ');
+  static String _formatGreetingName(String fullName) {
+    final trimmed = fullName.trim();
+    if (trimmed.isEmpty) return 'Usuário';
+    final parts = trimmed.split(RegExp(r'\s+'));
+    if (parts.isEmpty) return 'Usuário';
+
+    final titles = {
+      'dr.', 'dr', 'dra.', 'dra', 'enf.', 'enf',
+      'enfermeiro', 'enfermeira', 'prof.', 'prof',
+      'profa.', 'profa', 'tec.', 'tec', 'técnico', 'técnica',
+      'sr.', 'sr', 'sra.', 'sra', 'med.', 'médico', 'médica'
+    };
+    final firstLower = parts.first.toLowerCase();
+    if (titles.contains(firstLower) && parts.length > 1) {
+      return '${parts[0]} ${parts[1]}';
+    }
+    return parts.first;
+  }
+
+  static String _extractInitials(String name) {
+    final clean = name.trim();
+    if (clean.isEmpty) return 'U';
+    final parts = clean.split(RegExp(r'\s+'));
+    final titles = {
+      'dr.', 'dr', 'dra.', 'dra', 'enf.', 'enf',
+      'enfermeiro', 'enfermeira', 'prof.', 'prof',
+      'profa.', 'profa', 'tec.', 'tec', 'técnico', 'técnica',
+      'sr.', 'sr', 'sra.', 'sra', 'med.', 'médico', 'médica'
+    };
+    if (parts.isNotEmpty && titles.contains(parts.first.toLowerCase()) && parts.length > 1) {
+      if (parts.length >= 3) {
+        return '${parts[1][0]}${parts[2][0]}'.toUpperCase();
+      }
+      return parts[1][0].toUpperCase();
+    }
     if (parts.length >= 2) {
       return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
     }
-    return name.isNotEmpty ? name[0].toUpperCase() : 'U';
+    return parts.isNotEmpty && parts[0].isNotEmpty ? parts[0][0].toUpperCase() : 'U';
   }
+
+  String _initials(String name) => _extractInitials(name);
 }
 
 // ─── Card de boas-vindas ──────────────────────────────────────────────────────
 class _WelcomeCard extends StatelessWidget {
   final String nome;
+  final String nomeCompleto;
   final String cargo;
   final String setor;
   final UserPermissions perms;
 
   const _WelcomeCard({
     required this.nome,
+    required this.nomeCompleto,
     required this.cargo,
     required this.setor,
     required this.perms,
@@ -547,7 +585,7 @@ class _WelcomeCard extends StatelessWidget {
                           radius: 24,
                           backgroundColor: tokens.iconContainerColor,
                           child: Text(
-                            nome.isNotEmpty ? nome[0].toUpperCase() : 'U',
+                            _HomePageState._extractInitials(nomeCompleto),
                             style: TextStyle(
                               color: tokens.themeAccentColor,
                               fontSize: 18,
@@ -672,23 +710,27 @@ class _AdminPanel extends StatelessWidget {
                           _AdminChip(
                             icon: Icons.people_outline,
                             label: 'Funcionários',
+                            semanticLabel: 'Painel Administrativo: Gestão de Funcionários',
                             onTap: () => context.push(AppRoutes.employees),
                           ),
                         if (perms.canViewReports)
                           _AdminChip(
                             icon: Icons.flag_outlined,
                             label: 'Denúncias',
+                            semanticLabel: 'Painel Administrativo: Gestão de Denúncias',
                             onTap: () => context.push(AppRoutes.reports),
                           ),
                         if (perms.canViewAudit)
                           _AdminChip(
                             icon: Icons.history_outlined,
                             label: 'Auditoria',
+                            semanticLabel: 'Painel Administrativo: Registros de Auditoria',
                             onTap: () => context.push(AppRoutes.auditLogs),
                           ),
                         _AdminChip(
                           icon: Icons.bar_chart_outlined,
                           label: 'Relatórios',
+                          semanticLabel: 'Painel Administrativo: Relatórios e Estatísticas',
                           onTap: () => context.push(AppRoutes.administration),
                         ),
                       ],
@@ -707,11 +749,13 @@ class _AdminPanel extends StatelessWidget {
 class _AdminChip extends StatelessWidget {
   final IconData icon;
   final String label;
+  final String? semanticLabel;
   final VoidCallback onTap;
 
   const _AdminChip({
     required this.icon,
     required this.label,
+    this.semanticLabel,
     required this.onTap,
   });
 
@@ -719,29 +763,33 @@ class _AdminChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.appTokens;
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: tokens.iconContainerColor,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: tokens.border, width: 1),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 14, color: tokens.themeAccentColor),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: tokens.textPrimary,
-                fontWeight: FontWeight.w600,
+    return Semantics(
+      label: semanticLabel ?? 'Painel Administrativo: $label',
+      button: true,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: tokens.iconContainerColor,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: tokens.border, width: 1),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 14, color: tokens.themeAccentColor),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: tokens.textPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -778,69 +826,73 @@ class _QuickAccessCard extends StatelessWidget {
     final iconColor = isEmergency ? tokens.critical : tokens.themeAccentColor;
     final badgeBg = isEmergency ? tokens.critical : tokens.themeAccentColor;
 
-    return Card(
-      elevation: 0,
-      color: tokens.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(10),
-        side: BorderSide(color: tokens.border, width: 1),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: data.onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Column(
-          children: [
-            if (!isEmergency)
-              tokens.buildHorizontalAccent(height: 2.5),
-            Padding(
-              padding: const EdgeInsets.all(15),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: iconBg,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(data.icon, color: iconColor, size: 20),
-                      ),
-                      if (data.badge > 0)
+    return Semantics(
+      label: 'Acesso rápido: ${data.label}',
+      button: true,
+      child: Card(
+        elevation: 0,
+        color: tokens.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(color: tokens.border, width: 1),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: data.onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: Column(
+            children: [
+              if (!isEmergency)
+                tokens.buildHorizontalAccent(height: 2.5),
+              Padding(
+                padding: const EdgeInsets.all(15),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 7, vertical: 2),
+                          padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: badgeBg,
-                            borderRadius: BorderRadius.circular(10),
+                            color: iconBg,
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Text(
-                            '${data.badge}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w700,
+                          child: Icon(data.icon, color: iconColor, size: 20),
+                        ),
+                        if (data.badge > 0)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 7, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: badgeBg,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              '${data.badge}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    data.label,
-                    style: TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w600,
-                      color: tokens.textPrimary,
+                      ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 12),
+                    Text(
+                      data.label,
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w600,
+                        color: tokens.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
