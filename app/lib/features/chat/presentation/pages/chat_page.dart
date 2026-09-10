@@ -91,11 +91,15 @@ class _ChatPageState extends ConsumerState<ChatPage> {
     );
 
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       backgroundColor:
           isDark ? const Color(0xFF0D1B2A) : const Color(0xFFECEFF1),
       appBar: _buildAppBar(
           context, displayName, photoUrl, subtitle, isGroup, currentUserId, conv),
-      body: Column(
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: Column(
         children: [
           if (conv?.autoExcluir24h == true)
             Container(
@@ -189,8 +193,9 @@ class _ChatPageState extends ConsumerState<ChatPage> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   PreferredSizeWidget _buildAppBar(
     BuildContext context,
@@ -540,6 +545,7 @@ class _MessageList extends StatelessWidget {
 
     return ListView.builder(
       controller: scrollController,
+      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       itemCount: items.length,
       itemBuilder: (context, index) {

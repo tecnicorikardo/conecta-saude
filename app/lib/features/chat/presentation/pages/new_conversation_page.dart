@@ -171,6 +171,7 @@ class _IndividualTabState extends ConsumerState<_IndividualTab> {
                     message: 'Nenhum funcionário encontrado.');
               }
               return ListView.separated(
+                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                 itemCount: users.length,
                 separatorBuilder: (_, __) =>
                     const Divider(height: 1, indent: 70),

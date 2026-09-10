@@ -19,6 +19,7 @@
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="A new Flutter project.">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
@@ -34,6 +35,22 @@
   <link rel="manifest" href="manifest.json">
 
   <style>
+    /* ─── Trava de Viewport & Fundo do Sistema ────────────────────────────── */
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      position: fixed;
+      background-color: #ECEFF1;
+      -webkit-tap-highlight-color: transparent;
+    }
+    flutter-view {
+      width: 100% !important;
+      height: 100% !important;
+    }
+
     /* ─── Banner de Instalação PWA Mobile ─────────────────────────────────── */
     #pwa-install-banner {
       display: none;
@@ -412,6 +429,50 @@
         });
       });
     }
+
+    // ─── Auto-recuperação do Viewport ao Fechar Teclado Virtual (Mobile / PWA) ───
+    (function() {
+      if (!window.visualViewport) return;
+
+      var isKeyboardOpen = false;
+
+      function onViewportChange() {
+        var currentHeight = window.visualViewport.height;
+        var screenHeight = window.innerHeight;
+        var heightDiff = screenHeight - currentHeight;
+
+        // Se a diferença de altura diminuiu para menos de 100px, o teclado fechou
+        if (heightDiff < 100) {
+          if (isKeyboardOpen) {
+            isKeyboardOpen = false;
+            // Remover foco de inputs invisíveis do Flutter para restaurar layout
+            var active = document.activeElement;
+            if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.getAttribute('contenteditable'))) {
+              active.blur();
+            }
+            window.scrollTo(0, 0);
+            document.body.scrollTop = 0;
+            if (document.documentElement) document.documentElement.scrollTop = 0;
+
+            // Forçar notificação de resize para que o Flutter reconstrua na altura total
+            setTimeout(function() {
+              window.dispatchEvent(new Event('resize'));
+            }, 60);
+          }
+        } else if (heightDiff > 140) {
+          isKeyboardOpen = true;
+        }
+      }
+
+      window.visualViewport.addEventListener('resize', onViewportChange);
+
+      // Prevenir rolagem involuntária da janela (window.scroll) que desloca o canvas do Flutter
+      window.addEventListener('scroll', function() {
+        if (window.scrollY !== 0 || window.scrollX !== 0) {
+          window.scrollTo(0, 0);
+        }
+      }, { passive: true });
+    })();
   </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>

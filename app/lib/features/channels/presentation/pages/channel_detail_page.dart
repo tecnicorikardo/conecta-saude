@@ -25,11 +25,13 @@ class ChannelDetailPage extends ConsumerStatefulWidget {
 class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final FocusNode _focusNode = FocusNode();
 
   @override
   void dispose() {
     _textController.dispose();
     _scrollController.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
@@ -90,6 +92,7 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
         (widget.channel?.isEmergencia == true ? 'Emergência Geral' : 'Institucional');
 
     return Scaffold(
+      resizeToAvoidBottomInset: true,
       backgroundColor: AppColors.background,
       appBar: AppBar(
         titleSpacing: 0,
@@ -153,39 +156,44 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
           ),
         ],
       ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // ─── Lista de Mensagens ──────────────────────────────────────────
-            Expanded(
-              child: state.isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : state.messages.isEmpty
-                      ? _buildEmptyState()
-                      : ListView.builder(
-                          controller: _scrollController,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 16,
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // ─── Lista de Mensagens ──────────────────────────────────────────
+              Expanded(
+                child: state.isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : state.messages.isEmpty
+                        ? _buildEmptyState()
+                        : ListView.builder(
+                            controller: _scrollController,
+                            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 16,
+                            ),
+                            itemCount: state.messages.length,
+                            itemBuilder: (context, index) {
+                              final msg = state.messages[index];
+                              return _buildMessageCard(
+                                context,
+                                msg,
+                                canPublish,
+                              );
+                            },
                           ),
-                          itemCount: state.messages.length,
-                          itemBuilder: (context, index) {
-                            final msg = state.messages[index];
-                            return _buildMessageCard(
-                              context,
-                              msg,
-                              canPublish,
-                            );
-                          },
-                        ),
-            ),
+              ),
 
-            // ─── Rodapé: Input para Liderança OU Banner para Funcionários ──
-            if (canPublish)
-              _buildPublisherInputBar(state.isSending)
-            else
-              _buildStaffReadOnlyBanner(),
-          ],
+              // ─── Rodapé: Input para Liderança OU Banner para Funcionários ──
+              if (canPublish)
+                _buildPublisherInputBar(state.isSending)
+              else
+                _buildStaffReadOnlyBanner(),
+            ],
+          ),
         ),
       ),
     );
@@ -466,92 +474,97 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.campaign_rounded,
-                size: 14,
-                color: AppColors.primary,
-              ),
-              const SizedBox(width: 5),
-              Text(
-                'Publicando como Liderança / Oficial',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.primary.withValues(alpha: 0.9),
+      child: SafeArea(
+        top: false,
+        bottom: true,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.campaign_rounded,
+                  size: 14,
+                  color: AppColors.primary,
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Expanded(
-                child: Focus(
-                  onKeyEvent: (node, event) {
-                    if (event is KeyDownEvent &&
-                        event.logicalKey == LogicalKeyboardKey.enter &&
-                        !HardwareKeyboard.instance.isShiftPressed) {
-                      if (!isSending) _handleSend();
-                      return KeyEventResult.handled;
-                    }
-                    return KeyEventResult.ignored;
-                  },
-                  child: TextField(
-                    controller: _textController,
-                    maxLines: 4,
-                    minLines: 1,
-                    keyboardType: TextInputType.multiline,
-                    decoration: InputDecoration(
-                      hintText: 'Escreva um aviso ou comunicado...',
-                      hintStyle: const TextStyle(fontSize: 13.5),
-                      filled: true,
-                      fillColor: AppColors.surfaceVariant,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 14,
-                        vertical: 10,
+                const SizedBox(width: 5),
+                Text(
+                  'Publicando como Liderança / Oficial',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary.withValues(alpha: 0.9),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: Focus(
+                    onKeyEvent: (node, event) {
+                      if (event is KeyDownEvent &&
+                          event.logicalKey == LogicalKeyboardKey.enter &&
+                          !HardwareKeyboard.instance.isShiftPressed) {
+                        if (!isSending) _handleSend();
+                        return KeyEventResult.handled;
+                      }
+                      return KeyEventResult.ignored;
+                    },
+                    child: TextField(
+                      controller: _textController,
+                      focusNode: _focusNode,
+                      maxLines: 4,
+                      minLines: 1,
+                      keyboardType: TextInputType.multiline,
+                      decoration: InputDecoration(
+                        hintText: 'Escreva um aviso ou comunicado...',
+                        hintStyle: const TextStyle(fontSize: 13.5),
+                        filled: true,
+                        fillColor: AppColors.surfaceVariant,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 10,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide.none,
+                        ),
                       ),
-                      border: OutlineInputBorder(
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  height: 44,
+                  width: 44,
+                  child: FilledButton(
+                    onPressed: isSending ? null : _handleSend,
+                    style: FilledButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
                       ),
                     ),
+                    child: isSending
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.send_rounded, size: 20),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              SizedBox(
-                height: 44,
-                width: 44,
-                child: FilledButton(
-                  onPressed: isSending ? null : _handleSend,
-                  style: FilledButton.styleFrom(
-                    padding: EdgeInsets.zero,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  child: isSending
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
-                          ),
-                        )
-                      : const Icon(Icons.send_rounded, size: 20),
-                ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -141,6 +141,7 @@ class ChannelsPage extends ConsumerWidget {
               child: state.isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : ListView(
+                      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                       padding: const EdgeInsets.fromLTRB(16, 14, 16, 32),
                       children: [
                         // Banner Destaque Emergência

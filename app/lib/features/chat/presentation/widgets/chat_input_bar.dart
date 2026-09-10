@@ -36,6 +36,7 @@ class ChatInputBar extends ConsumerStatefulWidget {
 
 class _ChatInputBarState extends ConsumerState<ChatInputBar> {
   final _textCtrl = TextEditingController();
+  final _focusNode = FocusNode();
   bool _isComposing = false;
 
   late final AudioRecorder _audioRecorder;
@@ -67,6 +68,7 @@ class _ChatInputBarState extends ConsumerState<ChatInputBar> {
     _recordTimer?.cancel();
     _audioRecorder.dispose();
     _textCtrl.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
@@ -219,30 +221,34 @@ class _ChatInputBarState extends ConsumerState<ChatInputBar> {
           ),
         ),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Banner de resposta / edição
-          if (widget.replyingTo != null)
-            _buildContextBanner(
-              icon: Icons.reply,
-              title: 'Respondendo a ',
-              subtitle: widget.replyingTo!.texto,
-              onCancel: widget.onCancelReply,
-            ),
-          if (widget.editingMessage != null)
-            _buildContextBanner(
-              icon: Icons.edit_outlined,
-              title: 'Editando mensagem',
-              subtitle: widget.editingMessage!.texto,
-              onCancel: widget.onCancelEdit,
-            ),
+      child: SafeArea(
+        top: false,
+        bottom: true,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Banner de resposta / edição
+            if (widget.replyingTo != null)
+              _buildContextBanner(
+                icon: Icons.reply,
+                title: 'Respondendo a ',
+                subtitle: widget.replyingTo!.texto,
+                onCancel: widget.onCancelReply,
+              ),
+            if (widget.editingMessage != null)
+              _buildContextBanner(
+                icon: Icons.edit_outlined,
+                title: 'Editando mensagem',
+                subtitle: widget.editingMessage!.texto,
+                onCancel: widget.onCancelEdit,
+              ),
 
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            child: _isRecording ? _buildRecordingBar(isDark) : _buildInputBar(isDark),
-          ),
-        ],
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              child: _isRecording ? _buildRecordingBar(isDark) : _buildInputBar(isDark),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -269,6 +275,7 @@ class _ChatInputBarState extends ConsumerState<ChatInputBar> {
               },
               child: TextField(
                 controller: _textCtrl,
+                focusNode: _focusNode,
                 maxLines: 4,
                 minLines: 1,
                 keyboardType: TextInputType.multiline,

@@ -249,6 +249,7 @@ class _ConversationsPageState extends ConsumerState<ConversationsPage>
 
                 final tokens = context.appTokens;
                 return ListView.separated(
+                  keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                   itemCount: filtered.length,
                   separatorBuilder: (_, __) => Divider(
                     height: 1,
