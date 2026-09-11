@@ -635,10 +635,16 @@ class _TriggerEmergencySheetState extends ConsumerState<_TriggerEmergencySheet> 
                   label: Text(type.shortLabel),
                   selected: isSelected,
                   selectedColor: AppColors.emergency,
+                  backgroundColor: const Color(0xFFE8E8E8),
+                  checkmarkColor: Colors.white,
                   labelStyle: TextStyle(
-                    color: isSelected ? Colors.white : AppColors.neutral800,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                    color: isSelected ? Colors.white : const Color(0xFF1A1A1A),
+                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
                     fontSize: 12,
+                  ),
+                  side: BorderSide(
+                    color: isSelected ? AppColors.emergency : const Color(0xFFBDBDBD),
+                    width: 1.5,
                   ),
                   onSelected: (_) => setState(() => _selectedType = type),
                 );
