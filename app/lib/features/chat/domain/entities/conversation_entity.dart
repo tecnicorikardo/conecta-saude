@@ -40,7 +40,7 @@ class ConversationEntity {
     this.descricao,
     this.fotoUrl,
     this.criadoPor,
-    this.autoExcluir24h = false,
+    this.autoExcluir24h = true,
     required this.participantes,
     this.lastMessage,
     required this.unreadCount,

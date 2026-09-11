@@ -3,6 +3,7 @@ import { createApp } from './app';
 import { initializeFirebase } from './config/firebase';
 import { connectDatabase, disconnectDatabase } from './config/database';
 import { startRealtime } from './realtime';
+import { startCleanupJob } from './jobs/cleanupMessages';
 
 const PORT = Number(process.env.PORT ?? 3000);
 
@@ -33,6 +34,9 @@ async function bootstrap(): Promise<void> {
   } catch (dbErr) {
     console.error('[Database] Alerta ao conectar:', dbErr);
   }
+
+  // 4. Job de limpeza periódica de mensagens >24h
+  startCleanupJob();
 
   // ─── Graceful shutdown ─────────────────────────────────────────────────
   const shutdown = async (signal: string): Promise<void> => {

@@ -285,7 +285,7 @@ export async function createConversation(req: Request, res: Response): Promise<v
       nome: data.nome ?? null,
       descricao: data.descricao ?? null,
       fotoUrl: data.fotoUrl ?? null,
-      autoExcluir24h: data.autoExcluir24h ?? false,
+      autoExcluir24h: data.autoExcluir24h ?? true,
       criadoPor: actor.id,
       setorId: actor.setorId,
       ativo: true,
