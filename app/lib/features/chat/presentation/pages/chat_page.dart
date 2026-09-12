@@ -27,7 +27,7 @@ class ChatPage extends ConsumerStatefulWidget {
   ConsumerState<ChatPage> createState() => _ChatPageState();
 }
 
-class _ChatPageState extends ConsumerState<ChatPage> {
+class _ChatPageState extends ConsumerState<ChatPage> with WidgetsBindingObserver {
   final _scrollController = ScrollController();
   MessageEntity? _replyingTo;
   MessageEntity? _editingMessage;
@@ -35,13 +35,22 @@ class _ChatPageState extends ConsumerState<ChatPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _scrollController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeMetrics() {
+    super.didChangeMetrics();
+    // Ao abrir ou fechar o teclado virtual no mobile, reajusta o scroll imediatamente
+    _scrollToBottom(animated: false);
   }
 
   void _scrollToBottom({bool animated = true}) {

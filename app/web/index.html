@@ -35,16 +35,20 @@
   <link rel="manifest" href="manifest.json">
 
   <style>
-    /* ─── Viewport Dinâmico & Fundo do Sistema ────────────────────────────── */
+    /* ─── Viewport Fixo & Fundo do Sistema ─────────────────────────────────── */
     html, body {
       width: 100%;
       height: 100%;
-      height: 100dvh;
-      min-height: 100%;
-      min-height: 100dvh;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
       margin: 0;
       padding: 0;
       overflow: hidden;
+      overscroll-behavior: none;
+      touch-action: pan-x pan-y;
       background-color: #ECEFF1;
       -webkit-tap-highlight-color: transparent;
     }
@@ -435,75 +439,52 @@
 
     // ─── Auto-recuperação do Viewport ao Fechar Teclado Virtual (Mobile / PWA) ───
     (function() {
-      if (!window.visualViewport) return;
-
-      var maxViewportHeight = window.visualViewport.height || window.innerHeight;
-      var lastHeight = window.visualViewport.height;
-      var isKeyboardOpen = false;
-
-      function checkViewport() {
-        var currentHeight = window.visualViewport.height;
-        if (currentHeight > maxViewportHeight) {
-          maxViewportHeight = currentHeight;
-        }
-
-        var shrinkDiff = maxViewportHeight - currentHeight;
-        var growth = currentHeight - lastHeight;
-
-        // Se encolheu significativamente (> 140px), o teclado virtual está aberto
-        if (shrinkDiff > 140) {
-          isKeyboardOpen = true;
-        }
-
-        // Se a altura cresceu (> 100px) ou se o teclado estava aberto e agora o viewport voltou ao tamanho total
-        if (growth > 100 || (isKeyboardOpen && shrinkDiff < 80)) {
-          isKeyboardOpen = false;
-
-          // Restaurar scroll da janela e do documento
-          window.scrollTo(0, 0);
-          document.body.scrollTop = 0;
-          if (document.documentElement) document.documentElement.scrollTop = 0;
-
-          // Desfocar inputs no DOM para garantir que não haja estado fantasma de foco
-          var active = document.activeElement;
-          if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.getAttribute('contenteditable'))) {
-            active.blur();
-          }
-
-          // Disparar evento de resize imediatamente e com pequenos atrasos para o Flutter Web recompor a tela cheia
-          window.dispatchEvent(new Event('resize'));
-
-          setTimeout(function() {
-            window.scrollTo(0, 0);
-            window.dispatchEvent(new Event('resize'));
-          }, 60);
-
-          setTimeout(function() {
-            window.scrollTo(0, 0);
-            window.dispatchEvent(new Event('resize'));
-          }, 200);
-        }
-
-        lastHeight = currentHeight;
-      }
-
-      window.visualViewport.addEventListener('resize', checkViewport);
-
-      window.addEventListener('orientationchange', function() {
-        setTimeout(function() {
-          if (window.visualViewport) {
-            maxViewportHeight = window.visualViewport.height;
-          }
-          window.dispatchEvent(new Event('resize'));
-        }, 300);
-      });
-
-      // Prevenir rolagem involuntária da janela (window.scroll) que desloca o canvas do Flutter
-      window.addEventListener('scroll', function() {
+      function forceResetScroll() {
         if (window.scrollY !== 0 || window.scrollX !== 0) {
           window.scrollTo(0, 0);
         }
-      }, { passive: true });
+        if (document.body && document.body.scrollTop !== 0) {
+          document.body.scrollTop = 0;
+        }
+        if (document.documentElement && document.documentElement.scrollTop !== 0) {
+          document.documentElement.scrollTop = 0;
+        }
+      }
+
+      if (window.visualViewport) {
+        var lastHeight = window.visualViewport.height;
+
+        window.visualViewport.addEventListener('resize', function() {
+          forceResetScroll();
+          var currentHeight = window.visualViewport.height;
+
+          // Se a altura cresceu significativamente (teclado virtual fechou), força recomposição da tela cheia
+          if (currentHeight > lastHeight + 40) {
+            forceResetScroll();
+            window.dispatchEvent(new Event('resize'));
+            setTimeout(function() {
+              forceResetScroll();
+              window.dispatchEvent(new Event('resize'));
+            }, 60);
+            setTimeout(function() {
+              forceResetScroll();
+              window.dispatchEvent(new Event('resize'));
+            }, 180);
+          }
+
+          lastHeight = currentHeight;
+        });
+
+        window.visualViewport.addEventListener('scroll', forceResetScroll);
+      }
+
+      window.addEventListener('scroll', forceResetScroll, { passive: false });
+      window.addEventListener('orientationchange', function() {
+        setTimeout(function() {
+          forceResetScroll();
+          window.dispatchEvent(new Event('resize'));
+        }, 150);
+      });
     })();
   </script>
   <script src="flutter_bootstrap.js" async></script>

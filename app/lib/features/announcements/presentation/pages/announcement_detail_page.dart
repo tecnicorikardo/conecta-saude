@@ -24,6 +24,21 @@ class _AnnouncementDetailPageState
     extends ConsumerState<AnnouncementDetailPage> {
   bool _isConfirming = false;
 
+  @override
+  void initState() {
+    super.initState();
+    // Confirmação de leitura 100% automática ao abrir o comunicado
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final state = ref.read(announcementsProvider);
+      final announcement = state.announcements
+          .where((a) => a.id == widget.announcementId)
+          .firstOrNull;
+      if (announcement != null && !announcement.lido) {
+        ref.read(announcementsProvider.notifier).confirmRead(widget.announcementId);
+      }
+    });
+  }
+
   Future<void> _handleConfirmRead() async {
     setState(() => _isConfirming = true);
     final success = await ref

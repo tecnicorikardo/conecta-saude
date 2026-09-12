@@ -238,6 +238,14 @@ class _MainShellState extends ConsumerState<MainShell>
           }
         } catch (_) {}
 
+        // Se o usuário estiver Fora de Serviço com silenciamento ativado, não exibe o banner interno
+        final currentUser = ref.read(currentUserProvider).valueOrNull;
+        if (currentUser != null &&
+            currentUser.silenciarForaJornada &&
+            !currentUser.isCurrentlyWorking) {
+          return;
+        }
+
         final senderName = convWithNewMsg.displayName(currentUserId);
         final lastMsg =
             convWithNewMsg.lastMessage?.texto ?? 'Nova mensagem institucional';
