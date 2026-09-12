@@ -66,9 +66,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           path == AppRoutes.forgotPassword;
 
       // 1. Enquanto a autenticação estiver restaurando a sessão local do Firebase / cache:
-      // Mantém na tela atual ou splash sem redirecionar prematuramente para login
+      // Mantém na rota solicitada sem forçar redirecionamento prematuro
       if (userAsync.isLoading) {
-        return isPublic ? null : AppRoutes.splash;
+        return null;
       }
 
       // 2. Não logado tentando acessar rota protegida → login
