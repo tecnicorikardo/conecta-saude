@@ -15,6 +15,7 @@ import '../../../../core/widgets/app_avatar.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../auth/presentation/providers/current_user_provider.dart';
+import '../widgets/shift_end_dialog.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
@@ -1575,7 +1576,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 ),
                 Switch(
                   value: currentSilenciar,
-                  activeColor: AppColors.primary,
+                  activeThumbColor: AppColors.primary,
                   onChanged: (val) {
                     setState(() => _selectedSilenciar = val);
                   },
@@ -1615,6 +1616,37 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 elevation: 1,
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // ─── Botão de Teste / Simulação do Alerta ─────────────────────
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (_) => ShiftEndDialog(
+                    user: user,
+                    onDismiss: () {},
+                  ),
+                );
+              },
+              icon: const Icon(Icons.alarm_on_rounded, size: 18),
+              label: const Text(
+                'Testar Alerta de Fim de Expediente (5 min)',
+                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12.5),
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: isDark ? Colors.white70 : AppColors.primary,
+                side: BorderSide(
+                  color: isDark ? Colors.white24 : AppColors.primary.withValues(alpha: 0.4),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
             ),
           ),

@@ -188,13 +188,14 @@ class _HomePageState extends ConsumerState<HomePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ─── Card de boas-vindas com badge de nível ──────────────────
+            // ─── Card de boas-vindas com badge de nível e status ────────
             _WelcomeCard(
               nome: saudacaoNome,
               nomeCompleto: nomeCompleto,
               cargo: cargo,
               setor: setor,
               perms: perms,
+              user: user,
             ),
             const SizedBox(height: 16),
 
@@ -546,6 +547,7 @@ class _WelcomeCard extends StatelessWidget {
   final String cargo;
   final String setor;
   final UserPermissions perms;
+  final UserEntity? user;
 
   const _WelcomeCard({
     required this.nome,
@@ -553,6 +555,7 @@ class _WelcomeCard extends StatelessWidget {
     required this.cargo,
     required this.setor,
     required this.perms,
+    this.user,
   });
 
   @override
@@ -579,73 +582,152 @@ class _WelcomeCard extends StatelessWidget {
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        CircleAvatar(
-                          radius: 24,
-                          backgroundColor: tokens.iconContainerColor,
-                          child: Text(
-                            _HomePageState._extractInitials(nomeCompleto),
-                            style: TextStyle(
-                              color: tokens.themeAccentColor,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                'Olá, $nome',
+                        Row(
+                          children: [
+                            CircleAvatar(
+                              radius: 24,
+                              backgroundColor: tokens.iconContainerColor,
+                              child: Text(
+                                _HomePageState._extractInitials(nomeCompleto),
                                 style: TextStyle(
-                                  color: tokens.textPrimary,
-                                  fontSize: 16.5,
+                                  color: tokens.themeAccentColor,
+                                  fontSize: 18,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
-                              if (cargo.isNotEmpty || setor.isNotEmpty) ...[
-                                const SizedBox(height: 2),
-                                Text(
-                                  [cargo, setor]
-                                      .where((s) => s.isNotEmpty)
-                                      .join(' • '),
-                                  style: TextStyle(
-                                    color: tokens.textSecondary,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w400,
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    'Olá, $nome',
+                                    style: TextStyle(
+                                      color: tokens.textPrimary,
+                                      fontSize: 16.5,
+                                      fontWeight: FontWeight.w700,
+                                    ),
                                   ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                                  if (cargo.isNotEmpty || setor.isNotEmpty) ...[
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      [cargo, setor]
+                                          .where((s) => s.isNotEmpty)
+                                          .join(' • '),
+                                      style: TextStyle(
+                                        color: tokens.textSecondary,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w400,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                                  decoration: BoxDecoration(
+                                    color: tokens.iconContainerColor,
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                      color: tokens.themeAccentColor.withValues(alpha: 0.3),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    perms.hierarquiaLabel.toUpperCase(),
+                                    style: TextStyle(
+                                      color: tokens.themeAccentColor,
+                                      fontSize: 9.0,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 0.4,
+                                    ),
+                                  ),
+                                ),
+                                if (user != null) ...[
+                                  const SizedBox(height: 5),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: user!.workStatusColor.withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(
+                                        color: user!.workStatusColor.withValues(alpha: 0.35),
+                                        width: 1,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Container(
+                                          width: 6.5,
+                                          height: 6.5,
+                                          decoration: BoxDecoration(
+                                            color: user!.workStatusColor,
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          user!.workStatusLabel,
+                                          style: TextStyle(
+                                            color: user!.workStatusColor,
+                                            fontSize: 9.5,
+                                            fontWeight: FontWeight.w700,
+                                            letterSpacing: 0.2,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ],
+                        ),
+                        if (user != null && user!.workStatusLabel == 'Fora de Serviço') ...[
+                          const SizedBox(height: 10),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFF8E1),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: const Color(0xFFFFE082), width: 0.8),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.nightlight_round, size: 14, color: Color(0xFFD97706)),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    'Fora de Serviço • Plantão: ${user!.jornadaInicio} às ${user!.jornadaFim} (Mensagens silenciadas)',
+                                    style: const TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF92400E),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
                               ],
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: tokens.iconContainerColor,
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(
-                              color: tokens.themeAccentColor.withValues(alpha: 0.3),
-                              width: 1,
                             ),
                           ),
-                          child: Text(
-                            perms.hierarquiaLabel.toUpperCase(),
-                            style: TextStyle(
-                              color: tokens.themeAccentColor,
-                              fontSize: 9.5,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ),
+                        ],
                       ],
                     ),
                   ),

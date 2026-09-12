@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../theme/app_colors.dart';
 import '../auth/permissions_provider.dart';
 import '../services/notification_service.dart';
+import '../services/web_notification_helper.dart';
 import '../../features/chat/domain/entities/conversation_entity.dart';
 import '../../features/chat/presentation/providers/chat_provider.dart';
 import '../../features/channels/presentation/providers/channels_provider.dart';
@@ -146,6 +147,12 @@ class _MainShellState extends ConsumerState<MainShell>
 
     if (reachedEnd) {
       _lastShiftEndAlertDate = todayStr;
+      notifyHospitalUser(
+        '🏁 Fim de Expediente (${user.jornadaFim})',
+        'Seu turno habitual encerrou. Toque para ir para casa ou prorrogar suas horas.',
+        tag: 'shift_end',
+        url: '/profile',
+      );
       showDialog(
         context: context,
         barrierDismissible: false,

@@ -1,9 +1,10 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/services/web_notification_helper.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../auth/presentation/providers/current_user_provider.dart';
 
@@ -25,7 +26,7 @@ class ShiftEndDialog extends ConsumerStatefulWidget {
 
 class _ShiftEndDialogState extends ConsumerState<ShiftEndDialog> {
   final _hoursCtrl = TextEditingController(text: '1');
-  int _remainingSeconds = 10;
+  int _remainingSeconds = 300; // 5 minutos (300s)
   Timer? _timer;
   bool _userInteracted = false;
 
@@ -33,6 +34,21 @@ class _ShiftEndDialogState extends ConsumerState<ShiftEndDialog> {
   void initState() {
     super.initState();
     _startCountdown();
+    // Dispara notificação push nativa do sistema operacional com áudio institucional
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      notifyHospitalUser(
+        '🏁 Fim de Expediente (${widget.user.jornadaFim})',
+        'Seu horário regular encerrou. Toque para ir para casa ou prorrogar suas horas.',
+        tag: 'shift_end',
+        url: '/profile',
+      );
+    });
+  }
+
+  String _formatTimer(int totalSeconds) {
+    final minutes = (totalSeconds ~/ 60).toString().padLeft(2, '0');
+    final seconds = (totalSeconds % 60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
   }
 
   void _startCountdown() {
@@ -47,7 +63,7 @@ class _ShiftEndDialogState extends ConsumerState<ShiftEndDialog> {
           _remainingSeconds--;
         } else {
           t.cancel();
-          _goHome(); // Se não apertar nada em 10s, vai para casa e fica offline
+          _goHome(); // Se não apertar nada em 5 minutos, encerra e vai para casa
         }
       });
     });
@@ -271,7 +287,7 @@ class _ShiftEndDialogState extends ConsumerState<ShiftEndDialog> {
                       const SizedBox(width: 6),
                       Expanded(
                         child: Text(
-                          'Encerrando automaticamente em ${_remainingSeconds}s...',
+                          'Encerrando automaticamente em ${_formatTimer(_remainingSeconds)}...',
                           style: const TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
@@ -280,9 +296,9 @@ class _ShiftEndDialogState extends ConsumerState<ShiftEndDialog> {
                         ),
                       ),
                       Text(
-                        '${_remainingSeconds}s',
+                        _formatTimer(_remainingSeconds),
                         style: const TextStyle(
-                          fontSize: 12.5,
+                          fontSize: 13,
                           fontWeight: FontWeight.w900,
                           color: Color(0xFFD97706),
                         ),
@@ -292,14 +308,35 @@ class _ShiftEndDialogState extends ConsumerState<ShiftEndDialog> {
                 ),
                 const SizedBox(height: 8),
                 LinearProgressIndicator(
-                  value: _remainingSeconds / 10.0,
+                  value: _remainingSeconds / 300.0,
                   backgroundColor: const Color(0xFFE2E8F0),
-                  color: _remainingSeconds > 3 ? const Color(0xFFD97706) : Colors.red,
-                  minHeight: 3,
+                  color: _remainingSeconds > 60 ? const Color(0xFFD97706) : Colors.red,
+                  minHeight: 4,
+                  borderRadius: BorderRadius.circular(2),
                 ),
                 const SizedBox(height: 18),
-              ] else
-                const SizedBox(height: 8),
+              ] else ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F5E9),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: const Color(0xFFA5D6A7)),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.touch_app_rounded, size: 14, color: Color(0xFF2E7D32)),
+                      SizedBox(width: 6),
+                      Text(
+                        'Temporizador pausado (interação detectada)',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF1B5E20)),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+              ],
 
               Row(
                 children: [
