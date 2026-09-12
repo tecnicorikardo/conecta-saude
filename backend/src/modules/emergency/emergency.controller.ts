@@ -145,13 +145,15 @@ export async function createEmergencyAlert(req: Request, res: Response): Promise
           },
           data: {
             type: 'emergency_alert',
+            notificationType: 'emergency',
             alertId: alert.id,
             localizacao: alert.localizacao,
           },
           android: {
             priority: 'high',
             notification: {
-              color: '#DC2626',
+              color: '#D32F2F',
+              channelId: 'conecta_emergency',
               clickAction: 'FLUTTER_NOTIFICATION_CLICK',
             },
           },

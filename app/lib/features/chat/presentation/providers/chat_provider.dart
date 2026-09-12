@@ -89,6 +89,7 @@ class ConversationsNotifier
   final Ref _ref;
   Timer? _pollTimer;
   StreamSubscription<String?>? _realtimeSub;
+  StreamSubscription<Map<String, dynamic>>? _statusSub;
   bool _syncing = false;
   bool _syncAgain = false;
   int _pollTicks = 0;
@@ -97,6 +98,7 @@ class ConversationsNotifier
   void dispose() {
     _pollTimer?.cancel();
     _realtimeSub?.cancel();
+    _statusSub?.cancel();
     super.dispose();
   }
 
@@ -105,11 +107,50 @@ class ConversationsNotifier
     _realtimeSub = realtime.changes.listen((_) {
       if (mounted) unawaited(_pollConversations());
     });
+    
+    // Listener para mudanças de status de usuários em tempo real
+    _statusSub = realtime.statusChanges.listen((event) {
+      if (!mounted) return;
+      final userId = event['userId'] as String?;
+      final emServico = event['emServico'] as bool?;
+      
+      if (userId != null && emServico != null) {
+        _updateParticipantStatus(userId, emServico);
+      }
+    });
+    
     _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
       if (mounted && (!realtime.connected || ++_pollTicks % 10 == 0)) {
         unawaited(_pollConversations());
       }
     });
+  }
+  
+  /// Atualiza o status emServico de um participante em todas as conversas
+  void _updateParticipantStatus(String userId, bool emServico) {
+    final current = state.valueOrNull;
+    if (current == null) return;
+    
+    bool hasChanges = false;
+    final updated = current.map<ConversationEntity>((conv) {
+      final updatedParticipants = conv.participantes.map<ConversationParticipant>((p) {
+        if (p.id == userId && p.emServico != emServico) {
+          hasChanges = true;
+          return p.copyWith(emServico: emServico);
+        }
+        return p;
+      }).toList();
+      
+      if (hasChanges) {
+        return conv.copyWith(participantes: updatedParticipants);
+      }
+      return conv;
+    }).toList();
+    
+    if (hasChanges) {
+      debugPrint('[ConversationsNotifier] Status atualizado em tempo real: userId=$userId, emServico=$emServico');
+      state = AsyncValue.data(updated);
+    }
   }
 
   List<ConversationEntity> _sortConversations(List<ConversationEntity> list) {

@@ -19,7 +19,11 @@ class RealtimeService {
     if (enabled) unawaited(_connect());
   }
   final _events = StreamController<String?>.broadcast();
+  final _statusEvents = StreamController<Map<String, dynamic>>.broadcast();
+  
   Stream<String?> get changes => _events.stream;
+  Stream<Map<String, dynamic>> get statusChanges => _statusEvents.stream;
+  
   WebSocketChannel? _channel;
   StreamSubscription<dynamic>? _subscription;
   Timer? _retry;
@@ -51,6 +55,9 @@ class RealtimeService {
           } else if (event['type'] == 'conversation.changed' &&
               event['conversationId'] is String) {
             _events.add(event['conversationId'] as String);
+          } else if (event['type'] == 'user.status.changed') {
+            // Novo evento: mudança de status de serviço de um usuário
+            _statusEvents.add(event);
           }
         } catch (_) { /* Ignore invalid events; HTTP remains authoritative. */ }
       }, onError: (_) => _reconnect(), onDone: _reconnect);
@@ -85,5 +92,6 @@ class RealtimeService {
     unawaited(_subscription?.cancel());
     unawaited(_channel?.sink.close());
     unawaited(_events.close());
+    unawaited(_statusEvents.close());
   }
 }

@@ -197,6 +197,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               perms: perms,
               user: user,
             ),
+            
             const SizedBox(height: 16),
 
             // ─── Emergência (surge automaticamente apenas se houver protocolo ativo) ───

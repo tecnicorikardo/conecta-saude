@@ -12,7 +12,7 @@ class ConversationParticipant {
   final String jornadaFim;
   final String jornadaDias;
   final bool emPlantaoExtra;
-  final bool? emServico;
+  final bool? emServico; // Status manual do backend
 
   const ConversationParticipant({
     required this.id,
@@ -30,36 +30,41 @@ class ConversationParticipant {
   });
 
   bool get isCurrentlyWorking {
+    // Usa o status manual do backend se disponível
     if (emServico != null) return emServico!;
-    if (emPlantaoExtra) return true;
+    
+    // Fallback para false se não houver informação
+    return false;
+  }
 
-    final now = DateTime.now();
-    final dayCodes = {
-      1: 'seg',
-      2: 'ter',
-      3: 'qua',
-      4: 'qui',
-      5: 'sex',
-      6: 'sab',
-      7: 'dom',
-    };
-    final todayCode = dayCodes[now.weekday] ?? 'seg';
-    final dias = jornadaDias.toLowerCase().split(',').map((d) => d.trim()).toList();
-    if (!dias.contains(todayCode)) return false;
-
-    final startParts = jornadaInicio.split(':').map((e) => int.tryParse(e) ?? 0).toList();
-    final endParts = jornadaFim.split(':').map((e) => int.tryParse(e) ?? 0).toList();
-    final startMinutes = (startParts.isNotEmpty ? startParts[0] : 7) * 60 +
-        (startParts.length > 1 ? startParts[1] : 0);
-    final endMinutes = (endParts.isNotEmpty ? endParts[0] : 16) * 60 +
-        (endParts.length > 1 ? endParts[1] : 0);
-    final nowMinutes = now.hour * 60 + now.minute;
-
-    if (endMinutes >= startMinutes) {
-      return nowMinutes >= startMinutes && nowMinutes <= endMinutes;
-    } else {
-      return nowMinutes >= startMinutes || nowMinutes <= endMinutes;
-    }
+  ConversationParticipant copyWith({
+    String? id,
+    String? nome,
+    String? fotoUrl,
+    String? cargo,
+    String? setorNome,
+    int? hierarquiaNivel,
+    bool? isAdmin,
+    String? jornadaInicio,
+    String? jornadaFim,
+    String? jornadaDias,
+    bool? emPlantaoExtra,
+    bool? emServico,
+  }) {
+    return ConversationParticipant(
+      id: id ?? this.id,
+      nome: nome ?? this.nome,
+      fotoUrl: fotoUrl ?? this.fotoUrl,
+      cargo: cargo ?? this.cargo,
+      setorNome: setorNome ?? this.setorNome,
+      hierarquiaNivel: hierarquiaNivel ?? this.hierarquiaNivel,
+      isAdmin: isAdmin ?? this.isAdmin,
+      jornadaInicio: jornadaInicio ?? this.jornadaInicio,
+      jornadaFim: jornadaFim ?? this.jornadaFim,
+      jornadaDias: jornadaDias ?? this.jornadaDias,
+      emPlantaoExtra: emPlantaoExtra ?? this.emPlantaoExtra,
+      emServico: emServico ?? this.emServico,
+    );
   }
 }
 

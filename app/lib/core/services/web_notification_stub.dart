@@ -1,1 +1,1 @@
-void showNativeNotificationWeb(String title, String body, {String? tag, String? url}) {}
+void showNativeNotificationWeb(String title, String body, {String? tag, String? url, String? type}) {}

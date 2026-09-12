@@ -44,6 +44,16 @@
       overflow: hidden;
       background-color: #ECEFF1;
       -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    /* Proteção contra impressão de prontuário e dados via navegador */
+    @media print {
+      body {
+        display: none !important;
+      }
     }
 
     /* ─── Banner de Instalação PWA Mobile ─────────────────────────────────── */
@@ -364,20 +374,40 @@
     };
 
     // ─── Disparar Notificação Nativa do Sistema em Primeiro Plano ──────────
-    window.showHospitalNotification = function(title, body, tag, url) {
+    window.showHospitalNotification = function(title, body, tag, url, type) {
       window.playNotificationChime();
 
       if (!('Notification' in window)) return;
       if (Notification.permission !== 'granted') return;
 
+      // Determinar badge colorido baseado no tipo
+      var badge = '/icons/Icon-192.png';
+      var vibrationPattern = [200, 100, 200];
+      var requireInteraction = false;
+
+      if (type === 'emergency') {
+        // Emergência - vermelho
+        badge = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"%3E%3Ccircle cx="12" cy="12" r="10" fill="%23D32F2F"/%3E%3C/svg%3E';
+        vibrationPattern = [500, 200, 500, 200, 500];
+        requireInteraction = true;
+      } else if (type === 'alert') {
+        // Alerta - amarelo
+        badge = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"%3E%3Ccircle cx="12" cy="12" r="10" fill="%23FFA000"/%3E%3C/svg%3E';
+        vibrationPattern = [300, 150, 300];
+      } else {
+        // Mensagem - azul
+        badge = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"%3E%3Ccircle cx="12" cy="12" r="10" fill="%23005CA9"/%3E%3C/svg%3E';
+      }
+
       var options = {
         body: body || 'Nova notificação de plantão.',
         icon: '/icons/Icon-192.png',
-        badge: '/icons/Icon-192.png',
+        badge: badge,
         tag: tag || 'conecta_saude',
         renotify: true,
-        vibrate: [200, 100, 200],
-        data: { url: url || '/conversations' }
+        vibrate: vibrationPattern,
+        requireInteraction: requireInteraction,
+        data: { url: url || '/conversations', type: type }
       };
 
       if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {

@@ -498,6 +498,7 @@ export async function postChannelMessage(req: Request, res: Response): Promise<v
           },
           data: {
             type: 'channel_message',
+            notificationType: 'message',
             channelId,
             senderId: actor.id,
             senderName: actor.nome,
@@ -506,6 +507,7 @@ export async function postChannelMessage(req: Request, res: Response): Promise<v
             priority: 'high',
             notification: {
               color: '#005CA9',
+              channelId: 'conecta_messages',
               clickAction: 'FLUTTER_NOTIFICATION_CLICK',
             },
           },

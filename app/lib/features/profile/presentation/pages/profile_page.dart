@@ -15,6 +15,7 @@ import '../../../../core/widgets/app_avatar.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../auth/presentation/providers/current_user_provider.dart';
+import '../../../auth/presentation/providers/service_status_provider.dart';
 import '../widgets/shift_end_dialog.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
@@ -738,6 +739,126 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           label: 'Status do Acesso',
                           value: user.ativo ? 'Ativo e Liberado' : 'Aguardando Aprovação',
                           valueColor: user.ativo ? AppColors.success : AppColors.warning,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // ─── Status de Serviço (Toggle Manual) ───────────────────
+                  Container(
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.04),
+                          blurRadius: 12,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    padding: const EdgeInsets.all(18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'STATUS DE SERVIÇO',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        Row(
+                          children: [
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: user.emServico
+                                    ? AppColors.success.withOpacity(0.1)
+                                    : Colors.grey.withOpacity(0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                user.emServico ? Icons.work : Icons.work_off,
+                                color: user.emServico ? AppColors.success : Colors.grey,
+                                size: 24,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    user.emServico ? 'Em Serviço' : 'Fora de Serviço',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: isDark ? Colors.white : const Color(0xFF1E293B),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    user.emServico
+                                        ? 'Disponível para atendimento'
+                                        : 'Não disponível no momento',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: isDark ? Colors.white70 : Colors.black54,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Consumer(
+                              builder: (context, ref, _) {
+                                final statusAsync = ref.watch(serviceStatusProvider);
+                                final isLoading = statusAsync.isLoading;
+
+                                return isLoading
+                                    ? const SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(strokeWidth: 2),
+                                      )
+                                    : Switch(
+                                        value: user.emServico,
+                                        onChanged: (value) async {
+                                          try {
+                                            await ref.read(serviceStatusProvider.notifier).toggle();
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(
+                                                  content: Text(
+                                                    value
+                                                        ? '✅ Status: Em Serviço'
+                                                        : '⏸️ Status: Fora de Serviço',
+                                                  ),
+                                                  duration: const Duration(seconds: 2),
+                                                ),
+                                              );
+                                            }
+                                          } catch (error) {
+                                            if (context.mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                SnackBar(
+                                                  content: Text('Erro: $error'),
+                                                  backgroundColor: Colors.red,
+                                                ),
+                                              );
+                                            }
+                                          }
+                                        },
+                                        activeColor: AppColors.success,
+                                      );
+                              },
+                            ),
+                          ],
                         ),
                       ],
                     ),

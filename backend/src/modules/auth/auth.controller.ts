@@ -96,6 +96,7 @@ export async function verifyToken(req: Request, res: Response): Promise<void> {
       jornadaDias: user.jornadaDias ?? 'seg,ter,qua,qui,sex',
       emPlantaoExtra: user.emPlantaoExtra ?? false,
       silenciarForaJornada: user.silenciarForaJornada ?? true,
+      emServico: user.emServico ?? true,
       fotoUrl: user.fotoUrl,
       ativo: user.ativo,
       criadoEm: user.criadoEm,
@@ -138,6 +139,7 @@ export async function getMe(req: Request, res: Response): Promise<void> {
       jornadaDias: user.jornadaDias ?? 'seg,ter,qua,qui,sex',
       emPlantaoExtra: user.emPlantaoExtra ?? false,
       silenciarForaJornada: user.silenciarForaJornada ?? true,
+      emServico: user.emServico ?? true,
       fotoUrl: user.fotoUrl,
       ativo: user.ativo,
       criadoEm: user.criadoEm,
@@ -357,3 +359,121 @@ export async function registerUser(req: Request, res: Response): Promise<void> {
   });
 }
 
+
+/**
+ * POST /api/auth/test-push-typed
+ * Envia push de teste com tipo específico (message, alert, emergency)
+ */
+export async function testPushTyped(req: Request, res: Response): Promise<void> {
+  const userId = req.user!.id;
+  const type = req.body?.type as string || 'message';
+  const delaySeconds = Math.max(0, Math.min(60, Number(req.body?.delaySeconds ?? 0)));
+
+  if (!['message', 'alert', 'emergency'].includes(type)) {
+    throw new AppError('Tipo inválido. Use: message, alert ou emergency', 400);
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { id: true, nome: true, fcmToken: true },
+  });
+
+  if (!user || !user.fcmToken) {
+    throw new AppError('Nenhum token FCM registrado.', 400);
+  }
+
+  const typeConfig = {
+    message: {
+      title: '💬 Teste - Mensagem',
+      body: 'Notificação azul (mensagens e grupos)',
+      color: '#005CA9'
+    },
+    alert: {
+      title: '📢 Teste - Comunicado',
+      body: 'Notificação amarela (alertas e comunicados)',
+      color: '#FFA000'
+    },
+    emergency: {
+      title: '🚨 Teste - Emergência',
+      body: 'Notificação vermelha (emergências críticas)',
+      color: '#D32F2F'
+    },
+  };
+
+  const config = typeConfig[type as keyof typeof typeConfig];
+
+  const sendPushFn = async () => {
+    const messaging = getFirebaseMessaging();
+    return messaging.send({
+      token: user.fcmToken!,
+      notification: {
+        title: config.title,
+        body: delaySeconds > 0 ? `${config.body} (${delaySeconds}s delay)` : config.body,
+      },
+      data: {
+        type: `test_${type}`,
+        notificationType: type,
+        timestamp: new Date().toISOString(),
+      },
+      android: {
+        priority: type === 'emergency' ? 'high' : 'normal',
+        notification: {
+          color: config.color,
+          channelId: type === 'emergency' ? 'conecta_emergency' : type === 'alert' ? 'conecta_alerts' : 'conecta_messages',
+          clickAction: 'FLUTTER_NOTIFICATION_CLICK',
+        },
+      },
+      webpush: {
+        fcmOptions: {
+          link: 'https://conecta-hospital.web.app/profile',
+        },
+        notification: {
+          title: config.title,
+          body: config.body,
+          icon: 'https://conecta-hospital.web.app/icons/Icon-192.png',
+          badge: 'https://conecta-hospital.web.app/icons/Icon-192.png',
+          tag: `test_${type}_${Date.now()}`,
+          requireInteraction: type === 'emergency',
+        },
+      },
+    });
+  };
+
+  if (delaySeconds > 0) {
+    setTimeout(async () => {
+      try {
+        await sendPushFn();
+        console.log(`[FCM Test Typed] ${type} enviado após ${delaySeconds}s`);
+      } catch (err) {
+        console.error(`[FCM Test Typed] Erro:`, err);
+      }
+    }, delaySeconds * 1000);
+
+    res.json({
+      success: true,
+      delayed: true,
+      delaySeconds,
+      type,
+      color: config.color,
+      message: `Push ${type} agendado para ${delaySeconds}s. Minimize o app!`,
+    });
+    return;
+  }
+
+  try {
+    const messageId = await sendPushFn();
+    res.json({
+      success: true,
+      type,
+      color: config.color,
+      message: `Push ${type} enviado com sucesso!`,
+      messageId,
+    });
+  } catch (error: any) {
+    console.error('[FCM Test Typed Error]:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Erro ao enviar push',
+    });
+  }
+}

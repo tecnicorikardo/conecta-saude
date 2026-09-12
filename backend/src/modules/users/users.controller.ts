@@ -5,6 +5,7 @@ import { HierarquiaNivel } from '../../types';
 import { AppError } from '../../middleware/errorHandler';
 import { auditLog } from '../../utils/auditLogger';
 import { isUserCurrentlyWorking } from '../../utils/schedule';
+import { notifyUserStatusChanged } from '../../realtime';
 import {
   createUserSchema,
   updateUserSchema,
@@ -69,6 +70,7 @@ export async function listUsers(req: Request, res: Response): Promise<void> {
         jornadaFim: true,
         jornadaDias: true,
         emPlantaoExtra: true,
+        emServico: true,
         silenciarForaJornada: true,
         criadoEm: true,
         setor: { select: { id: true, nome: true } },
@@ -130,6 +132,7 @@ export async function getUser(req: Request, res: Response): Promise<void> {
       jornadaFim: user.jornadaFim,
       jornadaDias: user.jornadaDias,
       emPlantaoExtra: user.emPlantaoExtra,
+      emServico: user.emServico,
       silenciarForaJornada: user.silenciarForaJornada,
       fotoUrl: user.fotoUrl,
       matricula: user.matricula,
@@ -595,5 +598,56 @@ export async function updateMySchedule(req: Request, res: Response): Promise<voi
     success: true,
     message: 'Configurações de jornada e escala atualizadas com sucesso.',
     data: updatedUser,
+  });
+}
+
+/**
+ * PATCH /api/users/me/service-status
+ * Atualiza o status "Em Serviço / Fora de Serviço" do próprio usuário.
+ * Este status manual substitui o cálculo automático de jornada.
+ */
+export async function updateMyServiceStatus(req: Request, res: Response): Promise<void> {
+  const actor = req.user!;
+  const { emServico } = req.body;
+
+  if (typeof emServico !== 'boolean') {
+    throw new AppError('Campo emServico deve ser boolean (true ou false).', 400);
+  }
+
+  const user = await prisma.user.update({
+    where: { id: actor.id },
+    data: { emServico },
+    select: {
+      id: true,
+      nome: true,
+      emServico: true,
+      cargo: true,
+      setor: { select: { nome: true } },
+    },
+  });
+
+  // Auditoria
+  await auditLog({
+    userId: actor.id,
+    acao: 'atualizar_status_servico',
+    entidade: 'user',
+    entidadeId: actor.id,
+    detalhes: { emServico, timestamp: new Date().toISOString() },
+    req,
+  });
+
+  // Notificar via WebSocket todos os participantes das conversas do usuário
+  notifyUserStatusChanged(actor.id, emServico);
+
+  console.log(`[Status] ${user.nome} alterou status para: ${emServico ? 'Em Serviço' : 'Fora de Serviço'}`);
+
+  res.json({
+    success: true,
+    message: `Status alterado para ${emServico ? 'Em Serviço' : 'Fora de Serviço'}`,
+    data: {
+      id: user.id,
+      nome: user.nome,
+      emServico: user.emServico,
+    },
   });
 }

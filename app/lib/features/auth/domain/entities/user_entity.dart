@@ -21,6 +21,7 @@ class UserEntity extends Equatable {
   final DateTime? jornadaEstendidaAte; // Extensão de horas extras para o dia
   final bool emPlantaoExtra;
   final bool silenciarForaJornada;
+  final bool emServico; // Status manual: true=Em Serviço, false=Fora de Serviço
   final bool ativo;
   final String? aprovadoPor;
   final DateTime? aprovadoEm;
@@ -46,6 +47,7 @@ class UserEntity extends Equatable {
     this.jornadaEstendidaAte,
     this.emPlantaoExtra = false,
     this.silenciarForaJornada = true,
+    this.emServico = true,
     required this.ativo,
     this.aprovadoPor,
     this.aprovadoEm,
@@ -73,70 +75,19 @@ class UserEntity extends Equatable {
     }
   }
 
-  /// Verifica se o usuário está atualmente dentro de sua escala/jornada de trabalho
-  bool get isCurrentlyWorking {
-    if (emPlantaoExtra) return true;
-    if (!ativo) return false;
-
-    final now = DateTime.now();
-
-    // Se houve prorrogação/extensão de horas no fim do expediente e ainda está válida hoje
-    if (jornadaEstendidaAte != null && now.isBefore(jornadaEstendidaAte!)) {
-      return true;
-    }
-
-    // 1=seg, 2=ter, 3=qua, 4=qui, 5=sex, 6=sab, 7=dom
-    final dayCodes = {
-      1: 'seg',
-      2: 'ter',
-      3: 'qua',
-      4: 'qui',
-      5: 'sex',
-      6: 'sab',
-      7: 'dom',
-    };
-    final todayCode = dayCodes[now.weekday] ?? 'seg';
-    final dias = jornadaDias.toLowerCase().split(',').map((d) => d.trim()).toList();
-
-    if (!dias.contains(todayCode)) {
-      return false;
-    }
-
-    final startParts = jornadaInicio.split(':').map((e) => int.tryParse(e) ?? 0).toList();
-    final endParts = jornadaFim.split(':').map((e) => int.tryParse(e) ?? 0).toList();
-
-    final startMinutes = (startParts.isNotEmpty ? startParts[0] : 7) * 60 +
-        (startParts.length > 1 ? startParts[1] : 0);
-    final endMinutes = (endParts.isNotEmpty ? endParts[0] : 16) * 60 +
-        (endParts.length > 1 ? endParts[1] : 0);
-    final nowMinutes = now.hour * 60 + now.minute;
-
-    if (endMinutes >= startMinutes) {
-      // Turno regular diurno (ex: 07:00 as 16:00)
-      return nowMinutes >= startMinutes && nowMinutes <= endMinutes;
-    } else {
-      // Turno noturno / cruza meia-noite (ex: 19:00 as 07:00)
-      return nowMinutes >= startMinutes || nowMinutes <= endMinutes;
-    }
-  }
+  /// Verifica se o usuário está atualmente em serviço
+  /// Agora usa o campo manual emServico ao invés de cálculo automático
+  bool get isCurrentlyWorking => emServico;
 
   String get workStatusLabel {
     if (!ativo) return 'Inativo';
-    if (emPlantaoExtra) return 'Em Plantão Extra';
-    if (jornadaEstendidaAte != null && DateTime.now().isBefore(jornadaEstendidaAte!)) {
-      return 'Em Serviço (Hora Extra)';
-    }
-    if (isCurrentlyWorking) return 'Em Serviço';
+    if (emServico) return 'Em Serviço';
     return 'Fora de Serviço';
   }
 
   Color get workStatusColor {
-    if (!ativo) return const Color(0xFF9E9E9E);
-    if (emPlantaoExtra) return const Color(0xFF0288D1); // Azul plantão extra
-    if (jornadaEstendidaAte != null && DateTime.now().isBefore(jornadaEstendidaAte!)) {
-      return const Color(0xFF2E7D32); // Verde SUS
-    }
-    if (isCurrentlyWorking) return const Color(0xFF2E7D32); // Verde SUS em serviço
+    if (!ativo) return const Color(0xFF9E9E9E); // Cinza
+    if (emServico) return const Color(0xFF2E7D32); // Verde SUS em serviço
     return const Color(0xFFF57C00); // Laranja fora de serviço
   }
 
@@ -160,6 +111,7 @@ class UserEntity extends Equatable {
     DateTime? jornadaEstendidaAte,
     bool? emPlantaoExtra,
     bool? silenciarForaJornada,
+    bool? emServico,
     bool? ativo,
     String? aprovadoPor,
     DateTime? aprovadoEm,
@@ -185,6 +137,7 @@ class UserEntity extends Equatable {
       jornadaEstendidaAte: jornadaEstendidaAte ?? this.jornadaEstendidaAte,
       emPlantaoExtra: emPlantaoExtra ?? this.emPlantaoExtra,
       silenciarForaJornada: silenciarForaJornada ?? this.silenciarForaJornada,
+      emServico: emServico ?? this.emServico,
       ativo: ativo ?? this.ativo,
       aprovadoPor: aprovadoPor ?? this.aprovadoPor,
       aprovadoEm: aprovadoEm ?? this.aprovadoEm,
@@ -213,6 +166,7 @@ class UserEntity extends Equatable {
       'jornadaEstendidaAte': jornadaEstendidaAte?.toIso8601String(),
       'emPlantaoExtra': emPlantaoExtra,
       'silenciarForaJornada': silenciarForaJornada,
+      'emServico': emServico,
       'ativo': ativo,
       'aprovadoPor': aprovadoPor,
       'aprovadoEm': aprovadoEm?.toIso8601String(),
@@ -243,6 +197,7 @@ class UserEntity extends Equatable {
           : null,
       emPlantaoExtra: json['emPlantaoExtra'] as bool? ?? false,
       silenciarForaJornada: json['silenciarForaJornada'] as bool? ?? true,
+      emServico: json['emServico'] as bool? ?? true,
       ativo: json['ativo'] as bool? ?? true,
       aprovadoPor: json['aprovadoPor'] as String?,
       aprovadoEm: json['aprovadoEm'] != null
@@ -275,6 +230,7 @@ class UserEntity extends Equatable {
         jornadaEstendidaAte,
         emPlantaoExtra,
         silenciarForaJornada,
+        emServico,
         ativo,
         aprovadoPor,
         aprovadoEm,

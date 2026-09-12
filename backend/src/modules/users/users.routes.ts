@@ -11,6 +11,7 @@ import {
   approveUser,
   rejectUser,
   updateMySchedule,
+  updateMyServiceStatus,
 } from './users.controller';
 
 const router = Router();
@@ -19,6 +20,7 @@ router.use(authenticate);
 
 // Perfil / Escala do próprio usuário
 router.patch('/me/schedule', asyncHandler(updateMySchedule));
+router.patch('/me/service-status', asyncHandler(updateMyServiceStatus));
 
 // Aprovações de Auto-Cadastro
 router.get('/pending', asyncHandler(getPendingUsers));

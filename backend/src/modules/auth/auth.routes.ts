@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { authenticate } from '../../middleware/authenticate';
 import { asyncHandler } from '../../utils/asyncHandler';
-import { verifyToken, getMe, updateFcmToken, registerUser, testPush } from './auth.controller';
+import { verifyToken, getMe, updateFcmToken, registerUser, testPush, testPushTyped } from './auth.controller';
 
 const router = Router();
 
@@ -14,5 +14,6 @@ router.post('/register', asyncHandler(registerUser));
 router.get('/me', authenticate, asyncHandler(getMe));
 router.patch('/fcm-token', authenticate, asyncHandler(updateFcmToken));
 router.post('/test-push', authenticate, asyncHandler(testPush));
+router.post('/test-push-typed', authenticate, asyncHandler(testPushTyped));
 
 export default router;

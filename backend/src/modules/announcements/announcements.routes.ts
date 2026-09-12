@@ -161,13 +161,15 @@ async function createAnnouncement(req: Request, res: Response): Promise<void> {
           },
           data: {
             type: 'announcement',
+            notificationType: 'alert',
             announcementId: announcement.id,
             priority: data.prioridade,
           },
           android: {
             priority: 'high',
             notification: {
-              color: '#D97706',
+              color: '#FFA000',
+              channelId: 'conecta_alerts',
               clickAction: 'FLUTTER_NOTIFICATION_CLICK',
             },
           },

@@ -33,6 +33,28 @@ class CurrentUserNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
     }
   }
 
+  /// Recarrega os dados do usuário atual do backend
+  Future<void> refreshUser() async {
+    try {
+      final repository = _ref.read(authRepositoryProvider);
+      // Força reload do usuário via getMe
+      final result = await repository.getCurrentUser();
+      if (mounted) {
+        result.fold(
+          (_) {},
+          (user) {
+            if (user != null) {
+              state = AsyncValue.data(user);
+            }
+          },
+        );
+      }
+    } catch (error) {
+      // Mantém o estado atual em caso de erro
+      // Não sobrescreve com erro para não quebrar a UI
+    }
+  }
+
   void clear() {
     if (mounted) {
       state = const AsyncValue.data(null);

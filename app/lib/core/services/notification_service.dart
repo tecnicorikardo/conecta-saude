@@ -2,9 +2,11 @@ import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../config/firebase_options.dart';
+import '../constants/notification_constants.dart';
 import '../../features/auth/presentation/providers/current_user_provider.dart';
 import 'http_service.dart';
 import 'web_notification_helper.dart';
@@ -81,14 +83,28 @@ class NotificationService {
       });
 
       // 4. Escutar mensagens recebidas com o app em primeiro plano
-      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
         final title = message.notification?.title ?? message.data['title'] ?? 'Conecta Saúde - SUS';
         final body = message.notification?.body ?? message.data['body'] ?? 'Nova mensagem institucional recebida.';
-        final isEmergency = message.data['tipo'] == 'emergencia' ||
-            message.data['tag'] == 'emergencia' ||
-            title.contains('🚨') ||
-            title.toLowerCase().contains('emergência') ||
-            title.toLowerCase().contains('urgente');
+        
+        // Extrair tipo da notificação do payload FCM
+        String notificationType = NotificationConstants.typeMessage; // padrão
+        
+        if (message.data['notificationType'] != null) {
+          notificationType = message.data['notificationType'] as String;
+        } else if (message.data['type'] == 'emergency_alert' || 
+                   message.data['tipo'] == 'emergencia' ||
+                   title.contains('🚨') ||
+                   title.toLowerCase().contains('emergência')) {
+          notificationType = NotificationConstants.typeEmergency;
+        } else if (message.data['type'] == 'announcement' ||
+                   message.data['tipo'] == 'comunicado' ||
+                   title.contains('📢') ||
+                   title.toLowerCase().contains('comunicado')) {
+          notificationType = NotificationConstants.typeAlert;
+        }
+        
+        final isEmergency = notificationType == NotificationConstants.typeEmergency;
 
         final currentUser = _ref.read(currentUserProvider).valueOrNull;
         if (currentUser != null &&
@@ -99,8 +115,23 @@ class NotificationService {
           return;
         }
 
-        debugPrint('[FCM Foreground] Push recebido: $title - $body');
-        notifyHospitalUser(title, body, tag: message.data['conversationId'] ?? 'chat', url: '/conversations');
+        debugPrint('[FCM Foreground] Push recebido: $title - $body (tipo: $notificationType)');
+        if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+          try {
+            final posted = await const MethodChannel('conecta_saude/notifications')
+                .invokeMethod<bool>('show', {
+              'title': title,
+              'body': body,
+              'tag': message.data['conversationId'] ?? message.messageId ?? 'chat',
+              'type': notificationType, // NOVO: Passa o tipo para o Kotlin
+            });
+            debugPrint('[FCM Foreground] Notificação Android publicada: $posted');
+          } catch (error) {
+            debugPrint('[FCM Foreground] Falha ao exibir notificação Android: $error');
+          }
+        } else {
+          notifyHospitalUser(title, body, tag: message.data['conversationId'] ?? 'chat', url: '/conversations', type: notificationType);
+        }
       });
 
       // 5. Escutar abertura do app ao tocar na notificação push (background)

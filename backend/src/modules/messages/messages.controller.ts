@@ -189,6 +189,7 @@ export async function sendMessage(req: Request, res: Response): Promise<void> {
           },
           data: {
             type: 'chat_message',
+            notificationType: 'message',
             conversationId,
             senderId: actor.id,
             senderName,
@@ -198,6 +199,7 @@ export async function sendMessage(req: Request, res: Response): Promise<void> {
             priority: 'high',
             notification: {
               color: '#005CA9',
+              channelId: 'conecta_messages',
               clickAction: 'FLUTTER_NOTIFICATION_CLICK',
             },
           },

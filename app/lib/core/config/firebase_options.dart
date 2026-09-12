@@ -34,11 +34,10 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCfahJx22q7Be42eNAOW7xV3hWTLmemWII',
-    appId: '1:779815545602:web:dfb3580daef5888122701b',
+    apiKey: 'AIzaSyC8Dus0mcIjYP3gDXKcVhnMi8FMVkTKPro',
+    appId: '1:779815545602:android:24669e59cf5ad53a22701b',
     messagingSenderId: '779815545602',
     projectId: 'conecta-hospital',
-    authDomain: 'conecta-hospital.firebaseapp.com',
     storageBucket: 'conecta-hospital.firebasestorage.app',
   );
 }

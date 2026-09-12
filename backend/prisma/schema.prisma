@@ -73,6 +73,7 @@ model User {
   jornadaDias           String?               @default("seg,ter,qua,qui,sex") @map("jornada_dias")
   emPlantaoExtra        Boolean               @default(false) @map("em_plantao_extra")
   silenciarForaJornada  Boolean               @default(true) @map("silenciar_fora_jornada")
+  emServico             Boolean               @default(true) @map("em_servico")
   ativo                 Boolean               @default(true)
   aprovadoPor           String?               @map("aprovado_por")
   aprovadoEm            DateTime?             @map("aprovado_em")
@@ -108,6 +109,7 @@ model User {
   @@index([unitId])
   @@index([hierarquiaNivel])
   @@index([ativo])
+  @@index([emServico])
   @@map("users")
 }
 

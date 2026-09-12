@@ -53,7 +53,7 @@ export class RealtimeHub {
     this.heartbeat.unref();
   }
 
-  notify(userIds: string[], event: { type: string; conversationId: string }): void {
+  notify(userIds: string[], event: Record<string, any>): void {
     const allowed = new Set(userIds);
     for (const [socket, identity] of this.sockets) {
       if (!allowed.has(identity.userId) || identity.expiresAt <= Date.now()) continue;
@@ -90,4 +90,24 @@ export function notifyConversation(conversationId: string): void {
   }).then(members => {
     hub?.notify(members.map(m => m.userId), { type: 'conversation.changed', conversationId });
   }).catch(() => console.warn('[Realtime] Aviso não entregue; clientes recuperarão pela sincronização.'));
+}
+
+export function notifyUserStatusChanged(userId: string, emServico: boolean): void {
+  if (!hub) return;
+  // Notifica todos os membros das conversas do usuário sobre mudança de status
+  void prisma.conversationMember.findMany({
+    where: { 
+      conversation: { 
+        ativo: true,
+        members: { some: { userId } }
+      }
+    },
+    select: { userId: true },
+    distinct: ['userId'],
+  }).then(members => {
+    hub?.notify(
+      members.map(m => m.userId), 
+      { type: 'user.status.changed', userId, emServico } as any
+    );
+  }).catch(() => console.warn('[Realtime] Notificação de status não entregue; clientes recuperarão pela sincronização.'));
 }

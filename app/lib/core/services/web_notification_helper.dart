@@ -2,8 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'web_notification_stub.dart'
     if (dart.library.js_interop) 'web_notification_web.dart';
 
-void notifyHospitalUser(String title, String body, {String? tag, String? url}) {
+void notifyHospitalUser(String title, String body, {String? tag, String? url, String? type}) {
   if (kIsWeb) {
-    showNativeNotificationWeb(title, body, tag: tag, url: url);
+    showNativeNotificationWeb(title, body, tag: tag, url: url, type: type);
   }
 }
