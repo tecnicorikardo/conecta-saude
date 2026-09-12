@@ -749,24 +749,26 @@ class _GroupInfoPageState extends ConsumerState<GroupInfoPage> {
               secondary: const Icon(Icons.timer_outlined, color: AppColors.primary),
               title: Text('Mensagens temporárias (24h)', style: TextStyle(fontWeight: FontWeight.w600, color: textPrimary)),
               subtitle: Text(
-                'Quando ativo, as mensagens deste grupo expiram e somem após 24 horas.',
+                'Quando ativo, as mensagens deste grupo expiram e somem após 24 horas.${!isCurrentUserAdmin ? '\n(Apenas administradores do grupo podem alterar)' : ''}',
                 style: TextStyle(fontSize: 12, color: textSecondary),
               ),
               value: conv.autoExcluir24h,
               activeTrackColor: AppColors.primary,
-              onChanged: (val) async {
-                final messenger = ScaffoldMessenger.of(context);
-                try {
-                  final repo = ref.read(conversationRepositoryProvider);
-                  await repo.updateGroup(conv.id, autoExcluir24h: val);
-                  ref.read(conversationsProvider.notifier).toggleAutoExcluir24h(conv.id, val);
-                  _loadGroupDetails();
-                } catch (e) {
-                  messenger.showSnackBar(
-                    SnackBar(content: Text('Erro: $e'), backgroundColor: Colors.red),
-                  );
-                }
-              },
+              onChanged: isCurrentUserAdmin
+                  ? (val) async {
+                      final messenger = ScaffoldMessenger.of(context);
+                      try {
+                        final repo = ref.read(conversationRepositoryProvider);
+                        await repo.updateGroup(conv.id, autoExcluir24h: val);
+                        ref.read(conversationsProvider.notifier).toggleAutoExcluir24h(conv.id, val);
+                        _loadGroupDetails();
+                      } catch (e) {
+                        messenger.showSnackBar(
+                          SnackBar(content: Text('Erro: $e'), backgroundColor: Colors.red),
+                        );
+                      }
+                    }
+                  : null,
             ),
           ),
           const SizedBox(height: 12),

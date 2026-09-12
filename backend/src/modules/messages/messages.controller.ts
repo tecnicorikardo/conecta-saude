@@ -194,6 +194,13 @@ export async function sendMessage(req: Request, res: Response): Promise<void> {
             senderName,
             messageId: message.id,
           },
+          android: {
+            priority: 'high',
+            notification: {
+              color: '#005CA9',
+              clickAction: 'FLUTTER_NOTIFICATION_CLICK',
+            },
+          },
           webpush: {
             fcmOptions: {
               link: `https://conecta-hospital.web.app/chat/${conversationId}`,

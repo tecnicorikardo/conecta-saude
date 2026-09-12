@@ -176,6 +176,64 @@ class UserEntity extends Equatable {
     );
   }
 
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'firebaseUid': firebaseUid,
+      'nome': nome,
+      'email': email,
+      'cargo': cargo,
+      'hierarquiaNivel': hierarquiaNivel,
+      'setorId': setorId,
+      'setorNome': setorNome,
+      'unitId': unitId,
+      'unitNome': unitNome,
+      'unitSigla': unitSigla,
+      'fotoUrl': fotoUrl,
+      'matricula': matricula,
+      'jornadaInicio': jornadaInicio,
+      'jornadaFim': jornadaFim,
+      'jornadaDias': jornadaDias,
+      'emPlantaoExtra': emPlantaoExtra,
+      'silenciarForaJornada': silenciarForaJornada,
+      'ativo': ativo,
+      'aprovadoPor': aprovadoPor,
+      'aprovadoEm': aprovadoEm?.toIso8601String(),
+      'criadoEm': criadoEm.toIso8601String(),
+    };
+  }
+
+  factory UserEntity.fromJson(Map<String, dynamic> json) {
+    return UserEntity(
+      id: json['id'] as String? ?? '',
+      firebaseUid: json['firebaseUid'] as String? ?? '',
+      nome: json['nome'] as String? ?? 'Usuário',
+      email: json['email'] as String? ?? '',
+      cargo: json['cargo'] as String? ?? 'Funcionário',
+      hierarquiaNivel: json['hierarquiaNivel'] as int? ?? 4,
+      setorId: json['setorId'] as String? ?? '',
+      setorNome: json['setorNome'] as String? ?? '',
+      unitId: json['unitId'] as String?,
+      unitNome: json['unitNome'] as String?,
+      unitSigla: json['unitSigla'] as String?,
+      fotoUrl: json['fotoUrl'] as String?,
+      matricula: json['matricula'] as String?,
+      jornadaInicio: json['jornadaInicio'] as String? ?? '07:00',
+      jornadaFim: json['jornadaFim'] as String? ?? '16:00',
+      jornadaDias: json['jornadaDias'] as String? ?? 'seg,ter,qua,qui,sex',
+      emPlantaoExtra: json['emPlantaoExtra'] as bool? ?? false,
+      silenciarForaJornada: json['silenciarForaJornada'] as bool? ?? true,
+      ativo: json['ativo'] as bool? ?? true,
+      aprovadoPor: json['aprovadoPor'] as String?,
+      aprovadoEm: json['aprovadoEm'] != null
+          ? DateTime.tryParse(json['aprovadoEm'] as String)
+          : null,
+      criadoEm: json['criadoEm'] != null
+          ? DateTime.tryParse(json['criadoEm'] as String) ?? DateTime.now()
+          : DateTime.now(),
+    );
+  }
+
   @override
   List<Object?> get props => [
         id,

@@ -65,23 +65,16 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           path == AppRoutes.register ||
           path == AppRoutes.forgotPassword;
 
-      // Se não há sessão local ativa no Firebase Auth e a rota é protegida:
-      // Redireciona imediatamente para /login sem esperar cold start ou requisições assíncronas.
-      final hasFirebaseSession = FirebaseAuth.instance.currentUser != null;
-      if (!hasFirebaseSession && !isPublic) {
-        return AppRoutes.login;
-      }
-
-      // 1. Enquanto a autenticação estiver restaurando a sessão local do Firebase:
-      // Não redireciona prematuramente para /login! Mantém a rota solicitada (ex: /chat/:id).
+      // 1. Enquanto a autenticação estiver restaurando a sessão local do Firebase / cache:
+      // Mantém na tela atual ou splash sem redirecionar prematuramente para login
       if (userAsync.isLoading) {
-        return null;
+        return isPublic ? null : AppRoutes.splash;
       }
 
-      // Não logado tentando acessar rota protegida → login
+      // 2. Não logado tentando acessar rota protegida → login
       if (!loggedIn && !isPublic) return AppRoutes.login;
 
-      // Logado tentando acessar login, registro ou splash → home
+      // 3. Logado tentando acessar login, registro ou splash → home
       // (Rotas protegidas diretas como /chat/:id passam direto sem ir para home!)
       if (loggedIn && (path == AppRoutes.login || path == AppRoutes.register || path == AppRoutes.splash)) {
         return AppRoutes.home;

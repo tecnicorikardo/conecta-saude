@@ -164,6 +164,13 @@ async function createAnnouncement(req: Request, res: Response): Promise<void> {
             announcementId: announcement.id,
             priority: data.prioridade,
           },
+          android: {
+            priority: 'high',
+            notification: {
+              color: '#005CA9',
+              clickAction: 'FLUTTER_NOTIFICATION_CLICK',
+            },
+          },
           webpush: {
             fcmOptions: {
               link: `https://conecta-hospital.web.app/announcements/${announcement.id}`,

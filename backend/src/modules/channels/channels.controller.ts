@@ -502,6 +502,13 @@ export async function postChannelMessage(req: Request, res: Response): Promise<v
             senderId: actor.id,
             senderName: actor.nome,
           },
+          android: {
+            priority: 'high',
+            notification: {
+              color: '#005CA9',
+              clickAction: 'FLUTTER_NOTIFICATION_CLICK',
+            },
+          },
           webpush: {
             fcmOptions: {
               link: `https://conecta-hospital.web.app/channels/${channelId}`,

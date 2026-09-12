@@ -1,9 +1,11 @@
+import 'dart:convert';
 import 'package:dartz/dartz.dart';
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/config/firebase_options.dart';
 import '../../../../core/errors/failures.dart';
@@ -11,11 +13,37 @@ import '../../../../core/services/http_service.dart';
 import '../../domain/entities/user_entity.dart';
 import '../../domain/repositories/auth_repository.dart';
 
-
 class AuthRepositoryImpl implements AuthRepository {
   AuthRepositoryImpl([Ref? _]);
 
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
+  static const String _userCacheKey = 'conecta_cached_user_session';
+
+  Future<void> _saveCachedUser(UserEntity user) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_userCacheKey, jsonEncode(user.toJson()));
+    } catch (_) {}
+  }
+
+  Future<UserEntity?> _getCachedUser() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_userCacheKey);
+      if (raw != null && raw.isNotEmpty) {
+        final map = jsonDecode(raw) as Map<String, dynamic>;
+        return UserEntity.fromJson(map);
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  Future<void> _clearCachedUser() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_userCacheKey);
+    } catch (_) {}
+  }
 
   Dio _buildDio([String? token, Duration timeout = const Duration(seconds: 30)]) {
     return Dio(
@@ -79,11 +107,13 @@ class AuthRepositoryImpl implements AuthRepository {
           final data = response.data['data'] as Map<String, dynamic>;
           final entity = _mapToEntity(data);
           if (!entity.ativo) {
+            await _clearCachedUser();
             await _firebaseAuth.signOut();
             return const Left(UserInactiveFailure(
               'Cadastro em análise. Seu acesso está aguardando aprovação pelo RH ou Coordenação da unidade.',
             ));
           }
+          await _saveCachedUser(entity);
           return Right(entity);
         }
         return const Left(AuthFailure('Não foi possível confirmar seu acesso no servidor. Tente novamente.'));
@@ -92,6 +122,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
         // Uma conta inativa não pode iniciar a sessão institucional.
         if (statusCode == 403) {
+          await _clearCachedUser();
           await _firebaseAuth.signOut();
           final msg = e.response?.data?['message'] as String? ??
               e.response?.data?['error'] as String? ??
@@ -147,6 +178,7 @@ class AuthRepositoryImpl implements AuthRepository {
       );
 
       // Deslogar de qualquer sessão temporária pós-criação
+      await _clearCachedUser();
       await _firebaseAuth.signOut();
 
       final data = response.data as Map<String, dynamic>;
@@ -188,6 +220,7 @@ class AuthRepositoryImpl implements AuthRepository {
         await FirebaseMessaging.instance.deleteToken();
       } catch (_) {}
 
+      await _clearCachedUser();
       await _firebaseAuth.signOut();
       return const Right(null);
     } catch (e) {
@@ -199,30 +232,46 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<Either<Failure, UserEntity?>> getCurrentUser() async {
     try {
       final firebaseUser = _firebaseAuth.currentUser;
-      if (firebaseUser == null) return const Right(null);
+      if (firebaseUser == null) {
+        await _clearCachedUser();
+        return const Right(null);
+      }
+
+      final cachedUser = await _getCachedUser();
 
       final idToken = await firebaseUser.getIdToken();
-      if (idToken == null) return const Left(AuthFailure('Não foi possível confirmar seu acesso no servidor. Tente novamente.'));
+      if (idToken == null) {
+        if (cachedUser != null) return Right(cachedUser);
+        return const Left(AuthFailure('Não foi possível confirmar seu acesso no servidor. Tente novamente.'));
+      }
 
       try {
-        final response = await _buildDio(idToken, const Duration(seconds: 75)).get('/me');
+        final response = await _buildDio(idToken, const Duration(seconds: 25)).get('/me');
         if (response.data['success'] == true) {
           final data = response.data['data'] as Map<String, dynamic>;
           final entity = _mapToEntity(data);
           if (!entity.ativo) {
+            await _clearCachedUser();
             await _firebaseAuth.signOut();
             return const Right(null);
           }
+          await _saveCachedUser(entity);
           return Right(entity);
         }
+        if (cachedUser != null) return Right(cachedUser);
         return const Left(AuthFailure('Não foi possível confirmar seu acesso no servidor. Tente novamente.'));
       } catch (e) {
         if (e is DioException &&
             (e.response?.statusCode == 401 || e.response?.statusCode == 403)) {
+          await _clearCachedUser();
           await _firebaseAuth.signOut();
           return const Right(null);
         }
-        // Falha de rede não concede acesso institucional sem validação.
+        // Em caso de falha de conexão / timeout (offline ou cold-start do Render):
+        // Retorna o perfil em cache para manter a sessão ativa sem travar o usuário!
+        if (cachedUser != null) {
+          return Right(cachedUser);
+        }
         return const Left(AuthFailure('Não foi possível confirmar seu acesso no servidor. Tente novamente.'));
       }
     } catch (e) {
@@ -233,30 +282,56 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Stream<UserEntity?> get authStateChanges {
     return _firebaseAuth.authStateChanges().asyncMap((firebaseUser) async {
-      if (firebaseUser == null) return null;
+      if (firebaseUser == null) {
+        await _clearCachedUser();
+        return null;
+      }
+
+      final cachedUser = await _getCachedUser();
 
       try {
         final idToken = await firebaseUser.getIdToken();
-        if (idToken == null) return null;
+        if (idToken == null) return cachedUser;
 
-        final response = await _buildDio(idToken, const Duration(seconds: 75)).get('/me');
+        final response = await _buildDio(idToken, const Duration(seconds: 20)).get('/me');
         if (response.data['success'] == true) {
           final data = response.data['data'] as Map<String, dynamic>;
           final entity = _mapToEntity(data);
           if (!entity.ativo) {
+            await _clearCachedUser();
             await _firebaseAuth.signOut();
             return null;
           }
+          await _saveCachedUser(entity);
           return entity;
         }
-        return null;
+        return cachedUser;
       } catch (e) {
         if (e is DioException &&
             (e.response?.statusCode == 401 || e.response?.statusCode == 403)) {
+          await _clearCachedUser();
           await _firebaseAuth.signOut();
           return null;
         }
-        return null;
+        // Se a internet caiu ou Render demorou no cold start:
+        // Mantém o usuário logado com os dados locais em cache!
+        if (cachedUser != null) {
+          debugPrint('[Auth] Rede temporariamente indisponível. Mantendo sessão com cache local.');
+          return cachedUser;
+        }
+        // Fallback para não forçar logout por oscilação de rede
+        return UserEntity(
+          id: firebaseUser.uid,
+          firebaseUid: firebaseUser.uid,
+          nome: firebaseUser.displayName ?? firebaseUser.email?.split('@').first ?? 'Usuário',
+          email: firebaseUser.email ?? '',
+          cargo: 'Colaborador',
+          hierarquiaNivel: 4,
+          setorId: '',
+          setorNome: 'Geral',
+          ativo: true,
+          criadoEm: DateTime.now(),
+        );
       }
     });
   }

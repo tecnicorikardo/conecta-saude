@@ -148,6 +148,13 @@ export async function createEmergencyAlert(req: Request, res: Response): Promise
             alertId: alert.id,
             localizacao: alert.localizacao,
           },
+          android: {
+            priority: 'high',
+            notification: {
+              color: '#DC2626',
+              clickAction: 'FLUTTER_NOTIFICATION_CLICK',
+            },
+          },
           webpush: {
             fcmOptions: {
               link: `https://conecta-hospital.web.app/emergency`,

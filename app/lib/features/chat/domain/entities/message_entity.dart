@@ -1,4 +1,4 @@
-﻿enum MessageType {
+enum MessageType {
   text,
   audio,
   image,
@@ -84,6 +84,57 @@ class MessageEntity {
       status: status ?? this.status,
       audioDuration: audioDuration ?? this.audioDuration,
       audioPath: audioPath ?? this.audioPath,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'conversationId': conversationId,
+      'texto': texto,
+      'tipo': tipo.name,
+      'remetente': {
+        'id': remetente.id,
+        'nome': remetente.nome,
+        'cargo': remetente.cargo,
+        'fotoUrl': remetente.fotoUrl,
+      },
+      'criadoEm': criadoEm.toIso8601String(),
+      'editadoEm': editadoEm?.toIso8601String(),
+      'editado': editado,
+      'excluido': excluido,
+      'status': status.name,
+      'audioDuration': audioDuration,
+      'audioPath': audioPath,
+    };
+  }
+
+  factory MessageEntity.fromJson(Map<String, dynamic> j) {
+    final rem = j['remetente'] as Map<String, dynamic>? ?? {};
+    return MessageEntity(
+      id: j['id'] as String? ?? '',
+      conversationId: j['conversationId'] as String? ?? '',
+      texto: j['texto'] as String? ?? '',
+      tipo: MessageType.values.firstWhere(
+        (e) => e.name == j['tipo'],
+        orElse: () => MessageType.text,
+      ),
+      remetente: MessageSender(
+        id: rem['id'] as String? ?? '',
+        nome: rem['nome'] as String? ?? '',
+        cargo: rem['cargo'] as String? ?? '',
+        fotoUrl: rem['fotoUrl'] as String?,
+      ),
+      criadoEm: DateTime.tryParse(j['criadoEm'] as String? ?? '')?.toLocal() ?? DateTime.now(),
+      editadoEm: j['editadoEm'] != null ? DateTime.tryParse(j['editadoEm'] as String)?.toLocal() : null,
+      editado: j['editado'] as bool? ?? false,
+      excluido: j['excluido'] as bool? ?? false,
+      status: MessageStatus.values.firstWhere(
+        (e) => e.name == j['status'],
+        orElse: () => MessageStatus.sent,
+      ),
+      audioDuration: j['audioDuration'] as int?,
+      audioPath: j['audioPath'] as String?,
     );
   }
 }

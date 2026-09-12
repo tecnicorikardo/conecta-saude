@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../routes/app_routes.dart';
 import '../theme/app_colors.dart';
 import '../auth/permissions_provider.dart';
+import '../../features/auth/presentation/providers/current_user_provider.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -20,7 +21,14 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   }
 
   Future<void> _checkNavigation() async {
-    await Future.delayed(const Duration(milliseconds: 350));
+    await Future.delayed(const Duration(milliseconds: 300));
+    if (!mounted) return;
+
+    // Aguarda carregar o estado de autenticação (Firebase / Cache Local)
+    while (mounted && ref.read(currentUserProvider).isLoading) {
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+
     if (!mounted) return;
     final perms = ref.read(permissionsProvider);
     if (perms.isLoggedIn) {

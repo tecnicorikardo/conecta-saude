@@ -101,44 +101,6 @@ class _ChatPageState extends ConsumerState<ChatPage> {
         onTap: () => FocusScope.of(context).unfocus(),
         child: Column(
         children: [
-          if (conv?.autoExcluir24h == true)
-            Container(
-              color: Colors.amber.shade100,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                children: [
-                  Icon(Icons.timer_outlined, size: 18, color: Colors.amber.shade900),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      '⏱️ Mensagens temporárias ativas (24h)',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.amber.shade900,
-                      ),
-                    ),
-                  ),
-                  InkWell(
-                    onTap: () async {
-                      await ref
-                          .read(conversationsProvider.notifier)
-                          .toggleAutoExcluir24h(widget.conversationId, false);
-                      ref.read(messagesProvider(widget.conversationId).notifier).refresh();
-                    },
-                    child: Text(
-                      'Desativar',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.blue.shade800,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
           // ─── Lista de mensagens ──────────────────────────────────────────
           Expanded(
             child: messagesAsync.when(

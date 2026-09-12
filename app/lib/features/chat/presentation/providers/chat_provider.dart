@@ -1,5 +1,6 @@
 import '../../../../core/services/realtime_service.dart';
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,6 +14,27 @@ import '../../domain/entities/message_entity.dart';
 
 // Armazena timestamp em memória e cache local de quando cada conversa foi limpa
 final Map<String, DateTime> _conversationClearedAt = {};
+
+Future<List<MessageEntity>?> _getCachedMessages(String conversationId) async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString('chat_cache_msgs_$conversationId');
+    if (raw != null && raw.isNotEmpty) {
+      final list = jsonDecode(raw) as List;
+      return list.map((j) => MessageEntity.fromJson(j as Map<String, dynamic>)).toList();
+    }
+  } catch (_) {}
+  return null;
+}
+
+Future<void> _saveCachedMessages(String conversationId, List<MessageEntity> messages) async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final toSave = messages.length > 50 ? messages.sublist(messages.length - 50) : messages;
+    final jsonList = toSave.map((m) => m.toJson()).toList();
+    await prefs.setString('chat_cache_msgs_$conversationId', jsonEncode(jsonList));
+  } catch (_) {}
+}
 
 Future<DateTime?> _getConversationClearedAt(String conversationId) async {
   if (_conversationClearedAt.containsKey(conversationId)) {
@@ -235,6 +257,7 @@ class MessagesNotifier
   StreamSubscription<String?>? _realtimeSub;
   bool _syncing = false;
   bool _syncAgain = false;
+  bool _flushingOutbox = false;
   int _pollTicks = 0;
   final Map<String, MessageEntity> _pendingOutgoing = {};
 
@@ -246,7 +269,7 @@ class MessagesNotifier
     super.dispose();
   }
 
-  /// Inicia polling a cada 3 segundos para mensagens novas
+  /// Inicia polling a cada 3 segundos para mensagens novas e reenvio de fila offline
   void _startPolling() {
     final realtime = _ref.read(realtimeServiceProvider);
     _realtimeSub = realtime.changes.listen((id) {
@@ -255,7 +278,11 @@ class MessagesNotifier
       }
     });
     _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-      if (mounted && (!realtime.connected || ++_pollTicks % 10 == 0)) {
+      if (!mounted) return;
+      if (_pendingOutgoing.isNotEmpty) {
+        unawaited(_flushOutbox());
+      }
+      if (!realtime.connected || ++_pollTicks % 10 == 0) {
         unawaited(_pollNewMessages());
       }
     });
@@ -284,20 +311,38 @@ class MessagesNotifier
     return result;
   }
 
-  /// Carregamento inicial completo
+  /// Carregamento inicial completo com suporte offline imediato
   Future<void> _load() async {
     try {
       await _getConversationClearedAt(conversationId);
+
+      // 1. Carrega imediatamente do cache local para abertura instantânea (0 delay / offline)
+      final cached = await _getCachedMessages(conversationId);
+      if (cached != null && cached.isNotEmpty && mounted) {
+        state = AsyncValue.data(_filterMessages(cached));
+      }
+
+      // 2. Busca dados atualizados do servidor
       final repo = _ref.read(conversationRepositoryProvider);
       final messages = await repo.listMessages(conversationId);
       final filtered = _filterMessages(messages);
+
+      // Salva em cache local para futuras aberturas offline
+      await _saveCachedMessages(conversationId, filtered);
+
       if (mounted) state = AsyncValue.data(filtered);
     } catch (e, st) {
-      if (mounted) state = AsyncValue.error(e, st);
+      // Se estiver offline ou o servidor oscilar, mantém o cache local sem tela de erro
+      final cached = await _getCachedMessages(conversationId);
+      if (cached != null && cached.isNotEmpty && mounted) {
+        state = AsyncValue.data(_filterMessages(cached));
+      } else if (mounted) {
+        state = AsyncValue.error(e, st);
+      }
     }
   }
 
-  /// Polling — busca mensagens novas sem apagar mensagens enviadas localmente
+  /// Polling — busca mensagens novas sem apagar mensagens pendentes locais
   Future<void> _pollNewMessages() async {
     if (_syncing) { _syncAgain = true; return; }
     _syncing = true;
@@ -311,15 +356,24 @@ class MessagesNotifier
 
       if (!mounted) return;
 
-      // Limpa de _pendingOutgoing as mensagens que já chegaram do backend no polling
+      // Limpa de _pendingOutgoing as mensagens que já chegaram do backend por ID ou conteúdo idêntico recente
       _pendingOutgoing.removeWhere((tempId, pending) {
-        return fresh.any((f) => f.id == tempId);
+        return fresh.any((f) =>
+            f.id == tempId ||
+            (f.remetente.id == pending.remetente.id &&
+                f.texto == pending.texto &&
+                f.criadoEm.difference(pending.criadoEm).inSeconds.abs() < 90));
       });
 
       final freshIds = fresh.map((m) => m.id).toSet();
       final merged = <MessageEntity>[...fresh];
       for (final pending in _pendingOutgoing.values) {
-        if (!freshIds.contains(pending.id)) {
+        final alreadyInFresh = fresh.any((f) =>
+            f.id == pending.id ||
+            (f.remetente.id == pending.remetente.id &&
+                f.texto == pending.texto &&
+                f.criadoEm.difference(pending.criadoEm).inSeconds.abs() < 90));
+        if (!alreadyInFresh) {
           merged.add(pending);
         }
       }
@@ -327,7 +381,9 @@ class MessagesNotifier
       merged.sort((a, b) => a.criadoEm.compareTo(b.criadoEm));
       state = AsyncValue.data(merged);
 
-      // Atualizar última mensagem da conversa
+      // Atualiza o cache local e a lista de conversas
+      await _saveCachedMessages(conversationId, fresh);
+
       if (fresh.isNotEmpty) {
         _ref
             .read(conversationsProvider.notifier)
@@ -344,7 +400,39 @@ class MessagesNotifier
     }
   }
 
-  // ─── Enviar mensagem de texto ───────────────────────────────────────────
+  /// Despacha mensagens pendentes na fila (Outbox) assim que a internet reconectar
+  Future<void> _flushOutbox() async {
+    if (_flushingOutbox || _pendingOutgoing.isEmpty) return;
+    _flushingOutbox = true;
+    try {
+      final pendingList = _pendingOutgoing.values
+          .where((m) => m.status == MessageStatus.sending)
+          .toList();
+
+      for (final tempMsg in pendingList) {
+        try {
+          final repo = _ref.read(conversationRepositoryProvider);
+          final realMsg = await repo.sendMessage(conversationId, tempMsg.texto, clientMessageId: tempMsg.id);
+          _pendingOutgoing.remove(tempMsg.id);
+
+          if (mounted) {
+            final currentList = state.value ?? [];
+            final updatedList = currentList.map((m) => m.id == tempMsg.id ? realMsg : m).toList();
+            state = AsyncValue.data(updatedList);
+            await _saveCachedMessages(conversationId, updatedList);
+            _ref.read(conversationsProvider.notifier).updateLastMessage(conversationId, realMsg);
+          }
+        } catch (_) {
+          // Mantém na fila com reloginho para tentar no próximo ciclo
+          break;
+        }
+      }
+    } finally {
+      _flushingOutbox = false;
+    }
+  }
+
+  // ─── Enviar mensagem de texto (WhatsApp Style com reloginho 🕒) ──────────
   Future<void> sendTextMessage(String texto, {String? retryId}) async {
     final cleanText = texto.trim();
     if (cleanText.isEmpty) return;
@@ -353,7 +441,7 @@ class MessagesNotifier
     final currentUserNome = _ref.read(currentUserNomeProvider);
     final currentUser = _ref.read(currentUserProvider).value;
 
-    // Adicionar localmente com status "sending" IMEDIATAMENTE (zero delay na UI)
+    // Adicionar localmente com status "sending" (reloginho 🕒) IMEDIATAMENTE (zero delay na UI)
     final tempId = retryId ?? _uuid.v4();
     if (_pendingOutgoing[tempId]?.status == MessageStatus.sending) return;
     final tempMsg = MessageEntity(
@@ -367,7 +455,7 @@ class MessagesNotifier
         fotoUrl: currentUser?.fotoUrl,
       ),
       criadoEm: DateTime.now(),
-      status: MessageStatus.sending,
+      status: MessageStatus.sending, // Reloginho WhatsApp
     );
 
     // Registra no mapa de pendentes para blindar contra o polling
@@ -382,20 +470,22 @@ class MessagesNotifier
 
       _pendingOutgoing.remove(tempId);
 
-      // Substitui a mensagem temporária pela real confirmada pelo servidor
+      // Substitui a mensagem temporária pela real confirmada pelo servidor (✓✓ entregue)
       if (mounted) {
         final currentList = state.value ?? [];
-        if (currentList.any((m) => m.id == realMsg.id)) {
-          // Se já foi incluída por um polling simultâneo, remove a temporária
-          state = AsyncValue.data(
-            currentList.where((m) => m.id != tempId).toList(),
-          );
-        } else {
-          // Substituição in-place limpa (sem sumir da tela)
-          state = AsyncValue.data(
-            currentList.map((m) => m.id == tempId ? realMsg : m).toList(),
-          );
+        final updatedList = currentList.map((m) {
+          if (m.id == tempId) return realMsg;
+          return m;
+        }).toList();
+
+        // Se por ventura o polling já tiver colocado realMsg, evita duplicata
+        final deduped = <String, MessageEntity>{};
+        for (final m in updatedList) {
+          deduped[m.id] = m;
         }
+
+        state = AsyncValue.data(deduped.values.toList());
+        await _saveCachedMessages(conversationId, deduped.values.toList());
 
         // Atualizar lista de conversas com a nova mensagem
         _ref
@@ -403,18 +493,15 @@ class MessagesNotifier
             .updateLastMessage(conversationId, realMsg);
       }
     } catch (e) {
-      _pendingOutgoing[tempId] = tempMsg.copyWith(status: MessageStatus.error);
+      // Se falhou por falta de internet ou timeout, MANTÉM com reloginho 🕒 e deixa a fila tentar reenviar!
+      debugPrint('[Chat Outbox] Falha ao enviar mensagem imediatamente. Mantendo na fila com reloginho: $e');
       if (mounted) {
+        // Mantém a mensagem no estado com status sending (reloginho 🕒)
         final currentList = state.value ?? [];
-        state = AsyncValue.data(
-          currentList
-              .map((m) => m.id == tempId
-                  ? m.copyWith(status: MessageStatus.error)
-                  : m)
-              .toList(),
-        );
+        if (!currentList.any((m) => m.id == tempId)) {
+          state = AsyncValue.data([...currentList, tempMsg]);
+        }
       }
-      rethrow;
     }
   }
 
