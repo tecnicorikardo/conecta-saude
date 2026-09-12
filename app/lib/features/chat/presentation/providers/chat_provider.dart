@@ -365,7 +365,6 @@ class MessagesNotifier
                 f.criadoEm.difference(pending.criadoEm).inSeconds.abs() < 90));
       });
 
-      final freshIds = fresh.map((m) => m.id).toSet();
       final merged = <MessageEntity>[...fresh];
       for (final pending in _pendingOutgoing.values) {
         final alreadyInFresh = fresh.any((f) =>

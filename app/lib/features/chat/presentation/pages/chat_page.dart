@@ -31,6 +31,7 @@ class _ChatPageState extends ConsumerState<ChatPage> with WidgetsBindingObserver
   final _scrollController = ScrollController();
   MessageEntity? _replyingTo;
   MessageEntity? _editingMessage;
+  double _lastBottomInset = 0;
 
   @override
   void initState() {
@@ -49,6 +50,15 @@ class _ChatPageState extends ConsumerState<ChatPage> with WidgetsBindingObserver
   @override
   void didChangeMetrics() {
     super.didChangeMetrics();
+    final view = View.maybeOf(context);
+    if (view != null) {
+      final currentInset = view.viewInsets.bottom;
+      // Se o teclado estava visível e agora desceu a 0 (ex: botão Voltar do Android ou fechar teclado)
+      if (_lastBottomInset > 0 && currentInset == 0) {
+        FocusManager.instance.primaryFocus?.unfocus();
+      }
+      _lastBottomInset = currentInset;
+    }
     // Ao abrir ou fechar o teclado virtual no mobile, reajusta o scroll imediatamente
     _scrollToBottom(animated: false);
   }

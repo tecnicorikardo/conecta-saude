@@ -19,7 +19,7 @@
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="A new Flutter project.">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, interactive-widget=resizes-content">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
   <!-- iOS meta tags & icons -->
   <meta name="mobile-web-app-capable" content="yes">
@@ -35,27 +35,15 @@
   <link rel="manifest" href="manifest.json">
 
   <style>
-    /* ─── Viewport Fixo & Fundo do Sistema ─────────────────────────────────── */
+    /* ─── Viewport Padrão & Fundo do Sistema ──────────────────────────────── */
     html, body {
       width: 100%;
       height: 100%;
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
       margin: 0;
       padding: 0;
       overflow: hidden;
-      overscroll-behavior: none;
-      touch-action: pan-x pan-y;
       background-color: #ECEFF1;
       -webkit-tap-highlight-color: transparent;
-    }
-    flutter-view {
-      width: 100% !important;
-      height: 100% !important;
-      min-height: 100% !important;
     }
 
     /* ─── Banner de Instalação PWA Mobile ─────────────────────────────────── */
@@ -437,9 +425,9 @@
       });
     }
 
-    // ─── Auto-recuperação do Viewport ao Fechar Teclado Virtual (Mobile / PWA) ───
+    // ─── Prevenção de Deslocamento de Janela Externa (Mobile Chrome / PWA) ───
     (function() {
-      function forceResetScroll() {
+      function resetScroll() {
         if (window.scrollY !== 0 || window.scrollX !== 0) {
           window.scrollTo(0, 0);
         }
@@ -451,40 +439,15 @@
         }
       }
 
-      if (window.visualViewport) {
-        var lastHeight = window.visualViewport.height;
-
-        window.visualViewport.addEventListener('resize', function() {
-          forceResetScroll();
-          var currentHeight = window.visualViewport.height;
-
-          // Se a altura cresceu significativamente (teclado virtual fechou), força recomposição da tela cheia
-          if (currentHeight > lastHeight + 40) {
-            forceResetScroll();
-            window.dispatchEvent(new Event('resize'));
-            setTimeout(function() {
-              forceResetScroll();
-              window.dispatchEvent(new Event('resize'));
-            }, 60);
-            setTimeout(function() {
-              forceResetScroll();
-              window.dispatchEvent(new Event('resize'));
-            }, 180);
-          }
-
-          lastHeight = currentHeight;
-        });
-
-        window.visualViewport.addEventListener('scroll', forceResetScroll);
-      }
-
-      window.addEventListener('scroll', forceResetScroll, { passive: false });
-      window.addEventListener('orientationchange', function() {
-        setTimeout(function() {
-          forceResetScroll();
-          window.dispatchEvent(new Event('resize'));
-        }, 150);
+      window.addEventListener('scroll', resetScroll, { passive: true });
+      window.addEventListener('focusout', function() {
+        setTimeout(resetScroll, 50);
       });
+
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', resetScroll);
+        window.visualViewport.addEventListener('scroll', resetScroll);
+      }
     })();
   </script>
   <script src="flutter_bootstrap.js" async></script>
