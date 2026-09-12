@@ -18,6 +18,7 @@ class UserEntity extends Equatable {
   final String jornadaInicio; // "HH:mm", default "07:00"
   final String jornadaFim;    // "HH:mm", default "16:00"
   final String jornadaDias;   // "seg,ter,qua,qui,sex"
+  final DateTime? jornadaEstendidaAte; // Extensão de horas extras para o dia
   final bool emPlantaoExtra;
   final bool silenciarForaJornada;
   final bool ativo;
@@ -42,6 +43,7 @@ class UserEntity extends Equatable {
     this.jornadaInicio = '07:00',
     this.jornadaFim = '16:00',
     this.jornadaDias = 'seg,ter,qua,qui,sex',
+    this.jornadaEstendidaAte,
     this.emPlantaoExtra = false,
     this.silenciarForaJornada = true,
     required this.ativo,
@@ -77,6 +79,12 @@ class UserEntity extends Equatable {
     if (!ativo) return false;
 
     final now = DateTime.now();
+
+    // Se houve prorrogação/extensão de horas no fim do expediente e ainda está válida hoje
+    if (jornadaEstendidaAte != null && now.isBefore(jornadaEstendidaAte!)) {
+      return true;
+    }
+
     // 1=seg, 2=ter, 3=qua, 4=qui, 5=sex, 6=sab, 7=dom
     final dayCodes = {
       1: 'seg',
@@ -115,15 +123,21 @@ class UserEntity extends Equatable {
   String get workStatusLabel {
     if (!ativo) return 'Inativo';
     if (emPlantaoExtra) return 'Em Plantão Extra';
+    if (jornadaEstendidaAte != null && DateTime.now().isBefore(jornadaEstendidaAte!)) {
+      return 'Em Serviço (Hora Extra)';
+    }
     if (isCurrentlyWorking) return 'Em Serviço';
-    return 'Fora de Escala';
+    return 'Fora de Serviço';
   }
 
   Color get workStatusColor {
     if (!ativo) return const Color(0xFF9E9E9E);
     if (emPlantaoExtra) return const Color(0xFF0288D1); // Azul plantão extra
+    if (jornadaEstendidaAte != null && DateTime.now().isBefore(jornadaEstendidaAte!)) {
+      return const Color(0xFF2E7D32); // Verde SUS
+    }
     if (isCurrentlyWorking) return const Color(0xFF2E7D32); // Verde SUS em serviço
-    return const Color(0xFFF57C00); // Laranja fora de escala
+    return const Color(0xFFF57C00); // Laranja fora de serviço
   }
 
   UserEntity copyWith({
@@ -143,6 +157,7 @@ class UserEntity extends Equatable {
     String? jornadaInicio,
     String? jornadaFim,
     String? jornadaDias,
+    DateTime? jornadaEstendidaAte,
     bool? emPlantaoExtra,
     bool? silenciarForaJornada,
     bool? ativo,
@@ -167,6 +182,7 @@ class UserEntity extends Equatable {
       jornadaInicio: jornadaInicio ?? this.jornadaInicio,
       jornadaFim: jornadaFim ?? this.jornadaFim,
       jornadaDias: jornadaDias ?? this.jornadaDias,
+      jornadaEstendidaAte: jornadaEstendidaAte ?? this.jornadaEstendidaAte,
       emPlantaoExtra: emPlantaoExtra ?? this.emPlantaoExtra,
       silenciarForaJornada: silenciarForaJornada ?? this.silenciarForaJornada,
       ativo: ativo ?? this.ativo,
@@ -194,6 +210,7 @@ class UserEntity extends Equatable {
       'jornadaInicio': jornadaInicio,
       'jornadaFim': jornadaFim,
       'jornadaDias': jornadaDias,
+      'jornadaEstendidaAte': jornadaEstendidaAte?.toIso8601String(),
       'emPlantaoExtra': emPlantaoExtra,
       'silenciarForaJornada': silenciarForaJornada,
       'ativo': ativo,
@@ -221,6 +238,9 @@ class UserEntity extends Equatable {
       jornadaInicio: json['jornadaInicio'] as String? ?? '07:00',
       jornadaFim: json['jornadaFim'] as String? ?? '16:00',
       jornadaDias: json['jornadaDias'] as String? ?? 'seg,ter,qua,qui,sex',
+      jornadaEstendidaAte: json['jornadaEstendidaAte'] != null
+          ? DateTime.tryParse(json['jornadaEstendidaAte'] as String)
+          : null,
       emPlantaoExtra: json['emPlantaoExtra'] as bool? ?? false,
       silenciarForaJornada: json['silenciarForaJornada'] as bool? ?? true,
       ativo: json['ativo'] as bool? ?? true,
@@ -252,6 +272,7 @@ class UserEntity extends Equatable {
         jornadaInicio,
         jornadaFim,
         jornadaDias,
+        jornadaEstendidaAte,
         emPlantaoExtra,
         silenciarForaJornada,
         ativo,

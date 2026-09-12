@@ -11,6 +11,8 @@ import '../../features/chat/domain/entities/conversation_entity.dart';
 import '../../features/chat/presentation/providers/chat_provider.dart';
 import '../../features/channels/presentation/providers/channels_provider.dart';
 import '../../features/announcements/presentation/providers/announcements_provider.dart';
+import '../../features/auth/presentation/providers/current_user_provider.dart';
+import '../../features/profile/presentation/widgets/shift_end_dialog.dart';
 
 /// Alerta de nova mensagem em primeiro plano
 class _InAppNotificationData {
@@ -48,6 +50,8 @@ class _MainShellState extends ConsumerState<MainShell>
     with SingleTickerProviderStateMixin {
   _InAppNotificationData? _activeNotification;
   Timer? _notificationDismissTimer;
+  Timer? _shiftMonitorTimer;
+  String? _lastShiftEndAlertDate;
   late AnimationController _animController;
   late Animation<Offset> _slideAnimation;
   late Animation<double> _fadeAnimation;
@@ -77,14 +81,82 @@ class _MainShellState extends ConsumerState<MainShell>
     // Inicializar serviço de Push Notifications (FCM Web / Mobile)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(notificationServiceProvider).initialize();
+      _checkShiftEnd();
+    });
+
+    // Monitorar a cada 20 segundos para disparar quando bater o horário de término (ex: 16:00)
+    _shiftMonitorTimer = Timer.periodic(const Duration(seconds: 20), (_) {
+      _checkShiftEnd();
     });
   }
 
   @override
   void dispose() {
     _notificationDismissTimer?.cancel();
+    _shiftMonitorTimer?.cancel();
     _animController.dispose();
     super.dispose();
+  }
+
+  void _checkShiftEnd() {
+    if (!mounted) return;
+    final user = ref.read(currentUserProvider).valueOrNull;
+    if (user == null || !user.ativo) return;
+
+    final now = DateTime.now();
+    final todayStr = '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+
+    // Evita disparar mais de uma vez no mesmo dia se já foi alertado ou respondido
+    if (_lastShiftEndAlertDate == todayStr) return;
+
+    // Verificar se hoje é dia previsto na escala de trabalho
+    final dayCodes = {
+      1: 'seg',
+      2: 'ter',
+      3: 'qua',
+      4: 'qui',
+      5: 'sex',
+      6: 'sab',
+      7: 'dom',
+    };
+    final todayCode = dayCodes[now.weekday] ?? 'seg';
+    final dias = user.jornadaDias.toLowerCase().split(',').map((d) => d.trim()).toList();
+    if (!dias.contains(todayCode)) return;
+
+    // Se o usuário está em horas extras já prorrogadas que ainda estão ativas hoje
+    if (user.jornadaEstendidaAte != null && now.isBefore(user.jornadaEstendidaAte!)) {
+      return;
+    }
+
+    final endParts = user.jornadaFim.split(':').map((e) => int.tryParse(e) ?? 0).toList();
+    final startParts = user.jornadaInicio.split(':').map((e) => int.tryParse(e) ?? 0).toList();
+    final endMinutes = (endParts.isNotEmpty ? endParts[0] : 16) * 60 +
+        (endParts.length > 1 ? endParts[1] : 0);
+    final startMinutes = (startParts.isNotEmpty ? startParts[0] : 7) * 60 +
+        (startParts.length > 1 ? startParts[1] : 0);
+    final nowMinutes = now.hour * 60 + now.minute;
+
+    // Dispara quando atinge o horário de término (ou até 45 min após término)
+    bool reachedEnd = false;
+    if (endMinutes >= startMinutes) {
+      reachedEnd = nowMinutes >= endMinutes && nowMinutes <= (endMinutes + 45);
+    } else {
+      reachedEnd = nowMinutes >= endMinutes && nowMinutes < startMinutes;
+    }
+
+    if (reachedEnd) {
+      _lastShiftEndAlertDate = todayStr;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => ShiftEndDialog(
+          user: user,
+          onDismiss: () {
+            // Fechamento normal
+          },
+        ),
+      );
+    }
   }
 
   void _showInAppAlert({

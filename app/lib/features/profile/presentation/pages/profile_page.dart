@@ -27,6 +27,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   bool _isSaving = false;
   bool _isRequestingPush = false;
   bool _isTestingPush = false;
+  String? _selectedInicio;
+  String? _selectedFim;
+  List<String>? _selectedDias;
+  bool? _selectedSilenciar;
+  bool _isSavingSchedule = false;
 
   Future<void> _pickImage(UserEntity user, ImageSource source) async {
     try {
@@ -182,6 +187,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     bool? emPlantaoExtra,
     bool? silenciarForaJornada,
   }) async {
+    setState(() => _isSavingSchedule = true);
     final messenger = ScaffoldMessenger.of(context);
     try {
       final resp = await HttpService.instance.patch(
@@ -204,10 +210,21 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         );
         ref.read(currentUserProvider.notifier).setUser(updatedUser);
         messenger.showSnackBar(
-          const SnackBar(
-            content: Text('Configurações de escala e plantão salvas!'),
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle_rounded, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Escala salva com sucesso! Seu status agora é: ${updatedUser.workStatusLabel}.',
+                    style: const TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ],
+            ),
             backgroundColor: AppColors.success,
-            duration: Duration(seconds: 2),
+            duration: const Duration(seconds: 3),
           ),
         );
       }
@@ -218,6 +235,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           backgroundColor: AppColors.error,
         ),
       );
+    } finally {
+      if (mounted) {
+        setState(() => _isSavingSchedule = false);
+      }
     }
   }
 
@@ -1328,7 +1349,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   }
 
   Widget _buildScheduleCard(UserEntity user, bool isDark) {
-    final diasList = user.jornadaDias.toLowerCase().split(',').map((d) => d.trim()).toList();
+    final currentInicio = _selectedInicio ?? user.jornadaInicio;
+    final currentFim = _selectedFim ?? user.jornadaFim;
+    final currentDias = _selectedDias ?? user.jornadaDias.toLowerCase().split(',').map((d) => d.trim()).toList();
+    final currentSilenciar = _selectedSilenciar ?? user.silenciarForaJornada;
+
     final allDays = [
       {'code': 'seg', 'label': 'Seg'},
       {'code': 'ter', 'label': 'Ter'},
@@ -1412,7 +1437,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           ),
           const SizedBox(height: 12),
           Text(
-            'Configure sua jornada para que supervisores e colegas vejam quando você está em serviço. Fora do horário, suas notificações podem ser silenciadas automaticamente (exceto emergências críticas).',
+            'Configure sua jornada habitual. Fora do horário configurado, seu status é marcado automaticamente como "Fora de Serviço" e as notificações de mensagens comuns são silenciadas.',
             style: TextStyle(
               fontSize: 12.5,
               color: isDark ? Colors.white60 : AppColors.textSecondary,
@@ -1421,54 +1446,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           ),
           const SizedBox(height: 14),
 
-          // Plantão Extra Switch
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            decoration: BoxDecoration(
-              color: user.emPlantaoExtra
-                  ? const Color(0xFFE1F5FE)
-                  : (isDark ? Colors.white10 : const Color(0xFFF8FAFC)),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: user.emPlantaoExtra
-                    ? const Color(0xFF0288D1)
-                    : (isDark ? Colors.white12 : const Color(0xFFE2E8F0)),
-              ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Plantão Extra Agora',
-                        style: TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
-                      ),
-                      SizedBox(height: 2),
-                      Text(
-                        'Ative se estiver cobrindo turno ou plantão adicional',
-                        style: TextStyle(fontSize: 11.5, color: AppColors.textSecondary),
-                      ),
-                    ],
-                  ),
-                ),
-                Switch(
-                  value: user.emPlantaoExtra,
-                  activeColor: const Color(0xFF0288D1),
-                  onChanged: (val) {
-                    _updateSchedule(user: user, emPlantaoExtra: val);
-                  },
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-
           // Horários de Entrada e Saída
           const Text(
-            'Horário de Trabalho Habitual',
+            'Horário de Trabalho Habitual (Formato 24h)',
             style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
           ),
           const SizedBox(height: 8),
@@ -1477,16 +1457,23 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               Expanded(
                 child: _buildTimeButton(
                   label: 'Entrada',
-                  time: user.jornadaInicio,
+                  time: currentInicio,
                   isDark: isDark,
                   onTap: () async {
-                    final parts = user.jornadaInicio.split(':').map((e) => int.tryParse(e) ?? 0).toList();
+                    final parts = currentInicio.split(':').map((e) => int.tryParse(e) ?? 0).toList();
                     final initial = TimeOfDay(hour: parts.isNotEmpty ? parts[0] : 7, minute: parts.length > 1 ? parts[1] : 0);
-                    final picked = await showTimePicker(context: context, initialTime: initial);
+                    final picked = await showTimePicker(
+                      context: context,
+                      initialTime: initial,
+                      builder: (context, child) => MediaQuery(
+                        data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+                        child: child!,
+                      ),
+                    );
                     if (picked != null) {
                       final h = picked.hour.toString().padLeft(2, '0');
                       final m = picked.minute.toString().padLeft(2, '0');
-                      _updateSchedule(user: user, jornadaInicio: '$h:$m');
+                      setState(() => _selectedInicio = '$h:$m');
                     }
                   },
                 ),
@@ -1495,16 +1482,23 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               Expanded(
                 child: _buildTimeButton(
                   label: 'Saída',
-                  time: user.jornadaFim,
+                  time: currentFim,
                   isDark: isDark,
                   onTap: () async {
-                    final parts = user.jornadaFim.split(':').map((e) => int.tryParse(e) ?? 0).toList();
+                    final parts = currentFim.split(':').map((e) => int.tryParse(e) ?? 0).toList();
                     final initial = TimeOfDay(hour: parts.isNotEmpty ? parts[0] : 16, minute: parts.length > 1 ? parts[1] : 0);
-                    final picked = await showTimePicker(context: context, initialTime: initial);
+                    final picked = await showTimePicker(
+                      context: context,
+                      initialTime: initial,
+                      builder: (context, child) => MediaQuery(
+                        data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+                        child: child!,
+                      ),
+                    );
                     if (picked != null) {
                       final h = picked.hour.toString().padLeft(2, '0');
                       final m = picked.minute.toString().padLeft(2, '0');
-                      _updateSchedule(user: user, jornadaFim: '$h:$m');
+                      setState(() => _selectedFim = '$h:$m');
                     }
                   },
                 ),
@@ -1524,7 +1518,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             runSpacing: 6,
             children: allDays.map((d) {
               final code = d['code']!;
-              final isSelected = diasList.contains(code);
+              final isSelected = currentDias.contains(code);
               return FilterChip(
                 label: Text(d['label']!),
                 selected: isSelected,
@@ -1536,14 +1530,14 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   color: isSelected ? AppColors.primary : (isDark ? Colors.white70 : AppColors.neutral900),
                 ),
                 onSelected: (selected) {
-                  final newDias = List<String>.from(diasList);
+                  final newDias = List<String>.from(currentDias);
                   if (selected) {
                     if (!newDias.contains(code)) newDias.add(code);
                   } else {
                     newDias.remove(code);
                   }
                   if (newDias.isNotEmpty) {
-                    _updateSchedule(user: user, jornadaDias: newDias.join(','));
+                    setState(() => _selectedDias = newDias);
                   }
                 },
               );
@@ -1580,13 +1574,48 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   ),
                 ),
                 Switch(
-                  value: user.silenciarForaJornada,
+                  value: currentSilenciar,
                   activeColor: AppColors.primary,
                   onChanged: (val) {
-                    _updateSchedule(user: user, silenciarForaJornada: val);
+                    setState(() => _selectedSilenciar = val);
                   },
                 ),
               ],
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // ─── Botão Explícito "Salvar Escala" ───────────────────────────
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _isSavingSchedule
+                  ? null
+                  : () => _updateSchedule(
+                        user: user,
+                        jornadaInicio: currentInicio,
+                        jornadaFim: currentFim,
+                        jornadaDias: currentDias.join(','),
+                        silenciarForaJornada: currentSilenciar,
+                      ),
+              icon: _isSavingSchedule
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Icon(Icons.save_rounded, size: 20),
+              label: Text(
+                _isSavingSchedule ? 'Salvando Escala...' : 'Salvar Escala & Horários',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                elevation: 1,
+              ),
             ),
           ),
         ],

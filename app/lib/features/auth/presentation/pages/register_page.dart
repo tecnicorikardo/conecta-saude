@@ -805,6 +805,10 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
               final picked = await showTimePicker(
                 context: context,
                 initialTime: initial,
+                builder: (context, child) => MediaQuery(
+                  data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+                  child: child!,
+                ),
               );
               if (picked != null) {
                 final h = picked.hour.toString().padLeft(2, '0');
