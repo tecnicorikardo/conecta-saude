@@ -772,65 +772,67 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           ),
                         ),
                         const SizedBox(height: 14),
-                        Row(
-                          children: [
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: user.emServico
-                                    ? AppColors.success.withOpacity(0.1)
-                                    : Colors.grey.withOpacity(0.1),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(
-                                user.emServico ? Icons.work : Icons.work_off,
-                                color: user.emServico ? AppColors.success : Colors.grey,
-                                size: 24,
-                              ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    user.emServico ? 'Em Serviço' : 'Fora de Serviço',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: isDark ? Colors.white : const Color(0xFF1E293B),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    user.emServico
-                                        ? 'Disponível para atendimento'
-                                        : 'Não disponível no momento',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: isDark ? Colors.white70 : Colors.black54,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Consumer(
-                              builder: (context, ref, _) {
-                                final statusAsync = ref.watch(serviceStatusProvider);
-                                final isLoading = statusAsync.isLoading;
+                        Consumer(
+                          builder: (context, ref, _) {
+                            final statusAsync = ref.watch(serviceStatusProvider);
+                            final isEmServico = statusAsync.valueOrNull ?? user.emServico;
+                            final isLoading = statusAsync.isLoading;
 
-                                return isLoading
+                            return Row(
+                              children: [
+                                Container(
+                                  width: 48,
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    color: isEmServico
+                                        ? AppColors.success.withOpacity(0.1)
+                                        : Colors.grey.withOpacity(0.1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    isEmServico ? Icons.work : Icons.work_off,
+                                    color: isEmServico ? AppColors.success : Colors.grey,
+                                    size: 24,
+                                  ),
+                                ),
+                                const SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        isEmServico ? 'Em Serviço' : 'Fora de Serviço',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w600,
+                                          color: isDark ? Colors.white : const Color(0xFF1E293B),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        isEmServico
+                                            ? 'Disponível para atendimento'
+                                            : 'Não disponível no momento',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: isDark ? Colors.white70 : Colors.black54,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                isLoading
                                     ? const SizedBox(
                                         width: 24,
                                         height: 24,
                                         child: CircularProgressIndicator(strokeWidth: 2),
                                       )
                                     : Switch(
-                                        value: user.emServico,
+                                        value: isEmServico,
+                                        activeColor: AppColors.success,
                                         onChanged: (value) async {
                                           try {
-                                            await ref.read(serviceStatusProvider.notifier).toggle();
+                                            await ref.read(serviceStatusProvider.notifier).toggle(value);
                                             if (context.mounted) {
                                               ScaffoldMessenger.of(context).showSnackBar(
                                                 SnackBar(
@@ -854,19 +856,14 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                             }
                                           }
                                         },
-                                        activeColor: AppColors.success,
-                                      );
-                              },
-                            ),
-                          ],
+                                      ),
+                              ],
+                            );
+                          },
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
-
-                  // ─── Minha Escala & Horário de Plantão ───────────────────
-                  _buildScheduleCard(user, isDark),
                   const SizedBox(height: 16),
 
                   // ─── Seletor de Temas Visuais ────────────────────────────

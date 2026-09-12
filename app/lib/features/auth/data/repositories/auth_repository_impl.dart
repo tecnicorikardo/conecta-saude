@@ -358,6 +358,7 @@ class AuthRepositoryImpl implements AuthRepository {
       jornadaDias: data['jornadaDias'] as String? ?? 'seg,ter,qua,qui,sex',
       emPlantaoExtra: data['emPlantaoExtra'] as bool? ?? false,
       silenciarForaJornada: data['silenciarForaJornada'] as bool? ?? true,
+      emServico: data['emServico'] as bool? ?? true,
       ativo: data['ativo'] as bool? ?? true,
       aprovadoPor: data['aprovadoPor'] as String?,
       aprovadoEm: data['aprovadoEm'] != null

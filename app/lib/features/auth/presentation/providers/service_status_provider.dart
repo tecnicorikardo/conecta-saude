@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/services/http_service.dart';
+import '../../domain/entities/user_entity.dart';
 import 'current_user_provider.dart';
 
 /// Provider para gerenciar o estado de serviço do usuário
@@ -16,6 +17,13 @@ class ServiceStatusNotifier extends StateNotifier<AsyncValue<bool>> {
   }
 
   void _initialize() {
+    _ref.listen<AsyncValue<UserEntity?>>(currentUserProvider, (prev, next) {
+      final user = next.valueOrNull;
+      if (user != null) {
+        state = AsyncValue.data(user.emServico);
+      }
+    });
+
     final user = _ref.read(currentUserProvider).valueOrNull;
     if (user != null) {
       state = AsyncValue.data(user.emServico);
@@ -25,11 +33,15 @@ class ServiceStatusNotifier extends StateNotifier<AsyncValue<bool>> {
   }
 
   /// Alterna o status de serviço (Em Serviço ↔ Fora de Serviço)
-  Future<void> toggle() async {
-    final currentValue = state.valueOrNull ?? true;
-    final newValue = !currentValue;
+  Future<void> toggle([bool? targetValue]) async {
+    final user = _ref.read(currentUserProvider).valueOrNull;
+    final currentStatus = user?.emServico ?? state.valueOrNull ?? true;
+    final newValue = targetValue ?? !currentStatus;
 
-    // Otimistic update
+    // Atualização otimista no currentUserNotifier imediatamente para atualizar toda a UI
+    if (user != null) {
+      _ref.read(currentUserProvider.notifier).setUser(user.copyWith(emServico: newValue));
+    }
     state = AsyncValue.data(newValue);
 
     try {
@@ -38,13 +50,16 @@ class ServiceStatusNotifier extends StateNotifier<AsyncValue<bool>> {
         'emServico': newValue,
       });
 
-      // Recarregar usuário para garantir sincronização
+      // Recarregar usuário do backend para garantir sincronização final
       await _ref.read(currentUserProvider.notifier).refreshUser();
 
-      debugPrint('[ServiceStatus] Status alterado para: ${newValue ? "Em Serviço" : "Fora de Serviço"}');
+      debugPrint('[ServiceStatus] Status alterado com sucesso para: ${newValue ? "Em Serviço" : "Fora de Serviço"}');
     } catch (error) {
       // Reverter em caso de erro
-      state = AsyncValue.data(currentValue);
+      if (user != null) {
+        _ref.read(currentUserProvider.notifier).setUser(user.copyWith(emServico: currentStatus));
+      }
+      state = AsyncValue.data(currentStatus);
       debugPrint('[ServiceStatus] Erro ao atualizar status: $error');
       rethrow;
     }
