@@ -568,35 +568,6 @@ class _ConversationTile extends StatelessWidget {
                                           ),
                                         ),
                                       ],
-                                      if (conversation.autoExcluir24h) ...[
-                                        const SizedBox(width: 4),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                              horizontal: 5, vertical: 2),
-                                          decoration: BoxDecoration(
-                                            color: Colors.amber.shade50,
-                                            borderRadius: BorderRadius.circular(4),
-                                            border: Border.all(color: Colors.amber.shade200),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Icon(Icons.timer_outlined,
-                                                  size: 11,
-                                                  color: Colors.amber.shade900),
-                                              const SizedBox(width: 2),
-                                              Text(
-                                                '24h',
-                                                style: TextStyle(
-                                                  fontSize: 9,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: Colors.amber.shade900,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
                                     ],
                                   ),
                                 ),

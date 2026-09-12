@@ -192,6 +192,13 @@ export async function testPush(req: Request, res: Response): Promise<void> {
         type: 'test_push',
         timestamp: new Date().toISOString(),
       },
+      android: {
+        priority: 'high',
+        notification: {
+          color: '#005CA9',
+          clickAction: 'FLUTTER_NOTIFICATION_CLICK',
+        },
+      },
       webpush: {
         fcmOptions: {
           link: 'https://conecta-hospital.web.app/profile',

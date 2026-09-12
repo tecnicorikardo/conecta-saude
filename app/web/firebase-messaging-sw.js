@@ -33,24 +33,41 @@ messaging.onBackgroundMessage(function(payload) {
   var body = payload.notification?.body || payload.data?.body || 'Nova mensagem recebida no hospital.';
   var conversationId = payload.data?.conversationId;
   var channelId = payload.data?.channelId;
+  var announcementId = payload.data?.announcementId;
+  var msgType = payload.data?.type;
+  var isEmergency = msgType === 'emergency_alert';
+
+  var targetUrl = '/conversations';
+  var tag = 'conecta_saude';
+
+  if (isEmergency) {
+    targetUrl = '/emergency';
+    tag = 'emergency_alert';
+  } else if (msgType === 'announcement') {
+    targetUrl = announcementId ? '/announcements/' + announcementId : '/announcements';
+    tag = 'announcement_' + (announcementId || 'all');
+  } else if (conversationId) {
+    targetUrl = '/chat/' + conversationId;
+    tag = 'chat_' + conversationId;
+  } else if (channelId) {
+    targetUrl = '/channels/' + channelId;
+    tag = 'channel_' + channelId;
+  }
 
   var notificationOptions = {
     body: body,
     icon: '/icons/Icon-192.png',
     badge: '/icons/Icon-192.png',
     data: {
-      url: conversationId
-        ? '/chat/' + conversationId
-        : channelId
-          ? '/channels/' + channelId
-          : '/conversations',
+      url: targetUrl,
       conversationId: conversationId,
       channelId: channelId,
+      type: msgType,
     },
-    vibrate: [200, 100, 200],
-    tag: conversationId ? 'chat_' + conversationId : channelId ? 'channel_' + channelId : 'conecta_saude',
+    vibrate: isEmergency ? [400, 150, 400, 150, 600] : [200, 100, 200],
+    tag: tag,
     renotify: true,
-    requireInteraction: false,
+    requireInteraction: isEmergency,
   };
 
   return self.registration.showNotification(notificationTitle, notificationOptions);

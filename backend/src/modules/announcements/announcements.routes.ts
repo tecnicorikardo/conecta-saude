@@ -167,7 +167,7 @@ async function createAnnouncement(req: Request, res: Response): Promise<void> {
           android: {
             priority: 'high',
             notification: {
-              color: '#005CA9',
+              color: '#D97706',
               clickAction: 'FLUTTER_NOTIFICATION_CLICK',
             },
           },

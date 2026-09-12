@@ -35,20 +35,23 @@
   <link rel="manifest" href="manifest.json">
 
   <style>
-    /* ─── Trava de Viewport & Fundo do Sistema ────────────────────────────── */
+    /* ─── Viewport Dinâmico & Fundo do Sistema ────────────────────────────── */
     html, body {
       width: 100%;
       height: 100%;
+      height: 100dvh;
+      min-height: 100%;
+      min-height: 100dvh;
       margin: 0;
       padding: 0;
       overflow: hidden;
-      position: fixed;
       background-color: #ECEFF1;
       -webkit-tap-highlight-color: transparent;
     }
     flutter-view {
       width: 100% !important;
       height: 100% !important;
+      min-height: 100% !important;
     }
 
     /* ─── Banner de Instalação PWA Mobile ─────────────────────────────────── */
@@ -434,37 +437,66 @@
     (function() {
       if (!window.visualViewport) return;
 
+      var maxViewportHeight = window.visualViewport.height || window.innerHeight;
+      var lastHeight = window.visualViewport.height;
       var isKeyboardOpen = false;
 
-      function onViewportChange() {
+      function checkViewport() {
         var currentHeight = window.visualViewport.height;
-        var screenHeight = window.innerHeight;
-        var heightDiff = screenHeight - currentHeight;
+        if (currentHeight > maxViewportHeight) {
+          maxViewportHeight = currentHeight;
+        }
 
-        // Se a diferença de altura diminuiu para menos de 100px, o teclado fechou
-        if (heightDiff < 100) {
-          if (isKeyboardOpen) {
-            isKeyboardOpen = false;
-            // Remover foco de inputs invisíveis do Flutter para restaurar layout
-            var active = document.activeElement;
-            if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.getAttribute('contenteditable'))) {
-              active.blur();
-            }
-            window.scrollTo(0, 0);
-            document.body.scrollTop = 0;
-            if (document.documentElement) document.documentElement.scrollTop = 0;
+        var shrinkDiff = maxViewportHeight - currentHeight;
+        var growth = currentHeight - lastHeight;
 
-            // Forçar notificação de resize para que o Flutter reconstrua na altura total
-            setTimeout(function() {
-              window.dispatchEvent(new Event('resize'));
-            }, 60);
-          }
-        } else if (heightDiff > 140) {
+        // Se encolheu significativamente (> 140px), o teclado virtual está aberto
+        if (shrinkDiff > 140) {
           isKeyboardOpen = true;
         }
+
+        // Se a altura cresceu (> 100px) ou se o teclado estava aberto e agora o viewport voltou ao tamanho total
+        if (growth > 100 || (isKeyboardOpen && shrinkDiff < 80)) {
+          isKeyboardOpen = false;
+
+          // Restaurar scroll da janela e do documento
+          window.scrollTo(0, 0);
+          document.body.scrollTop = 0;
+          if (document.documentElement) document.documentElement.scrollTop = 0;
+
+          // Desfocar inputs no DOM para garantir que não haja estado fantasma de foco
+          var active = document.activeElement;
+          if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA' || active.getAttribute('contenteditable'))) {
+            active.blur();
+          }
+
+          // Disparar evento de resize imediatamente e com pequenos atrasos para o Flutter Web recompor a tela cheia
+          window.dispatchEvent(new Event('resize'));
+
+          setTimeout(function() {
+            window.scrollTo(0, 0);
+            window.dispatchEvent(new Event('resize'));
+          }, 60);
+
+          setTimeout(function() {
+            window.scrollTo(0, 0);
+            window.dispatchEvent(new Event('resize'));
+          }, 200);
+        }
+
+        lastHeight = currentHeight;
       }
 
-      window.visualViewport.addEventListener('resize', onViewportChange);
+      window.visualViewport.addEventListener('resize', checkViewport);
+
+      window.addEventListener('orientationchange', function() {
+        setTimeout(function() {
+          if (window.visualViewport) {
+            maxViewportHeight = window.visualViewport.height;
+          }
+          window.dispatchEvent(new Event('resize'));
+        }, 300);
+      });
 
       // Prevenir rolagem involuntária da janela (window.scroll) que desloca o canvas do Flutter
       window.addEventListener('scroll', function() {
