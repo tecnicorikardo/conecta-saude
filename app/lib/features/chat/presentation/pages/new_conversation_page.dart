@@ -73,6 +73,8 @@ class _IndividualTab extends ConsumerStatefulWidget {
 class _IndividualTabState extends ConsumerState<_IndividualTab> {
   final _searchCtrl = TextEditingController();
   String? _loadingUserId;
+  String _statusFilter = 'all'; // 'all', 'working', 'off'
+  String _cargoFilterId = 'all';
 
   @override
   void dispose() {
@@ -130,7 +132,7 @@ class _IndividualTabState extends ConsumerState<_IndividualTab> {
       children: [
         // ─── Busca ────────────────────────────────────────────────────
         Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
           child: TextField(
             controller: _searchCtrl,
             decoration: InputDecoration(
@@ -141,60 +143,94 @@ class _IndividualTabState extends ConsumerState<_IndividualTab> {
                       icon: const Icon(Icons.close),
                       onPressed: () {
                         _searchCtrl.clear();
-                        ref
-                            .read(usersSearchProvider.notifier)
-                            .search('');
+                        ref.read(usersSearchProvider.notifier).search('');
                       },
                     )
                   : null,
             ),
-            onChanged: (v) =>
-                ref.read(usersSearchProvider.notifier).search(v),
+            onChanged: (v) => ref.read(usersSearchProvider.notifier).search(v),
           ),
         ),
 
-        // ─── Lista de usuários ─────────────────────────────────────────
-        Expanded(
-          child: ref.watch(usersSearchProvider).when(
-            loading: () =>
-                const Center(child: CircularProgressIndicator()),
-            error: (e, _) => _ErrorView(
-              message: e.toString(),
-              onRetry: () =>
-                  ref.read(usersSearchProvider.notifier).search(''),
-            ),
-            data: (rawUsers) {
-              final myId = ref.watch(currentUserIdProvider);
-              final users = rawUsers.where((u) => u.id != myId).toList();
-              if (users.isEmpty) {
-                return const _EmptyView(
-                    message: 'Nenhum funcionário encontrado.');
-              }
-              return ListView.separated(
-                keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-                itemCount: users.length,
-                separatorBuilder: (_, __) =>
-                    const Divider(height: 1, indent: 70),
-                itemBuilder: (context, i) {
-                  final isThisUserLoading = _loadingUserId == users[i].id;
-                  return _UserTile(
-                    user: users[i],
-                    trailing: isThisUserLoading
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.chevron_right,
-                            color: AppColors.neutral400),
-                    onTap: _loadingUserId != null
-                        ? null
-                        : () => _startConversation(context, users[i]),
-                  );
-                },
-              );
-            },
+        // ─── Lista de usuários e Filtros ───────────────────────────────
+        ref.watch(usersSearchProvider).when(
+          loading: () => const Expanded(
+            child: Center(child: CircularProgressIndicator()),
           ),
+          error: (e, _) => Expanded(
+            child: _ErrorView(
+              message: e.toString(),
+              onRetry: () => ref.read(usersSearchProvider.notifier).search(''),
+            ),
+          ),
+          data: (rawUsers) {
+            final myId = ref.watch(currentUserIdProvider);
+            final users = rawUsers.where((u) => u.id != myId).toList();
+            final cargoOptions = _getCargoOptionsForUsers(users);
+            final filteredUsers = _filterUsers(
+              users,
+              cargoOptions,
+              _statusFilter,
+              _cargoFilterId,
+            );
+
+            return Expanded(
+              child: Column(
+                children: [
+                  _UserFilterBar(
+                    statusFilter: _statusFilter,
+                    onStatusFilterChanged: (s) =>
+                        setState(() => _statusFilter = s),
+                    selectedCargoId: _cargoFilterId,
+                    onCargoFilterChanged: (c) =>
+                        setState(() => _cargoFilterId = c),
+                    users: users,
+                    cargoOptions: cargoOptions,
+                  ),
+                  Expanded(
+                    child: users.isEmpty
+                        ? const _EmptyView(
+                            message: 'Nenhum funcionário encontrado.')
+                        : filteredUsers.isEmpty
+                            ? _FilterEmptyView(
+                                onClear: () => setState(() {
+                                  _statusFilter = 'all';
+                                  _cargoFilterId = 'all';
+                                }),
+                              )
+                            : ListView.separated(
+                                keyboardDismissBehavior:
+                                    ScrollViewKeyboardDismissBehavior.onDrag,
+                                itemCount: filteredUsers.length,
+                                separatorBuilder: (_, __) =>
+                                    const Divider(height: 1, indent: 70),
+                                itemBuilder: (context, i) {
+                                  final user = filteredUsers[i];
+                                  final isThisUserLoading =
+                                      _loadingUserId == user.id;
+                                  return _UserTile(
+                                    user: user,
+                                    trailing: isThisUserLoading
+                                        ? const SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                                strokeWidth: 2),
+                                          )
+                                        : const Icon(Icons.chevron_right,
+                                            color: AppColors.neutral400),
+                                    onTap: _loadingUserId != null
+                                        ? null
+                                        : () => _startConversation(
+                                            context, user),
+                                  );
+                                },
+                              ),
+                  ),
+                ],
+              ),
+            );
+          },
         ),
       ],
     );
@@ -225,6 +261,8 @@ class _GroupTabState extends ConsumerState<_GroupTab> {
   String? _selectedFotoUrl;
   bool _autoExcluir24h = false;
   bool _loading = false;
+  String _statusFilter = 'all'; // 'all', 'working', 'off'
+  String _cargoFilterId = 'all';
 
   @override
   void dispose() {
@@ -470,55 +508,89 @@ class _GroupTabState extends ConsumerState<_GroupTab> {
           ),
         ),
 
-        // ─── Lista de usuários ─────────────────────────────────────────
-        Expanded(
-          child: ref.watch(usersSearchProvider).when(
-            loading: () =>
-                const Center(child: CircularProgressIndicator()),
-            error: (e, _) => _ErrorView(
-              message: e.toString(),
-              onRetry: () =>
-                  ref.read(usersSearchProvider.notifier).search(''),
-            ),
-            data: (rawUsers) {
-              final myId = ref.watch(currentUserIdProvider);
-              final users = rawUsers.where((u) => u.id != myId).toList();
-              if (users.isEmpty) {
-                return const _EmptyView(
-                    message: 'Nenhum funcionário encontrado.');
-              }
-              return ListView.separated(
-                itemCount: users.length,
-                separatorBuilder: (_, __) =>
-                    const Divider(height: 1, indent: 70),
-                itemBuilder: (context, i) {
-                  final u = users[i];
-                  final isSelected = _selected.contains(u);
-                  return _UserTile(
-                    user: u,
-                    trailing: Checkbox(
-                      value: isSelected,
-                      activeColor: AppColors.primary,
-                      onChanged: (_) => setState(() {
-                        if (isSelected) {
-                          _selected.remove(u);
-                        } else {
-                          _selected.add(u);
-                        }
-                      }),
-                    ),
-                    onTap: () => setState(() {
-                      if (isSelected) {
-                        _selected.remove(u);
-                      } else {
-                        _selected.add(u);
-                      }
-                    }),
-                  );
-                },
-              );
-            },
+        // ─── Lista de usuários e Filtros ───────────────────────────────
+        ref.watch(usersSearchProvider).when(
+          loading: () => const Expanded(
+            child: Center(child: CircularProgressIndicator()),
           ),
+          error: (e, _) => Expanded(
+            child: _ErrorView(
+              message: e.toString(),
+              onRetry: () => ref.read(usersSearchProvider.notifier).search(''),
+            ),
+          ),
+          data: (rawUsers) {
+            final myId = ref.watch(currentUserIdProvider);
+            final users = rawUsers.where((u) => u.id != myId).toList();
+            final cargoOptions = _getCargoOptionsForUsers(users);
+            final filteredUsers = _filterUsers(
+              users,
+              cargoOptions,
+              _statusFilter,
+              _cargoFilterId,
+            );
+
+            return Expanded(
+              child: Column(
+                children: [
+                  _UserFilterBar(
+                    statusFilter: _statusFilter,
+                    onStatusFilterChanged: (s) =>
+                        setState(() => _statusFilter = s),
+                    selectedCargoId: _cargoFilterId,
+                    onCargoFilterChanged: (c) =>
+                        setState(() => _cargoFilterId = c),
+                    users: users,
+                    cargoOptions: cargoOptions,
+                  ),
+                  Expanded(
+                    child: users.isEmpty
+                        ? const _EmptyView(
+                            message: 'Nenhum funcionário encontrado.')
+                        : filteredUsers.isEmpty
+                            ? _FilterEmptyView(
+                                onClear: () => setState(() {
+                                  _statusFilter = 'all';
+                                  _cargoFilterId = 'all';
+                                }),
+                              )
+                            : ListView.separated(
+                                keyboardDismissBehavior:
+                                    ScrollViewKeyboardDismissBehavior.onDrag,
+                                itemCount: filteredUsers.length,
+                                separatorBuilder: (_, __) =>
+                                    const Divider(height: 1, indent: 70),
+                                itemBuilder: (context, i) {
+                                  final u = filteredUsers[i];
+                                  final isSelected = _selected.contains(u);
+                                  return _UserTile(
+                                    user: u,
+                                    trailing: Checkbox(
+                                      value: isSelected,
+                                      activeColor: AppColors.primary,
+                                      onChanged: (_) => setState(() {
+                                        if (isSelected) {
+                                          _selected.remove(u);
+                                        } else {
+                                          _selected.add(u);
+                                        }
+                                      }),
+                                    ),
+                                    onTap: () => setState(() {
+                                      if (isSelected) {
+                                        _selected.remove(u);
+                                      } else {
+                                        _selected.add(u);
+                                      }
+                                    }),
+                                  );
+                                },
+                              ),
+                  ),
+                ],
+              ),
+            );
+          },
         ),
 
         // ─── Botão criar grupo ─────────────────────────────────────────
@@ -693,4 +765,384 @@ void _showError(BuildContext context, String msg) {
       margin: const EdgeInsets.all(12),
     ),
   );
+}
+
+// ─── Lógica e Modelos de Filtro por Cargo/Função ──────────────────────────────
+class _CargoOption {
+  final String id;
+  final String label;
+  final IconData icon;
+  final List<String> keywords;
+
+  const _CargoOption({
+    required this.id,
+    required this.label,
+    required this.icon,
+    this.keywords = const [],
+  });
+
+  bool matches(String cargo) {
+    if (id == 'all') return true;
+    final lower = cargo.toLowerCase();
+    return keywords.any((k) => lower.contains(k));
+  }
+}
+
+const _kBaseCargoOptions = [
+  _CargoOption(
+    id: 'all',
+    label: 'Todas Funções',
+    icon: Icons.grid_view_rounded,
+  ),
+  _CargoOption(
+    id: 'med',
+    label: 'Médicos',
+    icon: Icons.medical_services_outlined,
+    keywords: ['médic', 'doutor', 'cirurg', 'clínic'],
+  ),
+  _CargoOption(
+    id: 'enf',
+    label: 'Enfermagem',
+    icon: Icons.health_and_safety_outlined,
+    keywords: ['enferm', 'técnic'],
+  ),
+  _CargoOption(
+    id: 'maq',
+    label: 'Maqueiros',
+    icon: Icons.accessible_forward_outlined,
+    keywords: ['maqueir'],
+  ),
+  _CargoOption(
+    id: 'far',
+    label: 'Farmácia',
+    icon: Icons.medication_outlined,
+    keywords: ['farmác', 'farmac'],
+  ),
+  _CargoOption(
+    id: 'rec',
+    label: 'Recepção',
+    icon: Icons.badge_outlined,
+    keywords: ['recep', 'atend', 'regula'],
+  ),
+  _CargoOption(
+    id: 'adm',
+    label: 'Administrativo',
+    icon: Icons.business_outlined,
+    keywords: ['admin', 'dire', 'coord', 'geren'],
+  ),
+  _CargoOption(
+    id: 'exa',
+    label: 'Exames / Imagem',
+    icon: Icons.biotech_outlined,
+    keywords: ['radio', 'exame', 'oftal', 'laborat'],
+  ),
+];
+
+List<_CargoOption> _getCargoOptionsForUsers(List<UserSummary> users) {
+  final options = <_CargoOption>[..._kBaseCargoOptions];
+  final unmapped = <String>{};
+  for (final u in users) {
+    final c = u.cargo.trim();
+    if (c.isEmpty) continue;
+    final matchesAny =
+        _kBaseCargoOptions.skip(1).any((opt) => opt.matches(c));
+    if (!matchesAny) {
+      unmapped.add(c);
+    }
+  }
+  for (final c in unmapped) {
+    options.add(_CargoOption(
+      id: 'custom_$c',
+      label: c,
+      icon: Icons.work_outline,
+      keywords: [c.toLowerCase()],
+    ));
+  }
+  return options;
+}
+
+List<UserSummary> _filterUsers(
+  List<UserSummary> users,
+  List<_CargoOption> cargoOptions,
+  String statusFilter,
+  String cargoFilterId,
+) {
+  return users.where((u) {
+    // 1. Filtro de Status de Serviço (Online / Offline / Plantão)
+    if (statusFilter == 'working' && !u.isCurrentlyWorking) return false;
+    if (statusFilter == 'off' && u.isCurrentlyWorking) return false;
+
+    // 2. Filtro de Função / Cargo
+    if (cargoFilterId != 'all') {
+      final opt = cargoOptions.firstWhere(
+        (o) => o.id == cargoFilterId,
+        orElse: () => _kBaseCargoOptions.first,
+      );
+      if (opt.id != 'all' && !opt.matches(u.cargo)) return false;
+    }
+
+    return true;
+  }).toList();
+}
+
+// ─── Barra de Filtros (Status + Função) ────────────────────────────────────────
+class _UserFilterBar extends StatelessWidget {
+  final String statusFilter;
+  final ValueChanged<String> onStatusFilterChanged;
+  final String selectedCargoId;
+  final ValueChanged<String> onCargoFilterChanged;
+  final List<UserSummary> users;
+  final List<_CargoOption> cargoOptions;
+
+  const _UserFilterBar({
+    required this.statusFilter,
+    required this.onStatusFilterChanged,
+    required this.selectedCargoId,
+    required this.onCargoFilterChanged,
+    required this.users,
+    required this.cargoOptions,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final total = users.length;
+    final working = users.where((u) => u.isCurrentlyWorking).length;
+    final off = total - working;
+
+    return Container(
+      padding: const EdgeInsets.only(bottom: 6),
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        border: Border(
+          bottom: BorderSide(
+            color: Colors.black.withValues(alpha: 0.06),
+            width: 1,
+          ),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Linha 1: Status de Serviço (Todos / Em Plantão / Fora) ──
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                _StatusPill(
+                  label: 'Todos',
+                  count: total,
+                  icon: Icons.people_outline,
+                  color: AppColors.primary,
+                  isSelected: statusFilter == 'all',
+                  onTap: () => onStatusFilterChanged('all'),
+                ),
+                const SizedBox(width: 8),
+                _StatusPill(
+                  label: 'Em Plantão',
+                  count: working,
+                  icon: Icons.check_circle,
+                  color: const Color(0xFF16A34A),
+                  isSelected: statusFilter == 'working',
+                  onTap: () => onStatusFilterChanged('working'),
+                ),
+                const SizedBox(width: 8),
+                _StatusPill(
+                  label: 'Fora de Serviço',
+                  count: off,
+                  icon: Icons.nightlight_round,
+                  color: const Color(0xFFD97706),
+                  isSelected: statusFilter == 'off',
+                  onTap: () => onStatusFilterChanged('off'),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // ── Linha 2: Função / Especialidade ──
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: cargoOptions.map((opt) {
+                final isAll = opt.id == 'all';
+                final count = isAll
+                    ? total
+                    : users.where((u) => opt.matches(u.cargo)).length;
+
+                // Não exibir chips com zero membros se não for a opção 'Todas'
+                if (!isAll && count == 0) return const SizedBox.shrink();
+
+                final isSelected = selectedCargoId == opt.id;
+
+                return Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: FilterChip(
+                    showCheckmark: false,
+                    avatar: Icon(
+                      opt.icon,
+                      size: 14,
+                      color: isSelected ? Colors.white : AppColors.neutral600,
+                    ),
+                    label: Text(
+                      '${opt.label} ($count)',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight:
+                            isSelected ? FontWeight.w600 : FontWeight.normal,
+                        color: isSelected ? Colors.white : AppColors.neutral700,
+                      ),
+                    ),
+                    selected: isSelected,
+                    selectedColor: AppColors.primary,
+                    backgroundColor: Colors.grey.shade100,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+                    visualDensity: VisualDensity.compact,
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(
+                        color: isSelected
+                            ? AppColors.primary
+                            : Colors.grey.shade300,
+                        width: 0.8,
+                      ),
+                    ),
+                    onSelected: (_) => onCargoFilterChanged(opt.id),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusPill extends StatelessWidget {
+  final String label;
+  final int count;
+  final IconData icon;
+  final Color color;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _StatusPill({
+    required this.label,
+    required this.count,
+    required this.icon,
+    required this.color,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? color.withValues(alpha: 0.14)
+                : Colors.grey.shade100,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isSelected ? color : Colors.grey.shade300,
+              width: isSelected ? 1.4 : 0.8,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon,
+                  size: 13,
+                  color: isSelected ? color : AppColors.neutral500),
+              const SizedBox(width: 5),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight:
+                      isSelected ? FontWeight.w600 : FontWeight.w500,
+                  color: isSelected ? color : AppColors.neutral700,
+                ),
+              ),
+              const SizedBox(width: 5),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? color.withValues(alpha: 0.22)
+                      : Colors.grey.shade200,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '$count',
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w700,
+                    color: isSelected ? color : AppColors.neutral600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FilterEmptyView extends StatelessWidget {
+  final VoidCallback onClear;
+  const _FilterEmptyView({required this.onClear});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: const BoxDecoration(
+                color: AppColors.neutral100,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.filter_alt_off_outlined,
+                  size: 40, color: AppColors.neutral400),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Nenhum colaborador encontrado',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Tente alterar os filtros de status ou de função acima para visualizar outros colegas.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.neutral500, fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: onClear,
+              icon: const Icon(Icons.refresh, size: 18),
+              label: const Text('Limpar filtros'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

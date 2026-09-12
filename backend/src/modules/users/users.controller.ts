@@ -4,6 +4,7 @@ import { getFirebaseAuth } from '../../config/firebase';
 import { HierarquiaNivel } from '../../types';
 import { AppError } from '../../middleware/errorHandler';
 import { auditLog } from '../../utils/auditLogger';
+import { isUserCurrentlyWorking } from '../../utils/schedule';
 import {
   createUserSchema,
   updateUserSchema,
@@ -34,6 +35,10 @@ export async function listUsers(req: Request, res: Response): Promise<void> {
   if (query.hierarquiaNivel) where.hierarquiaNivel = query.hierarquiaNivel;
   if (query.ativo !== undefined) where.ativo = query.ativo === 'true';
   if (query.excludeSelf === 'true') where.id = { not: actor.id };
+
+  if (query.cargo) {
+    where.cargo = { contains: query.cargo, mode: 'insensitive' };
+  }
 
   if (query.search) {
     where.OR = [
@@ -80,6 +85,7 @@ export async function listUsers(req: Request, res: Response): Promise<void> {
         ...u,
         unitNome: u.unit?.nome ?? null,
         unitSigla: u.unit?.sigla ?? null,
+        emServico: isUserCurrentlyWorking(u),
       })),
       total,
       page: query.page,

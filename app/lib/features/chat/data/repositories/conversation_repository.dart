@@ -217,11 +217,13 @@ class ConversationRepository {
   Future<List<UserSummary>> listAvailableUsers({
     String? search,
     String? setorId,
+    String? cargo,
   }) async {
     try {
       final response = await _http.get('/users', queryParameters: {
         if (search != null && search.isNotEmpty) 'search': search,
         if (setorId != null) 'setorId': setorId,
+        if (cargo != null && cargo.isNotEmpty) 'cargo': cargo,
         'excludeSelf': 'true',
         'ativo': 'true',
         'limit': 100,

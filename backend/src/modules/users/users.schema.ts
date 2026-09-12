@@ -46,6 +46,8 @@ export const listUsersSchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(30),
   search: z.string().optional(),
+  cargo: z.string().optional(),
+  emServico: z.enum(['true', 'false']).optional(),
   setorId: z.string().uuid().optional(),
   unitId: z.string().uuid().optional(),
   hierarquiaNivel: z.coerce.number().int().min(1).max(4).optional(),

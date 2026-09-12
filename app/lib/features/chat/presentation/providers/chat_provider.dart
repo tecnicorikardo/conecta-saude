@@ -613,12 +613,20 @@ class UsersSearchNotifier
   }
 
   final Ref _ref;
+  String _currentQuery = '';
+  String? _currentCargo;
 
-  Future<void> search(String query) async {
+  Future<void> search([String? query, String? cargo]) async {
+    if (query != null) _currentQuery = query;
+    if (cargo != null) _currentCargo = cargo.isEmpty ? null : cargo;
+
     state = const AsyncValue.loading();
     try {
       final repo = _ref.read(conversationRepositoryProvider);
-      final users = await repo.listAvailableUsers(search: query);
+      final users = await repo.listAvailableUsers(
+        search: _currentQuery,
+        cargo: _currentCargo,
+      );
       state = AsyncValue.data(users);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
