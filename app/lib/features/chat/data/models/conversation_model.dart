@@ -38,6 +38,11 @@ class ConversationModel {
       setorNome: setor?['nome'] as String? ?? user['setorNome'] as String? ?? j['setorNome'] as String? ?? '',
       hierarquiaNivel: user['hierarquiaNivel'] as int? ?? j['hierarquiaNivel'] as int? ?? 4,
       isAdmin: j['isAdmin'] as bool? ?? user['isAdmin'] as bool? ?? false,
+      jornadaInicio: user['jornadaInicio'] as String? ?? j['jornadaInicio'] as String? ?? '07:00',
+      jornadaFim: user['jornadaFim'] as String? ?? j['jornadaFim'] as String? ?? '16:00',
+      jornadaDias: user['jornadaDias'] as String? ?? j['jornadaDias'] as String? ?? 'seg,ter,qua,qui,sex',
+      emPlantaoExtra: user['emPlantaoExtra'] as bool? ?? j['emPlantaoExtra'] as bool? ?? false,
+      emServico: user['emServico'] as bool? ?? j['emServico'] as bool?,
     );
   }
 
@@ -99,6 +104,11 @@ class UserSummary {
   final int hierarquiaNivel;
   final String? fotoUrl;
   final bool ativo;
+  final String jornadaInicio;
+  final String jornadaFim;
+  final String jornadaDias;
+  final bool emPlantaoExtra;
+  final bool? emServico;
 
   const UserSummary({
     required this.id,
@@ -109,7 +119,46 @@ class UserSummary {
     required this.hierarquiaNivel,
     this.fotoUrl,
     required this.ativo,
+    this.jornadaInicio = '07:00',
+    this.jornadaFim = '16:00',
+    this.jornadaDias = 'seg,ter,qua,qui,sex',
+    this.emPlantaoExtra = false,
+    this.emServico,
   });
+
+  bool get isCurrentlyWorking {
+    if (emServico != null) return emServico!;
+    if (emPlantaoExtra) return true;
+    if (!ativo) return false;
+
+    final now = DateTime.now();
+    final dayCodes = {
+      1: 'seg',
+      2: 'ter',
+      3: 'qua',
+      4: 'qui',
+      5: 'sex',
+      6: 'sab',
+      7: 'dom',
+    };
+    final todayCode = dayCodes[now.weekday] ?? 'seg';
+    final dias = jornadaDias.toLowerCase().split(',').map((d) => d.trim()).toList();
+    if (!dias.contains(todayCode)) return false;
+
+    final startParts = jornadaInicio.split(':').map((e) => int.tryParse(e) ?? 0).toList();
+    final endParts = jornadaFim.split(':').map((e) => int.tryParse(e) ?? 0).toList();
+    final startMinutes = (startParts.isNotEmpty ? startParts[0] : 7) * 60 +
+        (startParts.length > 1 ? startParts[1] : 0);
+    final endMinutes = (endParts.isNotEmpty ? endParts[0] : 16) * 60 +
+        (endParts.length > 1 ? endParts[1] : 0);
+    final nowMinutes = now.hour * 60 + now.minute;
+
+    if (endMinutes >= startMinutes) {
+      return nowMinutes >= startMinutes && nowMinutes <= endMinutes;
+    } else {
+      return nowMinutes >= startMinutes || nowMinutes <= endMinutes;
+    }
+  }
 
   String get hierarquiaNome {
     switch (hierarquiaNivel) {
@@ -131,6 +180,11 @@ class UserSummary {
       hierarquiaNivel: j['hierarquiaNivel'] as int? ?? 4,
       fotoUrl: j['fotoUrl'] as String?,
       ativo: j['ativo'] as bool? ?? true,
+      jornadaInicio: j['jornadaInicio'] as String? ?? '07:00',
+      jornadaFim: j['jornadaFim'] as String? ?? '16:00',
+      jornadaDias: j['jornadaDias'] as String? ?? 'seg,ter,qua,qui,sex',
+      emPlantaoExtra: j['emPlantaoExtra'] as bool? ?? false,
+      emServico: j['emServico'] as bool?,
     );
   }
 }

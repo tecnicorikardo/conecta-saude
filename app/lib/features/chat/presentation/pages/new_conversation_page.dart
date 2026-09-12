@@ -569,18 +569,55 @@ class _UserTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isWorking = user.isCurrentlyWorking;
+
     return ListTile(
       leading: ConversationAvatar(
         name: user.nome,
         photoUrl: user.fotoUrl,
         size: 44,
+        isWorking: isWorking,
       ),
-      title: Text(
-        user.nome,
-        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+      title: Row(
+        children: [
+          Flexible(
+            child: Text(
+              user.nome,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 5.5, vertical: 1),
+            decoration: BoxDecoration(
+              color: isWorking
+                  ? const Color(0xFF22C55E).withValues(alpha: 0.12)
+                  : const Color(0xFFF59E0B).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: isWorking
+                    ? const Color(0xFF22C55E).withValues(alpha: 0.3)
+                    : const Color(0xFFF59E0B).withValues(alpha: 0.3),
+                width: 0.8,
+              ),
+            ),
+            child: Text(
+              isWorking ? 'Em Plantão' : 'Fora de Serviço',
+              style: TextStyle(
+                color: isWorking
+                    ? const Color(0xFF16A34A)
+                    : const Color(0xFFD97706),
+                fontWeight: FontWeight.w600,
+                fontSize: 9.5,
+              ),
+            ),
+          ),
+        ],
       ),
       subtitle: Text(
-        '${user.hierarquiaNome} · ${user.setorNome}',
+        '${user.hierarquiaNome} · ${user.setorNome} (${user.jornadaInicio} às ${user.jornadaFim})',
         style: const TextStyle(
             fontSize: 12, color: AppColors.neutral500),
       ),

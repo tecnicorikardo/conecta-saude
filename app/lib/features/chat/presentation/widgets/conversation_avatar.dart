@@ -9,6 +9,7 @@ class ConversationAvatar extends StatelessWidget {
   final double size;
   final bool showOnline;
   final int? hierarquiaNivel;
+  final bool? isWorking;
 
   const ConversationAvatar({
     super.key,
@@ -18,6 +19,7 @@ class ConversationAvatar extends StatelessWidget {
     this.size = 40,
     this.showOnline = false,
     this.hierarquiaNivel,
+    this.isWorking,
   });
 
   String get _initials {
@@ -117,22 +119,45 @@ class ConversationAvatar extends StatelessWidget {
       );
     }
 
-    if (!showOnline) return avatarChild;
+    final showStatus = !isGroup && (isWorking != null || showOnline);
+    if (!showStatus) return avatarChild;
+
+    final inService = isWorking ?? showOnline;
+    final dotColor = inService ? const Color(0xFF22C55E) : const Color(0xFFF59E0B);
 
     return Stack(
+      clipBehavior: Clip.none,
       children: [
         avatarChild,
         Positioned(
-          right: 0,
-          bottom: 0,
+          right: -1,
+          bottom: -1,
           child: Container(
-            width: size * 0.28,
-            height: size * 0.28,
+            width: size * 0.32,
+            height: size * 0.32,
             decoration: BoxDecoration(
-              color: AppColors.success,
+              color: dotColor,
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 1.5),
+              border: Border.all(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                width: 2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: dotColor.withValues(alpha: 0.35),
+                  blurRadius: 3,
+                  spreadRadius: 0.5,
+                ),
+              ],
             ),
+            alignment: Alignment.center,
+            child: !inService
+                ? Icon(
+                    Icons.nightlight_round,
+                    size: size * 0.18,
+                    color: Colors.white,
+                  )
+                : null,
           ),
         ),
       ],

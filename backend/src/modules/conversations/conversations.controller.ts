@@ -29,6 +29,39 @@ const updateMemberRoleSchema = z.object({
   isAdmin: z.boolean(),
 });
 
+function isUserCurrentlyWorking(user: {
+  jornadaInicio?: string | null;
+  jornadaFim?: string | null;
+  jornadaDias?: string | null;
+  emPlantaoExtra?: boolean | null;
+  ativo?: boolean | null;
+}): boolean {
+  if (user.emPlantaoExtra) return true;
+  if (user.ativo === false) return false;
+
+  const now = new Date();
+  const dayCodes = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
+  const todayCode = dayCodes[now.getDay()];
+  const dias = (user.jornadaDias ?? 'seg,ter,qua,qui,sex').toLowerCase().split(',').map(d => d.trim());
+
+  if (!dias.includes(todayCode)) {
+    return false;
+  }
+
+  const startParts = (user.jornadaInicio ?? '07:00').split(':').map(e => parseInt(e, 10) || 0);
+  const endParts = (user.jornadaFim ?? '16:00').split(':').map(e => parseInt(e, 10) || 0);
+
+  const startMinutes = (startParts[0] ?? 7) * 60 + (startParts[1] ?? 0);
+  const endMinutes = (endParts[0] ?? 16) * 60 + (endParts[1] ?? 0);
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+  if (endMinutes >= startMinutes) {
+    return nowMinutes >= startMinutes && nowMinutes <= endMinutes;
+  } else {
+    return nowMinutes >= startMinutes || nowMinutes <= endMinutes;
+  }
+}
+
 /**
  * GET /api/conversations
  * Lista conversas do usuário autenticado.
@@ -55,6 +88,11 @@ export async function listConversations(req: Request, res: Response): Promise<vo
               fotoUrl: true,
               cargo: true,
               hierarquiaNivel: true,
+              jornadaInicio: true,
+              jornadaFim: true,
+              jornadaDias: true,
+              emPlantaoExtra: true,
+              ativo: true,
               setor: { select: { nome: true } },
             },
           },
@@ -103,6 +141,11 @@ export async function listConversations(req: Request, res: Response): Promise<vo
         hierarquiaNivel: m.user.hierarquiaNivel,
         setorNome: m.user.setor?.nome ?? '',
         isAdmin: m.isAdmin || m.user.id === c.criadoPor,
+        jornadaInicio: m.user.jornadaInicio ?? '07:00',
+        jornadaFim: m.user.jornadaFim ?? '16:00',
+        jornadaDias: m.user.jornadaDias ?? 'seg,ter,qua,qui,sex',
+        emPlantaoExtra: m.user.emPlantaoExtra ?? false,
+        emServico: isUserCurrentlyWorking(m.user),
       })),
       lastMessage: c.messages[0] ?? null,
       unreadCount: c._count.messages,
@@ -137,6 +180,11 @@ export async function getConversation(req: Request, res: Response): Promise<void
               fotoUrl: true,
               cargo: true,
               hierarquiaNivel: true,
+              jornadaInicio: true,
+              jornadaFim: true,
+              jornadaDias: true,
+              emPlantaoExtra: true,
+              ativo: true,
               setor: { select: { nome: true } },
             },
           },
@@ -177,6 +225,11 @@ export async function getConversation(req: Request, res: Response): Promise<void
         setorNome: m.user.setor?.nome ?? '',
         isAdmin: m.isAdmin || m.user.id === conversation.criadoPor,
         isCreator: m.user.id === conversation.criadoPor,
+        jornadaInicio: m.user.jornadaInicio ?? '07:00',
+        jornadaFim: m.user.jornadaFim ?? '16:00',
+        jornadaDias: m.user.jornadaDias ?? 'seg,ter,qua,qui,sex',
+        emPlantaoExtra: m.user.emPlantaoExtra ?? false,
+        emServico: isUserCurrentlyWorking(m.user),
       })),
     },
   });
@@ -238,6 +291,11 @@ export async function createConversation(req: Request, res: Response): Promise<v
                 fotoUrl: true,
                 cargo: true,
                 hierarquiaNivel: true,
+                jornadaInicio: true,
+                jornadaFim: true,
+                jornadaDias: true,
+                emPlantaoExtra: true,
+                ativo: true,
                 setor: { select: { nome: true } },
               },
             },
@@ -264,6 +322,11 @@ export async function createConversation(req: Request, res: Response): Promise<v
             hierarquiaNivel: m.user.hierarquiaNivel,
             setorNome: m.user.setor?.nome ?? '',
             isAdmin: m.isAdmin || m.user.id === existing.criadoPor,
+            jornadaInicio: m.user.jornadaInicio ?? '07:00',
+            jornadaFim: m.user.jornadaFim ?? '16:00',
+            jornadaDias: m.user.jornadaDias ?? 'seg,ter,qua,qui,sex',
+            emPlantaoExtra: m.user.emPlantaoExtra ?? false,
+            emServico: isUserCurrentlyWorking(m.user),
           })),
           lastMessage: null,
           unreadCount: 0,
@@ -306,6 +369,11 @@ export async function createConversation(req: Request, res: Response): Promise<v
               fotoUrl: true,
               cargo: true,
               hierarquiaNivel: true,
+              jornadaInicio: true,
+              jornadaFim: true,
+              jornadaDias: true,
+              emPlantaoExtra: true,
+              ativo: true,
               setor: { select: { nome: true } },
             },
           },
@@ -332,6 +400,11 @@ export async function createConversation(req: Request, res: Response): Promise<v
         hierarquiaNivel: m.user.hierarquiaNivel,
         setorNome: m.user.setor?.nome ?? '',
         isAdmin: m.isAdmin || m.user.id === conversation.criadoPor,
+        jornadaInicio: m.user.jornadaInicio ?? '07:00',
+        jornadaFim: m.user.jornadaFim ?? '16:00',
+        jornadaDias: m.user.jornadaDias ?? 'seg,ter,qua,qui,sex',
+        emPlantaoExtra: m.user.emPlantaoExtra ?? false,
+        emServico: isUserCurrentlyWorking(m.user),
       })),
       lastMessage: null,
       unreadCount: 0,

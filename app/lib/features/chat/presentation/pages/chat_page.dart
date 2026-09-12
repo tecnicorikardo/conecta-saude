@@ -96,6 +96,7 @@ class _ChatPageState extends ConsumerState<ChatPage> with WidgetsBindingObserver
     final photoUrl = conv?.displayPhoto(currentUserId);
     final isGroup = conv?.tipo == 'grupo' || conv?.tipo == 'setor';
     final subtitle = conv?.displaySubtitle(currentUserId) ?? '';
+    final otherParticipant = isGroup ? null : conv?.otherParticipant(currentUserId);
 
     // Rolar automaticamente quando novas mensagens chegarem ou forem enviadas
     ref.listen<AsyncValue<List<MessageEntity>>>(
@@ -114,12 +115,46 @@ class _ChatPageState extends ConsumerState<ChatPage> with WidgetsBindingObserver
       backgroundColor:
           isDark ? const Color(0xFF0D1B2A) : const Color(0xFFECEFF1),
       appBar: _buildAppBar(
-          context, displayName, photoUrl, subtitle, isGroup, currentUserId, conv),
+          context, displayName, photoUrl, subtitle, isGroup, currentUserId, conv, otherParticipant),
       body: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onTap: () => FocusScope.of(context).unfocus(),
         child: Column(
         children: [
+          // ─── Banner Informativo quando o Colega está Fora de Serviço ──────
+          if (!isGroup && otherParticipant != null && !otherParticipant.isCurrentlyWorking)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFFFFBEB),
+                border: Border(
+                  bottom: BorderSide(
+                    color: isDark ? const Color(0xFF334155) : const Color(0xFFFDE68A),
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.nightlight_round,
+                    size: 15,
+                    color: Color(0xFFD97706),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '${otherParticipant.nome} está fora de serviço (${otherParticipant.jornadaInicio} às ${otherParticipant.jornadaFim}). Mensagens normais serão notificadas no próximo plantão.',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: isDark ? const Color(0xFFFCD34D) : const Color(0xFF92400E),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           // ─── Lista de mensagens ──────────────────────────────────────────
           Expanded(
             child: messagesAsync.when(
@@ -186,6 +221,7 @@ class _ChatPageState extends ConsumerState<ChatPage> with WidgetsBindingObserver
     bool isGroup,
     String currentUserId,
     ConversationEntity? conv,
+    ConversationParticipant? otherParticipant,
   ) {
     return AppBar(
       backgroundColor: AppColors.primary,
@@ -200,9 +236,7 @@ class _ChatPageState extends ConsumerState<ChatPage> with WidgetsBindingObserver
           if (isGroup) {
             context.push('/chat/${widget.conversationId}/info');
           } else {
-            final otherMember = conv?.participantes
-                .where((p) => p.id != currentUserId)
-                .firstOrNull ?? conv?.participantes.firstOrNull;
+            final otherMember = otherParticipant ?? conv?.participantes.firstOrNull;
             if (otherMember != null && otherMember.id.isNotEmpty) {
               context.push('/employees/${otherMember.id}');
             }
@@ -218,7 +252,7 @@ class _ChatPageState extends ConsumerState<ChatPage> with WidgetsBindingObserver
                 photoUrl: photoUrl,
                 isGroup: isGroup,
                 size: 38,
-                showOnline: !isGroup,
+                isWorking: otherParticipant?.isCurrentlyWorking,
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -235,7 +269,47 @@ class _ChatPageState extends ConsumerState<ChatPage> with WidgetsBindingObserver
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (subtitle.isNotEmpty)
+                    if (!isGroup && otherParticipant != null)
+                      Row(
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: otherParticipant.isCurrentlyWorking
+                                  ? const Color(0xFF4ADE80)
+                                  : const Color(0xFFFBBF24),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            otherParticipant.isCurrentlyWorking ? 'Em Plantão' : 'Fora de Serviço',
+                            style: TextStyle(
+                              color: otherParticipant.isCurrentlyWorking
+                                  ? const Color(0xFF86EFAC)
+                                  : const Color(0xFFFDE68A),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          if (subtitle.isNotEmpty) ...[
+                            Flexible(
+                              child: Text(
+                                ' • $subtitle',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.8),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ],
+                      )
+                    else if (subtitle.isNotEmpty)
                       Text(
                         subtitle,
                         style: TextStyle(

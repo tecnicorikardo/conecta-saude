@@ -482,6 +482,8 @@ class _ConversationTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.appTokens;
     final isGroup = conversation.tipo == 'grupo' || conversation.tipo == 'setor';
+    final otherParticipant = isGroup ? null : conversation.otherParticipant(currentUserId);
+    final isWorking = otherParticipant?.isCurrentlyWorking;
     final displayName = conversation.displayName(currentUserId);
     final photoUrl = conversation.displayPhoto(currentUserId);
     final subtitle = conversation.displaySubtitle(currentUserId);
@@ -511,6 +513,7 @@ class _ConversationTile extends StatelessWidget {
                         photoUrl: photoUrl,
                         isGroup: isGroup,
                         size: 50,
+                        isWorking: isWorking,
                       ),
                       const SizedBox(width: 12),
 
@@ -539,6 +542,50 @@ class _ConversationTile extends StatelessWidget {
                                           ),
                                         ),
                                       ),
+                                      if (!isGroup && otherParticipant != null) ...[
+                                        const SizedBox(width: 6),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 6, vertical: 1.5),
+                                          decoration: BoxDecoration(
+                                            color: isWorking == true
+                                                ? const Color(0xFF22C55E).withValues(alpha: 0.12)
+                                                : const Color(0xFFF59E0B).withValues(alpha: 0.12),
+                                            borderRadius: BorderRadius.circular(10),
+                                            border: Border.all(
+                                              color: isWorking == true
+                                                  ? const Color(0xFF22C55E).withValues(alpha: 0.3)
+                                                  : const Color(0xFFF59E0B).withValues(alpha: 0.3),
+                                              width: 0.8,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Icon(
+                                                isWorking == true
+                                                    ? Icons.check_circle_outline
+                                                    : Icons.nightlight_round,
+                                                size: 10,
+                                                color: isWorking == true
+                                                    ? const Color(0xFF16A34A)
+                                                    : const Color(0xFFD97706),
+                                              ),
+                                              const SizedBox(width: 3),
+                                              Text(
+                                                isWorking == true ? 'Em Plantão' : 'Fora de Serviço',
+                                                style: TextStyle(
+                                                  color: isWorking == true
+                                                      ? const Color(0xFF16A34A)
+                                                      : const Color(0xFFD97706),
+                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 9.5,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
                                       if (isGroup) ...[
                                         const SizedBox(width: 6),
                                         Container(
