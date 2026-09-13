@@ -164,23 +164,27 @@ class _ConversationsPageState extends ConsumerState<ConversationsPage>
               },
             ),
             ListTile(
-              leading: const Icon(Icons.delete_outline, color: Colors.red),
-              title: Text(isGroup ? 'Sair e excluir grupo' : 'Excluir conversa', style: const TextStyle(color: Colors.red)),
-              subtitle: Text(isGroup ? 'Você sairá e o grupo será removido' : 'Remove a conversa da sua lista'),
+              leading: const Icon(Icons.exit_to_app_rounded, color: Colors.red),
+              title: Text(isGroup ? 'Sair do grupo' : 'Excluir conversa', style: const TextStyle(color: Colors.red)),
+              subtitle: Text(isGroup ? 'Você sairá deste grupo' : 'Remove a conversa da sua lista'),
               onTap: () async {
                 Navigator.pop(ctx);
                 final messenger = ScaffoldMessenger.of(context);
                 final confirm = await showDialog<bool>(
                   context: context,
                   builder: (dCtx) => AlertDialog(
-                    title: Text(isGroup ? 'Sair e excluir grupo?' : 'Excluir conversa?'),
-                    content: Text('Deseja realmente excluir "$displayName" e todo o histórico?'),
+                    title: Text(isGroup ? 'Sair do grupo?' : 'Excluir conversa?'),
+                    content: Text(
+                      isGroup
+                          ? 'Deseja sair do grupo "$displayName"? Você não receberá mais mensagens dele, mas o grupo continuará ativo para os demais colegas.'
+                          : 'Deseja realmente excluir a conversa com "$displayName" e todo o histórico?',
+                    ),
                     actions: [
                       TextButton(onPressed: () => Navigator.pop(dCtx, false), child: const Text('Cancelar')),
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
                         onPressed: () => Navigator.pop(dCtx, true),
-                        child: const Text('Excluir'),
+                        child: Text(isGroup ? 'Sair do Grupo' : 'Excluir'),
                       ),
                     ],
                   ),
@@ -189,7 +193,7 @@ class _ConversationsPageState extends ConsumerState<ConversationsPage>
                   try {
                     await ref.read(conversationsProvider.notifier).deleteConversation(conv.id);
                     messenger.showSnackBar(
-                      const SnackBar(content: Text('Conversa excluída com sucesso.')),
+                      SnackBar(content: Text(isGroup ? 'Você saiu do grupo.' : 'Conversa excluída com sucesso.')),
                     );
                   } catch (e) {
                     messenger.showSnackBar(

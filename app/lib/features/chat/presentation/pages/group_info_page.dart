@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../domain/entities/conversation_entity.dart';
@@ -182,108 +184,184 @@ class _GroupInfoPageState extends ConsumerState<GroupInfoPage> {
     ('Centro Cirúrgico', 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=150&auto=format&fit=crop&q=80'),
   ];
 
+  Future<void> _pickGroupPhoto(ImageSource source) async {
+    if (_conversation == null) return;
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(
+        source: source,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 75,
+      );
+      if (picked == null) return;
+      final bytes = await picked.readAsBytes();
+      final base64Image = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+      await _applyGroupPhoto(base64Image);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Não foi possível carregar a imagem: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _applyGroupPhoto(String? photoUrl) async {
+    if (_conversation == null) return;
+    try {
+      final repo = ref.read(conversationRepositoryProvider);
+      await repo.updateGroup(_conversation!.id, fotoUrl: photoUrl);
+      ref.invalidate(conversationsProvider);
+      _loadGroupDetails();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Foto do grupo atualizada com sucesso.')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao salvar foto: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   Future<void> _editGroupPhoto() async {
     if (_conversation == null) return;
-    final controller = TextEditingController(text: _conversation!.fotoUrl ?? '');
 
-    final newPhoto = await showDialog<String>(
+    showModalBottomSheet(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Foto do Grupo'),
-        content: SizedBox(
-          width: double.maxFinite,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (bCtx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Escolha uma foto temática:',
-                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 72,
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: _presetPhotos.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 8),
-                  itemBuilder: (_, i) {
-                    final item = _presetPhotos[i];
-                    return InkWell(
-                      onTap: () {
-                        controller.text = item.$2;
-                        Navigator.pop(ctx, item.$2);
-                      },
-                      child: Column(
-                        children: [
-                          CircleAvatar(
-                            radius: 24,
-                            backgroundImage: NetworkImage(item.$2),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(item.$1, style: const TextStyle(fontSize: 9)),
-                        ],
-                      ),
-                    );
+              const Text(
+                'Foto do Grupo',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFE3F2FD),
+                  child: Icon(Icons.camera_alt_outlined, color: AppColors.primary),
+                ),
+                title: const Text('Tirar Foto com a Câmera'),
+                subtitle: const Text('Usar câmera do dispositivo'),
+                onTap: () {
+                  Navigator.pop(bCtx);
+                  _pickGroupPhoto(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFE8F5E9),
+                  child: Icon(Icons.photo_library_outlined, color: AppColors.success),
+                ),
+                title: const Text('Escolher da Galeria / Arquivos'),
+                subtitle: const Text('Selecionar foto salva no dispositivo'),
+                onTap: () {
+                  Navigator.pop(bCtx);
+                  _pickGroupPhoto(ImageSource.gallery);
+                },
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFFFF3E0),
+                  child: Icon(Icons.collections_outlined, color: Color(0xFFE65100)),
+                ),
+                title: const Text('Escolher Ícone Temático Hospitalar'),
+                subtitle: const Text('Fotos prontas de enfermagem, UTI, etc.'),
+                onTap: () {
+                  Navigator.pop(bCtx);
+                  _showPresetPhotosDialog();
+                },
+              ),
+              if (_conversation!.fotoUrl != null && _conversation!.fotoUrl!.isNotEmpty)
+                ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: Color(0xFFFFEBEE),
+                    child: Icon(Icons.delete_outline, color: Colors.red),
+                  ),
+                  title: const Text('Remover Foto do Grupo', style: TextStyle(color: Colors.red)),
+                  onTap: () {
+                    Navigator.pop(bCtx);
+                    _applyGroupPhoto(null);
                   },
                 ),
-              ),
-              const Divider(height: 24),
-              const Text(
-                'Ou insira o link de uma imagem pública:',
-                style: TextStyle(fontSize: 12, color: Colors.black54),
-              ),
-              const SizedBox(height: 8),
-              TextField(
-                controller: controller,
-                decoration: const InputDecoration(
-                  hintText: 'https://exemplo.com/foto.png',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.link),
-                  isDense: true,
-                ),
-              ),
             ],
           ),
         ),
-        actions: [
-          if (_conversation!.fotoUrl != null && _conversation!.fotoUrl!.isNotEmpty)
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, ''),
-              style: TextButton.styleFrom(foregroundColor: Colors.red),
-              child: const Text('Remover foto'),
+      ),
+    );
+  }
+
+  void _showPresetPhotosDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Escolha uma foto temática'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: GridView.builder(
+            shrinkWrap: true,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+              childAspectRatio: 0.8,
             ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancelar'),
+            itemCount: _presetPhotos.length,
+            itemBuilder: (_, i) {
+              final item = _presetPhotos[i];
+              return InkWell(
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _applyGroupPhoto(item.$2);
+                },
+                child: Column(
+                  children: [
+                    CircleAvatar(
+                      radius: 28,
+                      backgroundImage: NetworkImage(item.$2),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      item.$1,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              );
+            },
           ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-            child: const Text('Salvar'),
-          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Fechar')),
         ],
       ),
     );
-
-    if (newPhoto != null) {
-      try {
-        final repo = ref.read(conversationRepositoryProvider);
-        await repo.updateGroup(_conversation!.id, fotoUrl: newPhoto.isEmpty ? null : newPhoto);
-        ref.invalidate(conversationsProvider);
-        _loadGroupDetails();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Foto do grupo atualizada.')),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Erro: $e'), backgroundColor: Colors.red),
-          );
-        }
-      }
-    }
   }
 
   Future<void> _showAddMembersDialog() async {

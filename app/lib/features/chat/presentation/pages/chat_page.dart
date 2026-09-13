@@ -430,10 +430,10 @@ class _ChatPageState extends ConsumerState<ChatPage> with WidgetsBindingObserver
               final confirm = await showDialog<bool>(
                 context: context,
                 builder: (ctx) => AlertDialog(
-                  title: Text(isGroup ? 'Sair e excluir grupo?' : 'Excluir conversa?'),
+                  title: Text(isGroup ? 'Sair do grupo?' : 'Excluir conversa?'),
                   content: Text(
                     isGroup
-                      ? 'Você sairá deste grupo e ele será removido da sua lista de conversas.'
+                      ? 'Você sairá deste grupo e ele deixará de aparecer na sua lista. Os demais membros continuarão no grupo normalmente.'
                       : 'Esta conversa e todo o seu histórico serão removidos permanentemente da sua lista.',
                   ),
                   actions: [
@@ -447,7 +447,7 @@ class _ChatPageState extends ConsumerState<ChatPage> with WidgetsBindingObserver
                         foregroundColor: Colors.white,
                       ),
                       onPressed: () => Navigator.pop(ctx, true),
-                      child: const Text('Excluir'),
+                      child: Text(isGroup ? 'Sair do Grupo' : 'Excluir'),
                     ),
                   ],
                 ),
@@ -460,11 +460,11 @@ class _ChatPageState extends ConsumerState<ChatPage> with WidgetsBindingObserver
                       .deleteConversation(widget.conversationId);
                   navigator.pop();
                   messenger.showSnackBar(
-                    const SnackBar(content: Text('Conversa excluída com sucesso.')),
+                    SnackBar(content: Text(isGroup ? 'Você saiu do grupo.' : 'Conversa excluída com sucesso.')),
                   );
                 } catch (e) {
                   messenger.showSnackBar(
-                    SnackBar(content: Text('Erro ao excluir conversa: $e')),
+                    SnackBar(content: Text('Erro: $e')),
                   );
                 }
               }
@@ -488,13 +488,12 @@ class _ChatPageState extends ConsumerState<ChatPage> with WidgetsBindingObserver
               ),
             ),
             const PopupMenuItem(value: 'pesquisar', child: Text('Pesquisar')),
-            const PopupMenuItem(value: 'silenciar', child: Text('Silenciar')),
             const PopupMenuItem(value: 'limpar', child: Text('Limpar conversa')),
-            const PopupMenuItem(
+            PopupMenuItem(
               value: 'excluir',
               child: Text(
-                'Excluir conversa',
-                style: TextStyle(color: Colors.red),
+                isGroup ? 'Sair do grupo' : 'Excluir conversa',
+                style: const TextStyle(color: Colors.red),
               ),
             ),
           ],

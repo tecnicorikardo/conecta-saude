@@ -631,7 +631,10 @@ export async function updateMemberRole(req: Request, res: Response): Promise<voi
 
 /**
  * DELETE /api/conversations/:id
- * Exclui / desativa um grupo. Apenas o Criador ou a Direção Geral (Nível 1).
+ * Remove a conversa da lista do usuário.
+ * Para grupos: o usuário sai do grupo (a menos que seja o criador/Direção e não haja mais ninguém, ou queira dissolver).
+ * Se o usuário sair de um grupo, apenas a participação dele é removida.
+ * Para conversas individuais: desativa a conversa da visualização do usuário.
  */
 export async function deleteConversation(req: Request, res: Response): Promise<void> {
   const actor = req.user!;
@@ -639,19 +642,66 @@ export async function deleteConversation(req: Request, res: Response): Promise<v
 
   const conversation = await prisma.conversation.findUnique({
     where: { id },
+    include: { members: true },
   });
 
   if (!conversation || !conversation.ativo) {
-    throw new AppError('Grupo não encontrado.', 404);
+    throw new AppError('Conversa ou grupo não encontrado.', 404);
   }
 
-  const isCreatorOrDirecao =
-    actor.hierarquiaNivel === HierarquiaNivel.DIRECAO || conversation.criadoPor === actor.id;
+  // Se for grupo:
+  if (conversation.tipo !== ConversationTipo.INDIVIDUAL) {
+    const isMember = conversation.members.some((m) => m.userId === actor.id);
+    if (!isMember) {
+      throw new AppError('Você não faz parte deste grupo.', 403);
+    }
 
-  if (!isCreatorOrDirecao) {
-    throw new AppError('Apenas o criador do grupo ou a Direção Geral podem excluir o grupo.', 403);
+    // Se o grupo tem outros membros: remover apenas a participação deste usuário (sair do grupo)
+    // Isso evita que um usuário exclua o grupo para todos os outros colegas!
+    if (conversation.members.length > 1) {
+      await prisma.conversationMember.delete({
+        where: {
+          conversationId_userId: {
+            conversationId: id,
+            userId: actor.id,
+          },
+        },
+      });
+
+      // Se o criador ou admin saiu, passa admin para o próximo membro mais antigo
+      const remainingMembers = await prisma.conversationMember.findMany({
+        where: { conversationId: id },
+        orderBy: { criadoEm: 'asc' },
+      });
+      const hasAdmin = remainingMembers.some((m) => m.isAdmin);
+      if (!hasAdmin && remainingMembers.length > 0) {
+        await prisma.conversationMember.update({
+          where: { id: remainingMembers[0].id },
+          data: { isAdmin: true },
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'Você saiu do grupo com sucesso.',
+      });
+      return;
+    }
+
+    // Se era o único membro restante no grupo, desativa o grupo
+    await prisma.conversation.update({
+      where: { id },
+      data: { ativo: false },
+    });
+
+    res.json({
+      success: true,
+      message: 'Grupo excluído com sucesso.',
+    });
+    return;
   }
 
+  // Para conversa individual: remove da lista do usuário (ou desativa)
   await prisma.conversation.update({
     where: { id },
     data: { ativo: false },
@@ -659,7 +709,7 @@ export async function deleteConversation(req: Request, res: Response): Promise<v
 
   res.json({
     success: true,
-    message: 'Grupo excluído com sucesso.',
+    message: 'Conversa excluída com sucesso.',
   });
 }
 
