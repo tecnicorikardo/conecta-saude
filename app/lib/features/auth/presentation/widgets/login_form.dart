@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../../core/routes/app_routes.dart';
 import '../../../../core/services/http_service.dart';
+import '../../../../core/services/biometric_service.dart';
 import '../providers/auth_provider.dart';
 
 class LoginForm extends ConsumerStatefulWidget {
@@ -24,6 +25,7 @@ class _LoginFormState extends ConsumerState<LoginForm> {
   final _passFocus  = FocusNode();
   bool _obscure     = true;
   bool _rememberMe  = false;
+  bool _hasBiometrics = false;
 
   // ─── Cores Institucionais ──────────────────────────────────────────────────
   static const Color _primaryBlue    = Color(0xFF1565C0);
@@ -37,7 +39,32 @@ class _LoginFormState extends ConsumerState<LoginForm> {
   void initState() {
     super.initState();
     _loadSavedCredentials();
+    _checkBiometrics();
     HttpService.instance.warmUp();
+  }
+
+  Future<void> _checkBiometrics() async {
+    final available = await BiometricService.instance.isBiometricAvailable();
+    final enabled = await BiometricService.instance.isBiometricEnabled();
+    if (mounted) {
+      setState(() {
+        _hasBiometrics = available && enabled;
+      });
+    }
+  }
+
+  Future<void> _loginWithBiometrics() async {
+    final creds = await BiometricService.instance.authenticateAndGetCredentials();
+    if (creds != null && creds['email'] != null && creds['password'] != null) {
+      if (mounted) {
+        _emailCtrl.text = creds['email']!;
+        _passCtrl.text = creds['password']!;
+      }
+      ref.read(loginNotifierProvider.notifier).signIn(
+            email: creds['email']!,
+            password: creds['password']!,
+          );
+    }
   }
 
   Future<void> _loadSavedCredentials() async {
@@ -410,6 +437,31 @@ class _LoginFormState extends ConsumerState<LoginForm> {
                     ),
             ),
           ),
+          if (_hasBiometrics) ...[
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 44,
+              child: OutlinedButton.icon(
+                onPressed: widget.isLoading ? null : _loginWithBiometrics,
+                icon: const Icon(Icons.fingerprint_rounded, color: _primaryBlue, size: 22),
+                label: const Text(
+                  'Entrar com Biometria / Digital',
+                  style: TextStyle(
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600,
+                    color: _primaryBlue,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: _primaryBlue, width: 1.2),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  backgroundColor: const Color(0xFFF0F7FF),
+                ),
+              ),
+            ),
+          ],
           const SizedBox(height: 14),
 
           // ─── Botão Auto-Cadastro SUS ────────────────────────────────────

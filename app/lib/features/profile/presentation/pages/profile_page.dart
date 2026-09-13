@@ -10,6 +10,7 @@ import '../../../../core/theme/app_theme_tokens.dart';
 import '../../../../core/services/http_service.dart';
 import '../../../../core/services/notification_service.dart';
 import '../../../../core/services/web_notification_helper.dart';
+import '../../../../core/services/biometric_service.dart';
 import '../../../../core/auth/permissions_provider.dart';
 import '../../../../core/widgets/app_avatar.dart';
 import '../../../auth/domain/entities/user_entity.dart';
@@ -28,6 +29,110 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   bool _isSaving = false;
   bool _isRequestingPush = false;
   bool _isTestingPush = false;
+  bool _biometricAvailable = false;
+  bool _biometricEnabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBiometricState();
+  }
+
+  Future<void> _loadBiometricState() async {
+    final available = await BiometricService.instance.isBiometricAvailable();
+    final enabled = await BiometricService.instance.isBiometricEnabled();
+    if (mounted) {
+      setState(() {
+        _biometricAvailable = available;
+        _biometricEnabled = enabled;
+      });
+    }
+  }
+
+  Future<void> _toggleBiometric(bool enable, String userEmail) async {
+    if (enable) {
+      // Solicita a senha para confirmar e salvar com segurança
+      final passCtrl = TextEditingController();
+      final formKey = GlobalKey<FormState>();
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dCtx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.fingerprint, color: AppColors.primary),
+              SizedBox(width: 8),
+              Text('Ativar Biometria', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Confirme sua senha de acesso para vincular a sua impressão digital / biometria neste celular:',
+                  style: TextStyle(fontSize: 13.5, color: Colors.black87),
+                ),
+                const SizedBox(height: 14),
+                TextFormField(
+                  controller: passCtrl,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                    labelText: 'Sua Senha',
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    prefixIcon: const Icon(Icons.lock_outline),
+                  ),
+                  validator: (v) => (v == null || v.isEmpty) ? 'Informe sua senha' : null,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dCtx, false),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                if (formKey.currentState?.validate() == true) {
+                  Navigator.pop(dCtx, true);
+                }
+              },
+              child: const Text('Confirmar e Ativar'),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmed == true && passCtrl.text.isNotEmpty) {
+        await BiometricService.instance.saveBiometricCredentials(
+          email: userEmail,
+          password: passCtrl.text,
+        );
+        if (mounted) {
+          setState(() => _biometricEnabled = true);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('✅ Acesso biométrico ativado com sucesso neste aparelho!'),
+              backgroundColor: AppColors.success,
+            ),
+          );
+        }
+      }
+    } else {
+      await BiometricService.instance.clearBiometricCredentials();
+      if (mounted) {
+        setState(() => _biometricEnabled = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Acesso biométrico desativado.'),
+          ),
+        );
+      }
+    }
+  }
 
   Future<void> _pickImage(UserEntity user, ImageSource source) async {
     try {
@@ -811,6 +916,64 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                       ],
                     ),
                   ),
+                  if (_biometricAvailable) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.darkSurface : Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: isDark ? Colors.white12 : AppColors.border,
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF1E293B) : const Color(0xFFEFF6FF),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.fingerprint_rounded, color: AppColors.primary, size: 24),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Acesso com Biometria / Digital',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    color: isDark ? Colors.white : const Color(0xFF1E293B),
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  _biometricEnabled
+                                      ? 'Entrar no app com a digital deste celular'
+                                      : 'Desativado para este aparelho',
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    color: isDark ? Colors.white70 : Colors.black54,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Switch(
+                            value: _biometricEnabled,
+                            activeColor: AppColors.primary,
+                            onChanged: (val) => _toggleBiometric(val, user.email),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 16),
 
                   // ─── Seletor de Temas Visuais ────────────────────────────
