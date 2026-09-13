@@ -14,11 +14,17 @@ const updateSectorSchema = createSectorSchema.partial().extend({
   ativo: z.boolean().optional(),
 });
 
-export async function listSectors(_req: Request, res: Response): Promise<void> {
+export async function listSectors(req: Request, res: Response): Promise<void> {
+  const { unitId } = req.query;
+  const where: any = { ativo: true };
+  if (unitId && typeof unitId === 'string') {
+    where.unitId = unitId;
+  }
+
   const sectors = await prisma.sector.findMany({
-    where: { ativo: true },
+    where,
     orderBy: { nome: 'asc' },
-    select: { id: true, nome: true, descricao: true, ativo: true, criadoEm: true },
+    select: { id: true, nome: true, descricao: true, unitId: true, ativo: true, criadoEm: true },
   });
   res.json({ success: true, data: sectors });
 }

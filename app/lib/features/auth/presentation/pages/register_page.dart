@@ -411,7 +411,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                             ),
                             const SizedBox(height: 12),
 
-                            // Setor de Lotação (Dropdown)
+                            // Setor de Lotação (Dropdown filtrado dinamicamente pela Unidade)
                             sectorsAsync.when(
                               loading: () => const Center(
                                 child: Padding(
@@ -419,11 +419,19 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                                   child: CircularProgressIndicator(strokeWidth: 2),
                                 ),
                               ),
-                              error: (_, __) => _buildSectorDropdown(_fallbackSectors, isLoading),
-                              data: (sectors) => _buildSectorDropdown(
-                                sectors.isNotEmpty ? sectors : _fallbackSectors,
+                              error: (_, __) => _buildSectorDropdown(
+                                _fallbackSectors
+                                    .where((s) => s.unitId == null || _selectedUnitId == null || s.unitId == _selectedUnitId)
+                                    .toList(),
                                 isLoading,
                               ),
+                              data: (sectors) {
+                                final allList = sectors.isNotEmpty ? sectors : _fallbackSectors;
+                                final filtered = allList
+                                    .where((s) => s.unitId == null || _selectedUnitId == null || s.unitId == _selectedUnitId)
+                                    .toList();
+                                return _buildSectorDropdown(filtered, isLoading);
+                              },
                             ),
                             const SizedBox(height: 12),
 
@@ -453,7 +461,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                             ],
                             const SizedBox(height: 16),
 
-                            // ─── Seção Horário de Trabalho / Plantão ────────────
+                            // ─── Seção Horário de Trabalho / Plantão (Informativo) ────────────
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
@@ -468,19 +476,21 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                                     children: [
                                       Icon(Icons.schedule_rounded, size: 18, color: _primaryBlue),
                                       SizedBox(width: 8),
-                                      Text(
-                                        'Horário de Trabalho / Plantão',
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w700,
-                                          color: _textPrimary,
+                                      Expanded(
+                                        child: Text(
+                                          'Horário Habitual de Turno / Plantão (Informativo)',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w700,
+                                            color: _textPrimary,
+                                          ),
                                         ),
                                       ),
                                     ],
                                   ),
                                   const SizedBox(height: 4),
                                   const Text(
-                                    'Define seu status "Em Serviço" e silenciamento de notificações fora da jornada.',
+                                    'Informe seu horário habitual para constar no seu perfil institucional e orientar sua equipe.',
                                     style: TextStyle(fontSize: 11.5, color: _textSecondary),
                                   ),
                                   const SizedBox(height: 10),
@@ -663,8 +673,17 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   }
 
   Widget _buildUnitDropdown(List<HospitalUnitEntity> units, bool isLoading) {
+    final currentUnitId = _selectedUnitId ?? (units.isNotEmpty ? units.first.id : null);
+    if (_selectedUnitId == null && currentUnitId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && _selectedUnitId == null) {
+          setState(() => _selectedUnitId = currentUnitId);
+        }
+      });
+    }
+
     return DropdownButtonFormField<String>(
-      initialValue: _selectedUnitId ?? (units.isNotEmpty ? units.first.id : null),
+      value: _selectedUnitId,
       isExpanded: true,
       dropdownColor: Colors.white,
       style: const TextStyle(
@@ -674,8 +693,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       ),
       icon: const Icon(Icons.arrow_drop_down, color: _primaryBlue),
       decoration: _inputDecoration(
-        label: 'Unidade Hospitalar / Hospital *',
-        hint: 'Selecione o hospital',
+        label: 'Hospital / Complexo de Saúde *',
+        hint: 'Selecione o hospital / complexo',
         icon: Icons.domain_rounded,
       ),
       items: units.map((u) {
@@ -695,14 +714,21 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       onChanged: isLoading
           ? null
           : (val) {
-              setState(() => _selectedUnitId = val);
+              setState(() {
+                _selectedUnitId = val;
+                _selectedSectorId = null;
+              });
             },
     );
   }
 
   Widget _buildSectorDropdown(List<SectorEntity> sectors, bool isLoading) {
+    // Garante que o setor selecionado pertença aos setores disponíveis
+    final isValidSelection = sectors.any((s) => s.id == _selectedSectorId);
+    final effectiveSectorId = isValidSelection ? _selectedSectorId : null;
+
     return DropdownButtonFormField<String>(
-      initialValue: _selectedSectorId,
+      value: effectiveSectorId,
       isExpanded: true,
       dropdownColor: Colors.white,
       style: const TextStyle(
@@ -712,15 +738,15 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       ),
       icon: const Icon(Icons.arrow_drop_down, color: _primaryBlue),
       decoration: _inputDecoration(
-        label: 'Setor de Lotação *',
-        hint: 'Selecione seu setor',
+        label: 'Unidade Interna / Setor de Lotação *',
+        hint: sectors.isEmpty ? 'Nenhum setor disponível para este hospital' : 'Selecione a unidade / setor',
         icon: Icons.local_hospital_outlined,
       ),
       items: sectors.map((s) {
         return DropdownMenuItem<String>(
           value: s.id,
           child: Text(
-            s.nome,
+            s.sigla != null ? '${s.nome} (${s.sigla})' : s.nome,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               fontSize: 13.5,
@@ -730,13 +756,13 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
           ),
         );
       }).toList(),
-      onChanged: isLoading
+      onChanged: isLoading || sectors.isEmpty
           ? null
           : (val) {
               setState(() => _selectedSectorId = val);
             },
       validator: (v) {
-        if (v == null || v.isEmpty) return 'Selecione seu setor.';
+        if (v == null || v.isEmpty) return 'Selecione sua unidade/setor.';
         return null;
       },
     );

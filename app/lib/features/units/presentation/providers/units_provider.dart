@@ -19,21 +19,9 @@ final unitsProvider = FutureProvider<List<HospitalUnitEntity>>((ref) async {
   // Fallback para unidades padrão
   return const [
     HospitalUnitEntity(
-      id: 'unit-chc-centro',
-      nome: 'Complexo Hospitalar Carioca (Central)',
-      sigla: 'CHC-Centro',
-      cidade: 'Rio de Janeiro',
-    ),
-    HospitalUnitEntity(
-      id: 'unit-hmzs',
-      nome: 'Hospital Municipal Zona Sul',
-      sigla: 'HMZS',
-      cidade: 'Rio de Janeiro',
-    ),
-    HospitalUnitEntity(
-      id: 'unit-upa24h',
-      nome: 'UPA 24h Regional',
-      sigla: 'UPA-24H',
+      id: '1971e49c-f631-44ac-bed1-4ae10316e5eb',
+      nome: 'Super Centro Carioca de Saúde',
+      sigla: 'SCCS',
       cidade: 'Rio de Janeiro',
     ),
   ];

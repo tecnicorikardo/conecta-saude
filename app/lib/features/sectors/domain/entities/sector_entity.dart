@@ -1,9 +1,10 @@
-﻿class SectorEntity {
+class SectorEntity {
   final String id;
   final String nome;
   final String? sigla;
   final String? descricao;
   final String? icone;
+  final String? unitId;
   final bool ativo;
 
   const SectorEntity({
@@ -12,6 +13,7 @@
     this.sigla,
     this.descricao,
     this.icone,
+    this.unitId,
     this.ativo = true,
   });
 
@@ -22,6 +24,7 @@
       sigla: json['sigla'] as String?,
       descricao: json['descricao'] as String?,
       icone: json['icone'] as String?,
+      unitId: json['unitId'] as String? ?? json['unit_id'] as String?,
       ativo: json['ativo'] as bool? ?? true,
     );
   }

@@ -28,11 +28,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   bool _isSaving = false;
   bool _isRequestingPush = false;
   bool _isTestingPush = false;
-  String? _selectedInicio;
-  String? _selectedFim;
-  List<String>? _selectedDias;
-  bool? _selectedSilenciar;
-  bool _isSavingSchedule = false;
 
   Future<void> _pickImage(UserEntity user, ImageSource source) async {
     try {
@@ -180,68 +175,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     );
   }
 
-  Future<void> _updateSchedule({
-    required UserEntity user,
-    String? jornadaInicio,
-    String? jornadaFim,
-    String? jornadaDias,
-    bool? emPlantaoExtra,
-    bool? silenciarForaJornada,
-  }) async {
-    setState(() => _isSavingSchedule = true);
-    final messenger = ScaffoldMessenger.of(context);
-    try {
-      final resp = await HttpService.instance.patch(
-        '/users/me/schedule',
-        data: {
-          if (jornadaInicio != null) 'jornadaInicio': jornadaInicio,
-          if (jornadaFim != null) 'jornadaFim': jornadaFim,
-          if (jornadaDias != null) 'jornadaDias': jornadaDias,
-          if (emPlantaoExtra != null) 'emPlantaoExtra': emPlantaoExtra,
-          if (silenciarForaJornada != null) 'silenciarForaJornada': silenciarForaJornada,
-        },
-      );
-      if (resp.data['success'] == true) {
-        final updatedUser = user.copyWith(
-          jornadaInicio: jornadaInicio ?? user.jornadaInicio,
-          jornadaFim: jornadaFim ?? user.jornadaFim,
-          jornadaDias: jornadaDias ?? user.jornadaDias,
-          emPlantaoExtra: emPlantaoExtra ?? user.emPlantaoExtra,
-          silenciarForaJornada: silenciarForaJornada ?? user.silenciarForaJornada,
-        );
-        ref.read(currentUserProvider.notifier).setUser(updatedUser);
-        messenger.showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle_rounded, color: Colors.white),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Escala salva com sucesso! Seu status agora é: ${updatedUser.workStatusLabel}.',
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: AppColors.success,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
-    } catch (e) {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text('Erro ao atualizar escala: $e'),
-          backgroundColor: AppColors.error,
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _isSavingSchedule = false);
-      }
-    }
-  }
+
 
   Future<void> _updateProfilePhoto(UserEntity user, String? newPhotoUrl) async {
     final messenger = ScaffoldMessenger.of(context);
@@ -720,9 +654,23 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         ),
                         const Divider(height: 20, color: Color(0xFFF1F5F9)),
                         _buildInfoTile(
+                          icon: Icons.domain_rounded,
+                          label: 'Hospital / Complexo de Saúde',
+                          value: user.unitNome != null && user.unitNome!.isNotEmpty
+                              ? (user.unitSigla != null ? '${user.unitNome} (${user.unitSigla})' : user.unitNome!)
+                              : 'Super Centro Carioca de Saúde (SCCS)',
+                        ),
+                        const Divider(height: 20, color: Color(0xFFF1F5F9)),
+                        _buildInfoTile(
                           icon: Icons.local_hospital_outlined,
-                          label: 'Unidade / Setor de Lotação',
+                          label: 'Unidade Interna / Setor de Lotação',
                           value: user.setorNome.isNotEmpty ? user.setorNome : 'Centro Carioca do Olho (CCO)',
+                        ),
+                        const Divider(height: 20, color: Color(0xFFF1F5F9)),
+                        _buildInfoTile(
+                          icon: Icons.schedule_outlined,
+                          label: 'Turno / Horário Habitual',
+                          value: '${user.jornadaInicio} às ${user.jornadaFim} • ${user.jornadaDias.toUpperCase()}',
                         ),
                         const Divider(height: 20, color: Color(0xFFF1F5F9)),
                         _buildInfoTile(
