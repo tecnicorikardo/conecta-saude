@@ -2,14 +2,16 @@
  * Utilitário para verificar se um usuário está em horário de serviço/plantão
  */
 export function isUserCurrentlyWorking(user: {
+  emServico?: boolean | null;
   jornadaInicio?: string | null;
   jornadaFim?: string | null;
   jornadaDias?: string | null;
   emPlantaoExtra?: boolean | null;
   ativo?: boolean | null;
 }): boolean {
-  if (user.emPlantaoExtra) return true;
   if (user.ativo === false) return false;
+  if (typeof user.emServico === 'boolean') return user.emServico;
+  if (user.emPlantaoExtra) return true;
 
   const now = new Date();
   const dayCodes = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sab'];
