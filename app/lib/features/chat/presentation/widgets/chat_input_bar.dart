@@ -103,7 +103,7 @@ class _ChatInputBarState extends ConsumerState<ChatInputBar> {
         }
 
         const config = RecordConfig(
-          encoder: AudioEncoder.aacLc,
+          encoder: kIsWeb ? AudioEncoder.opus : AudioEncoder.aacLc,
           bitRate: 64000,
           sampleRate: 44100,
         );
@@ -405,10 +405,10 @@ class _ChatInputBarState extends ConsumerState<ChatInputBar> {
           )
         else ...[
           IconButton(
-            onPressed: () => _pickAndSendImage(ImageSource.camera),
-            icon: const Icon(Icons.camera_alt_outlined),
+            onPressed: _showImageSourceMenu,
+            icon: const Icon(Icons.add_a_photo_outlined),
             color: AppColors.textSecondary,
-            tooltip: 'Tirar foto com a câmera',
+            tooltip: 'Tirar foto ou escolher da galeria',
           ),
           Container(
             decoration: BoxDecoration(
