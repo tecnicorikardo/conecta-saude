@@ -43,6 +43,19 @@
             android:name="com.google.firebase.messaging.default_notification_icon"
             android:resource="@drawable/ic_notification"/>
 
+        <!-- Widget de Tela Inicial (Em Serviço / Fora de Serviço) -->
+        <receiver
+            android:name=".ServiceStatusWidgetProvider"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.conectasaude.conecta_saude.ACTION_TOGGLE_STATUS" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/service_status_widget_info" />
+        </receiver>
+
         <!-- Flutter embedding -->
         <meta-data
             android:name="flutterEmbedding"

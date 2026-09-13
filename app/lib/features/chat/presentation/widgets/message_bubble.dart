@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
@@ -29,6 +30,17 @@ class MessageBubble extends StatelessWidget {
 
   bool get _isAudio =>
       message.tipo == MessageType.audio || message.texto.startsWith('[audio');
+
+  bool get _isImage =>
+      message.tipo == MessageType.image || message.texto.startsWith('[image]');
+
+  String get _imageSource {
+    final text = message.texto;
+    if (text.startsWith('[image]')) {
+      return text.substring(7);
+    }
+    return text;
+  }
 
   String get _audioSource {
     final text = message.texto;
@@ -133,6 +145,8 @@ class MessageBubble extends StatelessWidget {
                   durationSeconds: _audioDuration,
                   isOwn: isOwn,
                 )
+              else if (_isImage)
+                _buildImageMessage(context, _imageSource)
               else
                 Text(
                   message.texto,
@@ -171,6 +185,81 @@ class MessageBubble extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImageMessage(BuildContext context, String source) {
+    Widget imageWidget;
+    if (source.startsWith('data:image')) {
+      try {
+        final commaIdx = source.indexOf(',');
+        final b64 = commaIdx != -1 ? source.substring(commaIdx + 1) : source;
+        final bytes = base64Decode(b64);
+        imageWidget = Image.memory(
+          bytes,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => const Padding(
+            padding: EdgeInsets.all(16),
+            child: Icon(Icons.broken_image, color: Colors.white70, size: 40),
+          ),
+        );
+      } catch (_) {
+        imageWidget = const Padding(
+          padding: EdgeInsets.all(16),
+          child: Icon(Icons.broken_image, color: Colors.white70, size: 40),
+        );
+      }
+    } else {
+      imageWidget = Image.network(
+        source,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => const Padding(
+          padding: EdgeInsets.all(16),
+          child: Icon(Icons.broken_image, color: Colors.white70, size: 40),
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onTap: () {
+        showDialog(
+          context: context,
+          builder: (_) => Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.all(8),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                InteractiveViewer(
+                  maxScale: 4.0,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: imageWidget,
+                  ),
+                ),
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: CircleAvatar(
+                    backgroundColor: Colors.black54,
+                    child: IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white),
+                      onPressed: () => Navigator.of(context, rootNavigator: true).pop(),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          constraints: const BoxConstraints(maxHeight: 280, maxWidth: 280),
+          child: imageWidget,
         ),
       ),
     );

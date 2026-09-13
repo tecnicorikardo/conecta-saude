@@ -1,4 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/services/http_service.dart';
 import '../../domain/entities/user_entity.dart';
@@ -21,12 +24,14 @@ class ServiceStatusNotifier extends StateNotifier<AsyncValue<bool>> {
       final user = next.valueOrNull;
       if (user != null) {
         state = AsyncValue.data(user.emServico);
+        _syncNativeWidget(user.emServico, user.nome);
       }
     });
 
     final user = _ref.read(currentUserProvider).valueOrNull;
     if (user != null) {
       state = AsyncValue.data(user.emServico);
+      _syncNativeWidget(user.emServico, user.nome);
     } else {
       state = const AsyncValue.data(true); // default
     }
@@ -52,6 +57,9 @@ class ServiceStatusNotifier extends StateNotifier<AsyncValue<bool>> {
 
       // Recarregar usuário do backend para garantir sincronização final
       await _ref.read(currentUserProvider.notifier).refreshUser();
+
+      // Sincronizar com o Widget de Tela Inicial no Android
+      _syncNativeWidget(newValue, user?.nome);
 
       debugPrint('[ServiceStatus] Status alterado com sucesso para: ${newValue ? "Em Serviço" : "Fora de Serviço"}');
     } catch (error) {
@@ -79,12 +87,30 @@ class ServiceStatusNotifier extends StateNotifier<AsyncValue<bool>> {
 
       await _ref.read(currentUserProvider.notifier).refreshUser();
 
+      _syncNativeWidget(emServico, _ref.read(currentUserProvider).valueOrNull?.nome);
+
       debugPrint('[ServiceStatus] Status definido para: ${emServico ? "Em Serviço" : "Fora de Serviço"}');
     } catch (error) {
       // Reverter em caso de erro
       state = AsyncValue.data(!emServico);
       debugPrint('[ServiceStatus] Erro ao definir status: $error');
       rethrow;
+    }
+  }
+
+  /// Sincroniza o status com o AppWidget da tela inicial do Android
+  Future<void> _syncNativeWidget(bool emServico, String? userName) async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
+    try {
+      final token = await FirebaseAuth.instance.currentUser?.getIdToken();
+      await const MethodChannel('conecta_saude/notifications').invokeMethod('updateWidget', {
+        'emServico': emServico,
+        'userName': userName ?? 'Conecta Saúde',
+        if (token != null) 'token': token,
+      });
+      debugPrint('[ServiceStatus] Widget nativo da tela inicial atualizado.');
+    } catch (e) {
+      debugPrint('[ServiceStatus] Falha ao atualizar widget nativo: $e');
     }
   }
 }

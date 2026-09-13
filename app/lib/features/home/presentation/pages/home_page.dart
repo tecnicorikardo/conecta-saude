@@ -715,7 +715,7 @@ class _WelcomeCard extends StatelessWidget {
                                 const SizedBox(width: 6),
                                 Expanded(
                                   child: Text(
-                                    'Fora de Serviço • Plantão: ${user!.jornadaInicio} às ${user!.jornadaFim} (Mensagens silenciadas)',
+                                    'Fora de Serviço (Mensagens silenciadas)',
                                     style: const TextStyle(
                                       fontSize: 11,
                                       fontWeight: FontWeight.w600,

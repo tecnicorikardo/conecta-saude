@@ -144,7 +144,7 @@ class _ChatPageState extends ConsumerState<ChatPage> with WidgetsBindingObserver
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      '${otherParticipant.nome} está fora de serviço (${otherParticipant.jornadaInicio} às ${otherParticipant.jornadaFim}). Mensagens normais serão notificadas no próximo plantão.',
+                      '${otherParticipant.nome} está fora de serviço. Mensagens normais serão notificadas no próximo plantão.',
                       style: TextStyle(
                         fontSize: 11.5,
                         color: isDark ? const Color(0xFFFCD34D) : const Color(0xFF92400E),

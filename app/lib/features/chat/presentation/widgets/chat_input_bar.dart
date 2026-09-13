@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart' show XFile;
+import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 
@@ -202,6 +202,107 @@ class _ChatInputBarState extends ConsumerState<ChatInputBar> {
     }
   }
 
+  Future<void> _pickAndSendImage(ImageSource source) async {
+    try {
+      final picker = ImagePicker();
+      final picked = await picker.pickImage(
+        source: source,
+        maxWidth: 1200,
+        maxHeight: 1200,
+        imageQuality: 80,
+      );
+      if (picked == null) return;
+
+      final bytes = await picked.readAsBytes();
+      if (bytes.isEmpty) return;
+
+      final b64 = base64Encode(bytes);
+      final payload = '[image]data:image/jpeg;base64,$b64';
+
+      widget.onSent();
+      try {
+        await ref
+            .read(messagesProvider(widget.conversationId).notifier)
+            .sendTextMessage(payload);
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Erro ao enviar imagem: $e'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Não foi possível abrir a câmera/galeria: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showImageSourceMenu() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (bCtx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const Text(
+                'Enviar Foto',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFE3F2FD),
+                  child: Icon(Icons.camera_alt_rounded, color: AppColors.primary),
+                ),
+                title: const Text('Tirar Foto com a Câmera'),
+                subtitle: const Text('Tirar foto agora'),
+                onTap: () {
+                  Navigator.pop(bCtx);
+                  _pickAndSendImage(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFE8F5E9),
+                  child: Icon(Icons.photo_library_outlined, color: AppColors.success),
+                ),
+                title: const Text('Escolher da Galeria'),
+                subtitle: const Text('Selecionar foto existente'),
+                onTap: () {
+                  Navigator.pop(bCtx);
+                  _pickAndSendImage(ImageSource.gallery);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   String _formatTimer(int seconds) {
     final m = (seconds ~/ 60).toString();
     final s = (seconds % 60).toString().padLeft(2, '0');
@@ -302,7 +403,13 @@ class _ChatInputBarState extends ConsumerState<ChatInputBar> {
             color: AppColors.primary,
             tooltip: 'Enviar mensagem',
           )
-        else
+        else ...[
+          IconButton(
+            onPressed: () => _pickAndSendImage(ImageSource.camera),
+            icon: const Icon(Icons.camera_alt_outlined),
+            color: AppColors.textSecondary,
+            tooltip: 'Tirar foto com a câmera',
+          ),
           Container(
             decoration: BoxDecoration(
               color: AppColors.primary.withValues(alpha: 0.1),
@@ -315,6 +422,7 @@ class _ChatInputBarState extends ConsumerState<ChatInputBar> {
               tooltip: 'Gravar áudio (WhatsApp)',
             ),
           ),
+        ],
       ],
     );
   }

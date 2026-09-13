@@ -75,14 +75,14 @@ Documento oficial de acompanhamento do status de desenvolvimento, módulos entre
 - **Correção:** ponte nativa para publicar notificações Android em primeiro plano, canal `conecta_messages` de alta importância e ícone de notificação. Preservado o filtro de jornada aplicado antes da exibição.
 - **Segundo plano:** definido o canal padrão FCM, removido o serviço base redundante (o plugin registra seu próprio serviço) e adicionada a ação usada pelo servidor para abrir o app ao tocar na notificação.
 - **Validação:** análise Dart sem problemas; build release e teste no aparelho em andamento.
-## 🟢 6. Sistema de Status Manual "Em Serviço / Fora de Serviço" — 12/09/2026
+## 🟢 6. Sistema de Status Manual "Em Serviço / Fora de Serviço" & Widget Android — 12/09/2026
 
-- **Backend & Banco:** Coluna `em_servico` criada e indexada na tabela `users` via Prisma no PostgreSQL/Supabase.
-- **API & WebSocket:** Endpoint `PATCH /api/users/me/service-status` operacional com auditoria e broadcast de eventos `user.status.changed` via WebSocket.
-- **Frontend (Flutter):**
-  - Card interativo `ServiceStatusCard` na Home e seção de toggle no Perfil.
-  - Sincronização em tempo real nas conversas (`ConversationsNotifier`) e avatares.
-  - Silenciamento inteligente de notificações de rotina respeitando o status manual, mantendo alertas de emergência ativos.
-- **Deploy:**
-  - Backend TypeScript compilado com sucesso (`dist/`).
-  - Web/PWA compilado e publicado no Firebase Hosting: **https://conecta-hospital.web.app**.
+- **Correção da Reversão:** Mapeado campo `emServico` no `AuthRepositoryImpl` e removida a seção antiga "Minha Escala & Plantão" do Perfil.
+- **Widget Nativo Android (1-Toque na Tela Inicial):**
+  - Layout nativo `widget_service_status.xml` com estados verde (`#2E7D32` Em Serviço) e cinza (`#546E7A` Fora de Serviço).
+  - `ServiceStatusWidgetProvider.kt` com `ACTION_TOGGLE_STATUS` disparando requisição HTTP em background com 1 toque na tela inicial.
+  - Sincronização bidirecional via `MethodChannel` (`updateWidget`).
+- **Novo APK Release Compilado:**
+  - Arquivo: `c:\projetos\conecta-saude\conecta-saude.apk` (~59.4 MB / 62.306.481 bytes).
+  - Inclui proteção `FLAG_SECURE`, notificações de alta importância e suporte a AppWidget.
+- **Deploy Web:** Versão PWA atualizada e ativa em **https://conecta-hospital.web.app**.
