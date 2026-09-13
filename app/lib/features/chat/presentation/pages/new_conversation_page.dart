@@ -689,7 +689,7 @@ class _UserTile extends StatelessWidget {
         ],
       ),
       subtitle: Text(
-        '${user.hierarquiaNome} · ${user.setorNome} (${user.jornadaInicio} às ${user.jornadaFim})',
+        '${user.hierarquiaNome} · ${user.setorNome}',
         style: const TextStyle(
             fontSize: 12, color: AppColors.neutral500),
       ),
@@ -885,7 +885,7 @@ List<UserSummary> _filterUsers(
   }).toList();
 }
 
-// ─── Barra de Filtros (Status + Função) ────────────────────────────────────────
+// ─── Barra de Filtros (Mobile-First: Segmented Control + Chips) ────────────────
 class _UserFilterBar extends StatelessWidget {
   final String statusFilter;
   final ValueChanged<String> onStatusFilterChanged;
@@ -905,17 +905,18 @@ class _UserFilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final total = users.length;
     final working = users.where((u) => u.isCurrentlyWorking).length;
     final off = total - working;
 
     return Container(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.only(top: 2, bottom: 8),
       decoration: BoxDecoration(
         color: Theme.of(context).scaffoldBackgroundColor,
         border: Border(
           bottom: BorderSide(
-            color: Colors.black.withValues(alpha: 0.06),
+            color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.05),
             width: 1,
           ),
         ),
@@ -923,47 +924,57 @@ class _UserFilterBar extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Linha 1: Status de Serviço (Todos / Em Plantão / Fora) ──
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Row(
-              children: [
-                _StatusPill(
-                  label: 'Todos',
-                  count: total,
-                  icon: Icons.people_outline,
-                  color: AppColors.primary,
-                  isSelected: statusFilter == 'all',
-                  onTap: () => onStatusFilterChanged('all'),
-                ),
-                const SizedBox(width: 8),
-                _StatusPill(
-                  label: 'Em Plantão',
-                  count: working,
-                  icon: Icons.check_circle,
-                  color: const Color(0xFF16A34A),
-                  isSelected: statusFilter == 'working',
-                  onTap: () => onStatusFilterChanged('working'),
-                ),
-                const SizedBox(width: 8),
-                _StatusPill(
-                  label: 'Fora de Serviço',
-                  count: off,
-                  icon: Icons.nightlight_round,
-                  color: const Color(0xFFD97706),
-                  isSelected: statusFilter == 'off',
-                  onTap: () => onStatusFilterChanged('off'),
-                ),
-              ],
+          // ── Linha 1: Segmented Control de Status (Moderno e Ergonômico) ──
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Container(
+              height: 38,
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  _SegmentItem(
+                    label: 'Todos',
+                    count: total,
+                    isSelected: statusFilter == 'all',
+                    activeColor: AppColors.primary,
+                    onTap: () => onStatusFilterChanged('all'),
+                    isDark: isDark,
+                  ),
+                  _SegmentItem(
+                    label: 'Em Plantão',
+                    count: working,
+                    icon: Icons.circle,
+                    iconColor: const Color(0xFF22C55E),
+                    isSelected: statusFilter == 'working',
+                    activeColor: const Color(0xFF16A34A),
+                    onTap: () => onStatusFilterChanged('working'),
+                    isDark: isDark,
+                  ),
+                  _SegmentItem(
+                    label: 'Fora',
+                    count: off,
+                    icon: Icons.nightlight_round,
+                    iconColor: const Color(0xFFF59E0B),
+                    isSelected: statusFilter == 'off',
+                    activeColor: const Color(0xFFD97706),
+                    onTap: () => onStatusFilterChanged('off'),
+                    isDark: isDark,
+                  ),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 8),
 
-          // ── Linha 2: Função / Especialidade ──
+          // ── Linha 2: Chips de Especialidade / Cargo em Scroll Suave ──
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 14),
             child: Row(
               children: cargoOptions.map((opt) {
                 final isAll = opt.id == 'all';
@@ -971,46 +982,74 @@ class _UserFilterBar extends StatelessWidget {
                     ? total
                     : users.where((u) => opt.matches(u.cargo)).length;
 
-                // Não exibir chips com zero membros se não for a opção 'Todas'
                 if (!isAll && count == 0) return const SizedBox.shrink();
 
                 final isSelected = selectedCargoId == opt.id;
 
                 return Padding(
                   padding: const EdgeInsets.only(right: 6),
-                  child: FilterChip(
-                    showCheckmark: false,
-                    avatar: Icon(
-                      opt.icon,
-                      size: 14,
-                      color: isSelected ? Colors.white : AppColors.neutral600,
-                    ),
-                    label: Text(
-                      '${opt.label} ($count)',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight:
-                            isSelected ? FontWeight.w600 : FontWeight.normal,
-                        color: isSelected ? Colors.white : AppColors.neutral700,
-                      ),
-                    ),
-                    selected: isSelected,
-                    selectedColor: AppColors.primary,
-                    backgroundColor: Colors.grey.shade100,
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
-                    visualDensity: VisualDensity.compact,
-                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      side: BorderSide(
+                  child: InkWell(
+                    onTap: () => onCargoFilterChanged(opt.id),
+                    borderRadius: BorderRadius.circular(8),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
                         color: isSelected
                             ? AppColors.primary
-                            : Colors.grey.shade300,
-                        width: 0.8,
+                            : (isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC)),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: isSelected
+                              ? AppColors.primary
+                              : (isDark ? Colors.white12 : const Color(0xFFE2E8F0)),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            opt.icon,
+                            size: 13,
+                            color: isSelected
+                                ? Colors.white
+                                : (isDark ? Colors.white70 : AppColors.neutral600),
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            opt.label,
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                              color: isSelected
+                                  ? Colors.white
+                                  : (isDark ? Colors.white : AppColors.neutral800),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 4.5, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? Colors.white.withValues(alpha: 0.22)
+                                  : (isDark ? Colors.white12 : const Color(0xFFE2E8F0)),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              '$count',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: isSelected
+                                    ? Colors.white
+                                    : (isDark ? Colors.white70 : AppColors.neutral600),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    onSelected: (_) => onCargoFilterChanged(opt.id),
                   ),
                 );
               }).toList(),
@@ -1022,75 +1061,85 @@ class _UserFilterBar extends StatelessWidget {
   }
 }
 
-class _StatusPill extends StatelessWidget {
+class _SegmentItem extends StatelessWidget {
   final String label;
   final int count;
-  final IconData icon;
-  final Color color;
+  final IconData? icon;
+  final Color? iconColor;
   final bool isSelected;
+  final Color activeColor;
   final VoidCallback onTap;
+  final bool isDark;
 
-  const _StatusPill({
+  const _SegmentItem({
     required this.label,
     required this.count,
-    required this.icon,
-    required this.color,
+    this.icon,
+    this.iconColor,
     required this.isSelected,
+    required this.activeColor,
     required this.onTap,
+    required this.isDark,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
+    return Expanded(
+      child: GestureDetector(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+          curve: Curves.easeInOut,
+          alignment: Alignment.center,
           decoration: BoxDecoration(
             color: isSelected
-                ? color.withValues(alpha: 0.14)
-                : Colors.grey.shade100,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: isSelected ? color : Colors.grey.shade300,
-              width: isSelected ? 1.4 : 0.8,
-            ),
+                ? (isDark ? const Color(0xFF334155) : Colors.white)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1.5),
+                    )
+                  ]
+                : null,
           ),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon,
-                  size: 13,
-                  color: isSelected ? color : AppColors.neutral500),
-              const SizedBox(width: 5),
+              if (icon != null) ...[
+                Icon(icon, size: icon == Icons.circle ? 7 : 11, color: iconColor ?? activeColor),
+                const SizedBox(width: 4),
+              ],
               Text(
                 label,
                 style: TextStyle(
                   fontSize: 12,
-                  fontWeight:
-                      isSelected ? FontWeight.w600 : FontWeight.w500,
-                  color: isSelected ? color : AppColors.neutral700,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  color: isSelected
+                      ? (isDark ? Colors.white : AppColors.neutral900)
+                      : (isDark ? Colors.white60 : AppColors.neutral600),
                 ),
               ),
-              const SizedBox(width: 5),
+              const SizedBox(width: 4),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                padding: const EdgeInsets.symmetric(horizontal: 4.5, vertical: 0.5),
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? color.withValues(alpha: 0.22)
-                      : Colors.grey.shade200,
-                  borderRadius: BorderRadius.circular(10),
+                      ? activeColor.withValues(alpha: 0.15)
+                      : (isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
+                  borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
                   '$count',
                   style: TextStyle(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w700,
-                    color: isSelected ? color : AppColors.neutral600,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: isSelected
+                        ? activeColor
+                        : (isDark ? Colors.white60 : AppColors.neutral600),
                   ),
                 ),
               ),
