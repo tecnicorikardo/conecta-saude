@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_theme_provider.dart';
 import '../../domain/entities/conversation_entity.dart';
 import '../../domain/entities/message_entity.dart';
 import '../providers/chat_provider.dart';
@@ -110,6 +111,8 @@ class _ChatPageState extends ConsumerState<ChatPage> with WidgetsBindingObserver
       },
     );
 
+    final tokens = context.appTokens;
+
     return Scaffold(
       resizeToAvoidBottomInset: true,
       backgroundColor:
@@ -119,8 +122,18 @@ class _ChatPageState extends ConsumerState<ChatPage> with WidgetsBindingObserver
       body: GestureDetector(
         behavior: HitTestBehavior.translucent,
         onTap: () => FocusScope.of(context).unfocus(),
-        child: Column(
-        children: [
+        child: Container(
+          decoration: tokens.isLgbtq
+              ? const BoxDecoration(
+                  image: DecorationImage(
+                    image: AssetImage('assets/images/background_lgbtq.jpg'),
+                    fit: BoxFit.cover,
+                    opacity: 0.22,
+                  ),
+                )
+              : null,
+          child: Column(
+            children: [
           // ─── Banner Informativo quando o Colega está Fora de Serviço ──────
           if (!isGroup && otherParticipant != null && !otherParticipant.isCurrentlyWorking)
             Container(
@@ -207,11 +220,12 @@ class _ChatPageState extends ConsumerState<ChatPage> with WidgetsBindingObserver
               _scrollToBottom();
             },
           ),
-        ],
+            ],
+          ),
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   PreferredSizeWidget _buildAppBar(
     BuildContext context,

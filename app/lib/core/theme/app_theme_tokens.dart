@@ -137,6 +137,36 @@ class AppThemeTokens extends ThemeExtension<AppThemeTokens> {
     return const SizedBox.shrink();
   }
 
+  /// Retorna BoxDecoration para os cards da interface, aplicando a imagem de background no tema LGBTQI+
+  BoxDecoration cardDecoration({
+    BorderRadiusGeometry? borderRadius,
+    Border? border,
+    Color? overrideColor,
+    bool enableImageBg = true,
+  }) {
+    final effectiveRadius = borderRadius ?? BorderRadius.circular(10);
+    final effectiveBorder = border ?? Border.all(color: this.border, width: 1);
+
+    if (isLgbtq && enableImageBg) {
+      return BoxDecoration(
+        color: (overrideColor ?? surface).withValues(alpha: 0.90),
+        borderRadius: effectiveRadius,
+        border: effectiveBorder,
+        image: const DecorationImage(
+          image: AssetImage('assets/images/background_lgbtq.jpg'),
+          fit: BoxFit.cover,
+          opacity: 0.16,
+        ),
+      );
+    }
+
+    return BoxDecoration(
+      color: overrideColor ?? surface,
+      borderRadius: effectiveRadius,
+      border: effectiveBorder,
+    );
+  }
+
   // ─── Preset: SUS Claro ──────────────────────────────────────────────────────
   static const susLight = AppThemeTokens(
     mode: AppThemeMode.susLight,

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/routes/app_routes.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_theme_provider.dart';
 import '../../data/repositories/channels_repository.dart';
 import '../../domain/entities/channel_entity.dart';
 import '../providers/channels_provider.dart';
@@ -15,6 +16,7 @@ class ChannelsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(channelsProvider);
+    final tokens = context.appTokens;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -138,35 +140,46 @@ class ChannelsPage extends ConsumerWidget {
 
             // ─── Lista de Canais ───────────────────────────────────────────
             Expanded(
-              child: state.isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : ListView(
-                      keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-                      padding: const EdgeInsets.fromLTRB(16, 14, 16, 32),
-                      children: [
-                        // Banner Destaque Emergência
-                        if (state.selectedTab == ChannelTab.emergencia &&
-                            state.emergencyChannel != null &&
-                            state.searchQuery.isEmpty) ...[
-                          _buildEmergencyBanner(
-                            context,
-                            state.emergencyChannel!,
-                          ),
-                          const SizedBox(height: 16),
-                        ],
+              child: Container(
+                decoration: tokens.isLgbtq
+                    ? const BoxDecoration(
+                        image: DecorationImage(
+                          image: AssetImage('assets/images/background_lgbtq.jpg'),
+                          fit: BoxFit.cover,
+                          opacity: 0.20,
+                        ),
+                      )
+                    : null,
+                child: state.isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : ListView(
+                        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 32),
+                        children: [
+                          // Banner Destaque Emergência
+                          if (state.selectedTab == ChannelTab.emergencia &&
+                              state.emergencyChannel != null &&
+                              state.searchQuery.isEmpty) ...[
+                            _buildEmergencyBanner(
+                              context,
+                              state.emergencyChannel!,
+                            ),
+                            const SizedBox(height: 16),
+                          ],
 
-                        // Lista Filtrada
-                        if (state.filteredChannels.isEmpty)
-                          _buildEmptyState(state)
-                        else
-                          ...state.filteredChannels.map((channel) {
-                            return Padding(
-                              padding: const EdgeInsets.only(bottom: 10),
-                              child: _buildChannelCard(context, channel),
-                            );
-                          }),
-                      ],
-                    ),
+                          // Lista Filtrada
+                          if (state.filteredChannels.isEmpty)
+                            _buildEmptyState(state)
+                          else
+                            ...state.filteredChannels.map((channel) {
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 10),
+                                child: _buildChannelCard(context, channel),
+                              );
+                            }),
+                        ],
+                      ),
+              ),
             ),
           ],
         ),
@@ -339,12 +352,10 @@ class ChannelsPage extends ConsumerWidget {
       timeStr = DateFormat('HH:mm').format(channel.ultimaMensagemHora!);
     }
 
+    final tokens = context.appTokens;
+
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.border, width: 1),
-      ),
+      decoration: tokens.cardDecoration(),
       clipBehavior: Clip.antiAlias,
       child: Material(
         color: Colors.transparent,

@@ -183,21 +183,31 @@ class _HomePageState extends ConsumerState<HomePage> {
         ref.invalidate(announcementsProvider);
         ref.invalidate(conversationsProvider);
       },
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // ─── Card de boas-vindas com badge de nível e status ────────
-            _WelcomeCard(
-              nome: saudacaoNome,
-              nomeCompleto: nomeCompleto,
-              cargo: cargo,
-              setor: setor,
-              perms: perms,
-              user: user,
-            ),
+      child: Container(
+        decoration: tokens.isLgbtq
+            ? const BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage('assets/images/background_lgbtq.jpg'),
+                  fit: BoxFit.cover,
+                  opacity: 0.22,
+                ),
+              )
+            : null,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // ─── Card de boas-vindas com badge de nível e status ────────
+              _WelcomeCard(
+                nome: saudacaoNome,
+                nomeCompleto: nomeCompleto,
+                cargo: cargo,
+                setor: setor,
+                perms: perms,
+                user: user,
+              ),
             
             const SizedBox(height: 16),
 
@@ -261,11 +271,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: tokens.surface,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: tokens.border, width: 1),
-                ),
+                decoration: tokens.cardDecoration(),
                 child: Center(
                   child: SizedBox(
                     width: 20,
@@ -281,11 +287,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: tokens.surface,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: tokens.border, width: 1),
-                ),
+                decoration: tokens.cardDecoration(),
                 child: Center(
                   child: Text(
                     'Nenhuma mensagem recente.',
@@ -341,11 +343,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: tokens.surface,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: tokens.border, width: 1),
-                ),
+                decoration: tokens.cardDecoration(),
                 child: Center(
                   child: SizedBox(
                     width: 20,
@@ -361,11 +359,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: tokens.surface,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: tokens.border, width: 1),
-                ),
+                decoration: tokens.cardDecoration(),
                 child: Center(
                   child: Text(
                     'Nenhum comunicado disponível no momento.',
@@ -390,7 +384,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           ],
         ),
       ),
-    );
+    ));
   }
 
   String _formatDate(DateTime dt) {
@@ -566,11 +560,7 @@ class _WelcomeCard extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      decoration: BoxDecoration(
-        color: tokens.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: tokens.border, width: 1),
-      ),
+      decoration: tokens.cardDecoration(),
       clipBehavior: Clip.antiAlias,
       child: Column(
         children: [
@@ -827,11 +817,7 @@ class _AdminPanel extends StatelessWidget {
     final tokens = context.appTokens;
 
     return Container(
-      decoration: BoxDecoration(
-        color: tokens.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: tokens.border, width: 1),
-      ),
+      decoration: tokens.cardDecoration(),
       clipBehavior: Clip.antiAlias,
       child: IntrinsicHeight(
         child: Row(
@@ -987,16 +973,13 @@ class _QuickAccessCard extends StatelessWidget {
     return Semantics(
       label: 'Acesso rápido: ${data.label}',
       button: true,
-      child: Card(
-        elevation: 0,
-        color: tokens.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-          side: BorderSide(color: tokens.border, width: 1),
-        ),
+      child: Container(
+        decoration: tokens.cardDecoration(),
         clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: data.onTap,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: data.onTap,
           borderRadius: BorderRadius.circular(10),
           child: Column(
             children: [
@@ -1053,7 +1036,7 @@ class _QuickAccessCard extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ));
   }
 }
 
@@ -1168,9 +1151,7 @@ class _RecentMessageCard extends StatelessWidget {
     final hasUnread = conv.unreadCount > 0;
 
     return Container(
-      decoration: BoxDecoration(
-        color: tokens.surface,
-        borderRadius: BorderRadius.circular(10),
+      decoration: tokens.cardDecoration(
         border: Border.all(
           color: hasUnread ? tokens.themeAccentColor.withValues(alpha: 0.5) : tokens.border,
           width: 1,
@@ -1333,11 +1314,7 @@ class _AnnouncementCard extends StatelessWidget {
         : (isAlta ? tokens.warning : null);
 
     return Container(
-      decoration: BoxDecoration(
-        color: tokens.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: tokens.border, width: 1),
-      ),
+      decoration: tokens.cardDecoration(),
       clipBehavior: Clip.antiAlias,
       child: Material(
         color: Colors.transparent,

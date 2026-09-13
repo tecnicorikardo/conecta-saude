@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_theme_provider.dart';
 import '../../../auth/presentation/providers/current_user_provider.dart';
 import '../../domain/entities/channel_entity.dart';
 import '../providers/channels_provider.dart';
@@ -86,6 +87,7 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
     final userAsync = ref.watch(currentUserProvider);
     final user = userAsync.valueOrNull;
     final canPublish = (user?.hierarquiaNivel ?? 4) <= 2; // Direção ou Coordenação
+    final tokens = context.appTokens;
 
     final channelName = widget.channel?.nome ?? 'Canal Oficial';
     final sectorName = widget.channel?.setorNome ??
@@ -164,27 +166,38 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
             children: [
               // ─── Lista de Mensagens ──────────────────────────────────────────
               Expanded(
-                child: state.isLoading
-                    ? const Center(child: CircularProgressIndicator())
-                    : state.messages.isEmpty
-                        ? _buildEmptyState()
-                        : ListView.builder(
-                            controller: _scrollController,
-                            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 16,
-                            ),
-                            itemCount: state.messages.length,
-                            itemBuilder: (context, index) {
-                              final msg = state.messages[index];
-                              return _buildMessageCard(
-                                context,
-                                msg,
-                                canPublish,
-                              );
-                            },
+                child: Container(
+                  decoration: tokens.isLgbtq
+                      ? const BoxDecoration(
+                          image: DecorationImage(
+                            image: AssetImage('assets/images/background_lgbtq.jpg'),
+                            fit: BoxFit.cover,
+                            opacity: 0.20,
                           ),
+                        )
+                      : null,
+                  child: state.isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : state.messages.isEmpty
+                          ? _buildEmptyState()
+                          : ListView.builder(
+                              controller: _scrollController,
+                              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 16,
+                              ),
+                              itemCount: state.messages.length,
+                              itemBuilder: (context, index) {
+                                final msg = state.messages[index];
+                                return _buildMessageCard(
+                                  context,
+                                  msg,
+                                  canPublish,
+                                );
+                              },
+                            ),
+                ),
               ),
 
               // ─── Rodapé: Input para Liderança OU Banner para Funcionários ──
@@ -262,20 +275,15 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
       roleColor = const Color(0xFF00796B);
     }
 
+    final tokens = context.appTokens;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
+      decoration: tokens.cardDecoration(
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppColors.outlineVariant),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
