@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme_provider.dart';
+import '../../../auth/presentation/providers/current_user_provider.dart';
+import '../../../auth/presentation/providers/service_status_provider.dart';
 import '../../domain/entities/conversation_entity.dart';
 import '../../domain/entities/message_entity.dart';
 import '../providers/chat_provider.dart';
@@ -333,6 +335,105 @@ class _ConversationsPageState extends ConsumerState<ConversationsPage>
         statusBarIconBrightness: Brightness.light,
       ),
       actions: [
+        if (!_isSearching)
+          Consumer(
+            builder: (context, ref, _) {
+              final user = ref.watch(currentUserProvider).valueOrNull;
+              final statusAsync = ref.watch(serviceStatusProvider);
+              final isEmServico = statusAsync.valueOrNull ?? user?.emServico ?? true;
+              final isLoading = statusAsync.isLoading;
+              final statusColor = isEmServico ? const Color(0xFF4CAF50) : const Color(0xFFB0BEC5);
+
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: isLoading
+                          ? null
+                          : () async {
+                              try {
+                                HapticFeedback.mediumImpact();
+                                await ref.read(serviceStatusProvider.notifier).toggle(!isEmServico);
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).clearSnackBars();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        !isEmServico
+                                            ? '✅ Você está Em Serviço (Notificações ativas)'
+                                            : '⏸️ Você está Fora de Serviço (Mensagens silenciadas)',
+                                      ),
+                                      duration: const Duration(seconds: 2),
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Erro: $e'),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4.5),
+                        decoration: BoxDecoration(
+                          color: isEmServico
+                              ? const Color(0xFF1B5E20).withValues(alpha: 0.6)
+                              : Colors.white.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: statusColor.withValues(alpha: 0.8),
+                            width: 1.2,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (isLoading)
+                              SizedBox(
+                                width: 7,
+                                height: 7,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 1.2,
+                                  valueColor: AlwaysStoppedAnimation<Color>(statusColor),
+                                ),
+                              )
+                            else
+                              Container(
+                                width: 7,
+                                height: 7,
+                                decoration: BoxDecoration(
+                                  color: statusColor,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            const SizedBox(width: 5),
+                            Text(
+                              isEmServico ? 'Plantão' : 'Off',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.95),
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
         IconButton(
           icon: Icon(_isSearching ? Icons.close : Icons.search),
           onPressed: () {

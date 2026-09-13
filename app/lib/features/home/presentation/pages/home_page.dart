@@ -8,6 +8,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme_provider.dart';
 import '../../../../core/auth/permissions_provider.dart';
 import '../../../auth/presentation/providers/current_user_provider.dart';
+import '../../../auth/presentation/providers/service_status_provider.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../chat/presentation/providers/chat_provider.dart';
 import '../../../chat/domain/entities/conversation_entity.dart';
@@ -659,76 +660,150 @@ class _WelcomeCard extends StatelessWidget {
                                   ),
                                 ),
                                 if (user != null) ...[
-                                  const SizedBox(height: 5),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                                    decoration: BoxDecoration(
-                                      color: user!.workStatusColor.withValues(alpha: 0.12),
-                                      borderRadius: BorderRadius.circular(6),
-                                      border: Border.all(
-                                        color: user!.workStatusColor.withValues(alpha: 0.35),
-                                        width: 1,
-                                      ),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Container(
-                                          width: 6.5,
-                                          height: 6.5,
-                                          decoration: BoxDecoration(
-                                            color: user!.workStatusColor,
-                                            shape: BoxShape.circle,
+                                  const SizedBox(height: 6),
+                                  Consumer(
+                                    builder: (context, ref, _) {
+                                      final statusAsync = ref.watch(serviceStatusProvider);
+                                      final isEmServico = statusAsync.valueOrNull ?? user!.emServico;
+                                      final isLoading = statusAsync.isLoading;
+                                      final statusColor = isEmServico ? const Color(0xFF2E7D32) : const Color(0xFF757575);
+                                      final statusLabel = isEmServico ? 'Em Serviço' : 'Fora de Serviço';
+
+                                      return Material(
+                                        color: Colors.transparent,
+                                        child: InkWell(
+                                          onTap: isLoading
+                                              ? null
+                                              : () async {
+                                                  try {
+                                                    HapticFeedback.mediumImpact();
+                                                    await ref.read(serviceStatusProvider.notifier).toggle(!isEmServico);
+                                                    if (context.mounted) {
+                                                      ScaffoldMessenger.of(context).clearSnackBars();
+                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                        SnackBar(
+                                                          content: Text(
+                                                            !isEmServico
+                                                                ? '✅ Você está Em Serviço (Notificações ativas)'
+                                                                : '⏸️ Você está Fora de Serviço (Mensagens silenciadas)',
+                                                          ),
+                                                          duration: const Duration(seconds: 2),
+                                                          behavior: SnackBarBehavior.floating,
+                                                        ),
+                                                      );
+                                                    }
+                                                  } catch (e) {
+                                                    if (context.mounted) {
+                                                      ScaffoldMessenger.of(context).showSnackBar(
+                                                        SnackBar(
+                                                          content: Text('Erro ao atualizar status: $e'),
+                                                          backgroundColor: Colors.red,
+                                                        ),
+                                                      );
+                                                    }
+                                                  }
+                                                },
+                                          borderRadius: BorderRadius.circular(20),
+                                          child: AnimatedContainer(
+                                            duration: const Duration(milliseconds: 200),
+                                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4.5),
+                                            decoration: BoxDecoration(
+                                              color: statusColor.withValues(alpha: 0.12),
+                                              borderRadius: BorderRadius.circular(20),
+                                              border: Border.all(
+                                                color: statusColor.withValues(alpha: 0.45),
+                                                width: 1.2,
+                                              ),
+                                            ),
+                                            child: Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                if (isLoading)
+                                                  SizedBox(
+                                                    width: 8,
+                                                    height: 8,
+                                                    child: CircularProgressIndicator(
+                                                      strokeWidth: 1.5,
+                                                      valueColor: AlwaysStoppedAnimation<Color>(statusColor),
+                                                    ),
+                                                  )
+                                                else
+                                                  Container(
+                                                    width: 8,
+                                                    height: 8,
+                                                    decoration: BoxDecoration(
+                                                      color: statusColor,
+                                                      shape: BoxShape.circle,
+                                                    ),
+                                                  ),
+                                                const SizedBox(width: 5),
+                                                Text(
+                                                  statusLabel,
+                                                  style: TextStyle(
+                                                    color: statusColor,
+                                                    fontSize: 10.5,
+                                                    fontWeight: FontWeight.w700,
+                                                    letterSpacing: 0.2,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 3),
+                                                Icon(
+                                                  Icons.sync,
+                                                  size: 11,
+                                                  color: statusColor.withValues(alpha: 0.8),
+                                                ),
+                                              ],
+                                            ),
                                           ),
                                         ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          user!.workStatusLabel,
-                                          style: TextStyle(
-                                            color: user!.workStatusColor,
-                                            fontSize: 9.5,
-                                            fontWeight: FontWeight.w700,
-                                            letterSpacing: 0.2,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                                      );
+                                    },
                                   ),
                                 ],
                               ],
                             ),
                           ],
                         ),
-                        if (user != null && user!.workStatusLabel == 'Fora de Serviço') ...[
-                          const SizedBox(height: 10),
-                          Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFFF8E1),
-                              borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: const Color(0xFFFFE082), width: 0.8),
-                            ),
-                            child: Row(
+                        Consumer(
+                          builder: (context, ref, _) {
+                            final statusAsync = ref.watch(serviceStatusProvider);
+                            final isEmServico = statusAsync.valueOrNull ?? user?.emServico ?? true;
+                            if (user == null || isEmServico) return const SizedBox.shrink();
+
+                            return Column(
                               children: [
-                                const Icon(Icons.nightlight_round, size: 14, color: Color(0xFFD97706)),
-                                const SizedBox(width: 6),
-                                Expanded(
-                                  child: Text(
-                                    'Fora de Serviço (Mensagens silenciadas)',
-                                    style: const TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                      color: Color(0xFF92400E),
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
+                                const SizedBox(height: 10),
+                                Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFFF8E1),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(color: const Color(0xFFFFE082), width: 0.8),
+                                  ),
+                                  child: const Row(
+                                    children: [
+                                      Icon(Icons.nightlight_round, size: 14, color: Color(0xFFD97706)),
+                                      SizedBox(width: 6),
+                                      Expanded(
+                                        child: Text(
+                                          'Fora de Serviço (Mensagens silenciadas)',
+                                          style: TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w600,
+                                            color: Color(0xFF92400E),
+                                          ),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
-                            ),
-                          ),
-                        ],
+                            );
+                          },
+                        ),
                       ],
                     ),
                   ),
