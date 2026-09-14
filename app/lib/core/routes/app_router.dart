@@ -228,7 +228,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: AppRoutes.reports,
-        builder: (_, __) => const ReportsPage(),
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          return ReportsPage(
+            initialReportedUserId: extra?['reportedUserId'] as String?,
+            initialReportedUserName: extra?['reportedUserName'] as String?,
+            initialMessageId: extra?['messageId'] as String?,
+            initialDescription: extra?['initialDescription'] as String?,
+          );
+        },
       ),
       GoRoute(
         path: AppRoutes.auditLogs,

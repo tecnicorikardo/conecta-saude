@@ -3,8 +3,13 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import 'package:go_router/go_router.dart';
+
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme_provider.dart';
+import '../../../../core/routes/app_routes.dart';
+import '../../../../core/services/language_filter_service.dart';
+import '../../../chat/presentation/widgets/language_warning_dialog.dart';
 import '../../../auth/presentation/providers/current_user_provider.dart';
 import '../../domain/entities/channel_entity.dart';
 import '../providers/channels_provider.dart';
@@ -49,6 +54,36 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
   Future<void> _handleSend() async {
     final text = _textController.text.trim();
     if (text.isEmpty) return;
+
+    // ─── FILTRO PREVENTIVO DE LINGUAGEM NO CANAL OFICIAL ────────────────────
+    final isEmergencia = widget.channel?.isEmergencia ?? false;
+    final eval = LanguageFilterService.instance.evaluateMessage(
+      text: text,
+      isEmergencyChannel: isEmergencia,
+    );
+
+    if (!eval.isClean) {
+      final action = await LanguageWarningDialog.show(
+        context,
+        result: eval,
+        originalText: text,
+      );
+
+      switch (action) {
+        case WarningDialogAction.review:
+          _focusNode.requestFocus();
+          return;
+        case WarningDialogAction.cancel:
+          return;
+        case WarningDialogAction.reportIncident:
+          if (mounted) {
+            context.push(AppRoutes.reports);
+          }
+          return;
+        case WarningDialogAction.sendAnyway:
+          break;
+      }
+    }
 
     _textController.clear();
     final ok = await ref

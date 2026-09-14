@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme_provider.dart';
+import '../../../../core/routes/app_routes.dart';
 import '../../domain/entities/conversation_entity.dart';
 import '../../domain/entities/message_entity.dart';
 import '../providers/chat_provider.dart';
@@ -468,6 +469,15 @@ class _ChatPageState extends ConsumerState<ChatPage> with WidgetsBindingObserver
                   );
                 }
               }
+            } else if (v == 'relatar_ouvidoria') {
+              context.push(
+                AppRoutes.reports,
+                extra: {
+                  'reportedUserId': otherParticipant?.id,
+                  'reportedUserName': displayName,
+                  'initialDescription': 'Ocorrência relatada na conversa com $displayName.',
+                },
+              );
             }
           },
           itemBuilder: (_) => [
@@ -489,6 +499,16 @@ class _ChatPageState extends ConsumerState<ChatPage> with WidgetsBindingObserver
             ),
             const PopupMenuItem(value: 'pesquisar', child: Text('Pesquisar')),
             const PopupMenuItem(value: 'limpar', child: Text('Limpar conversa')),
+            const PopupMenuItem(
+              value: 'relatar_ouvidoria',
+              child: Row(
+                children: [
+                  Icon(Icons.shield_outlined, color: AppColors.error, size: 18),
+                  SizedBox(width: 8),
+                  Text('Relatar ocorrência', style: TextStyle(color: AppColors.error)),
+                ],
+              ),
+            ),
             PopupMenuItem(
               value: 'excluir',
               child: Text(

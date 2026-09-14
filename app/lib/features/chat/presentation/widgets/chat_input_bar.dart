@@ -8,7 +8,12 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 
+import 'package:go_router/go_router.dart';
+
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/routes/app_routes.dart';
+import '../../../../core/services/language_filter_service.dart';
+import 'language_warning_dialog.dart';
 import '../../domain/entities/message_entity.dart';
 import '../providers/chat_provider.dart';
 
@@ -75,6 +80,33 @@ class _ChatInputBarState extends ConsumerState<ChatInputBar> {
   Future<void> _send() async {
     final text = _textCtrl.text.trim();
     if (text.isEmpty) return;
+
+    // ─── FILTRO PREVENTIVO DE LINGUAGEM ──────────────────────────────────────
+    final eval = LanguageFilterService.instance.evaluateMessage(text: text);
+    if (!eval.isClean) {
+      final action = await LanguageWarningDialog.show(
+        context,
+        result: eval,
+        originalText: text,
+      );
+
+      switch (action) {
+        case WarningDialogAction.review:
+          // Mantém o texto no input e foca para que o usuário edite
+          _focusNode.requestFocus();
+          return;
+        case WarningDialogAction.cancel:
+          return;
+        case WarningDialogAction.reportIncident:
+          if (mounted) {
+            context.push(AppRoutes.reports);
+          }
+          return;
+        case WarningDialogAction.sendAnyway:
+          // Prossegue com o envio do nível 1
+          break;
+      }
+    }
 
     _textCtrl.clear();
     setState(() => _isComposing = false);

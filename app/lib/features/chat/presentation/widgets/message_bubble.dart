@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/routes/app_routes.dart';
 import '../../domain/entities/message_entity.dart';
 import 'audio_message_player.dart';
 
@@ -322,6 +324,30 @@ class MessageBubble extends StatelessWidget {
                 onTap: () {
                   Navigator.pop(ctx);
                   _confirmDelete(context);
+                },
+              ),
+            if (!isOwn && !message.excluido)
+              ListTile(
+                leading: const Icon(Icons.shield_outlined, color: AppColors.error),
+                title: const Text(
+                  'Relatar ocorrência institucional',
+                  style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w600),
+                ),
+                subtitle: const Text(
+                  'Encaminhar para Ouvidoria com sigilo e protocolo',
+                  style: TextStyle(fontSize: 11, color: AppColors.neutral600),
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  context.push(
+                    AppRoutes.reports,
+                    extra: {
+                      'reportedUserId': message.remetente.id,
+                      'reportedUserName': message.remetente.nome,
+                      'messageId': message.id,
+                      'initialDescription': 'Mensagem relatada: "${message.texto}"',
+                    },
+                  );
                 },
               ),
             const SizedBox(height: 8),

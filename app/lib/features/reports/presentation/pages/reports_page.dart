@@ -9,7 +9,18 @@ import '../../data/repositories/reports_repository.dart';
 import '../providers/reports_provider.dart';
 
 class ReportsPage extends ConsumerStatefulWidget {
-  const ReportsPage({super.key});
+  final String? initialReportedUserId;
+  final String? initialReportedUserName;
+  final String? initialMessageId;
+  final String? initialDescription;
+
+  const ReportsPage({
+    super.key,
+    this.initialReportedUserId,
+    this.initialReportedUserName,
+    this.initialMessageId,
+    this.initialDescription,
+  });
 
   @override
   ConsumerState<ReportsPage> createState() => _ReportsPageState();
@@ -23,6 +34,18 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
   void initState() {
     super.initState();
     _startPolling();
+
+    if (widget.initialDescription != null || widget.initialReportedUserId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showNewReportModal(
+          context,
+          initialReportedUserId: widget.initialReportedUserId,
+          initialReportedUserName: widget.initialReportedUserName,
+          initialMessageId: widget.initialMessageId,
+          initialDescription: widget.initialDescription,
+        );
+      });
+    }
   }
 
   void _startPolling() {
@@ -408,12 +431,22 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
   }
 
   // ─── Modal de Nova Denúncia ─────────────────────────────────────────────────
-  void _showNewReportModal(BuildContext context) {
+  void _showNewReportModal(
+    BuildContext context, {
+    String? initialReportedUserId,
+    String? initialReportedUserName,
+    String? initialMessageId,
+    String? initialDescription,
+  }) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => _NewReportSheet(
+        initialReportedUserId: initialReportedUserId,
+        initialReportedUserName: initialReportedUserName,
+        initialMessageId: initialMessageId,
+        initialDescription: initialDescription,
         onSubmitted: () {
           ref.invalidate(myReportsProvider);
           ref.invalidate(allReportsProvider(_selectedStatus));
@@ -776,11 +809,22 @@ class _EmployeeReportCard extends StatelessWidget {
   }
 }
 
+
 // ─── BOTTOM SHEET: NOVA DENÚNCIA (COLABORADOR / GERAL) ─────────────────────────
 class _NewReportSheet extends ConsumerStatefulWidget {
   final VoidCallback onSubmitted;
+  final String? initialReportedUserId;
+  final String? initialReportedUserName;
+  final String? initialMessageId;
+  final String? initialDescription;
 
-  const _NewReportSheet({required this.onSubmitted});
+  const _NewReportSheet({
+    required this.onSubmitted,
+    this.initialReportedUserId,
+    this.initialReportedUserName,
+    this.initialMessageId,
+    this.initialDescription,
+  });
 
   @override
   ConsumerState<_NewReportSheet> createState() => _NewReportSheetState();
@@ -795,9 +839,24 @@ class _NewReportSheetState extends ConsumerState<_NewReportSheet> {
 
   final _motivos = const [
     {
+      'key': 'linguagem_ofensiva',
+      'label': 'Linguagem Ofensiva / Insulto',
+      'icon': Icons.chat_bubble_outline_rounded
+    },
+    {
       'key': 'assedio',
       'label': 'Assédio Moral / Sexual',
       'icon': Icons.gavel_rounded
+    },
+    {
+      'key': 'ameaca_intimidacao',
+      'label': 'Ameaça ou Intimidação',
+      'icon': Icons.warning_amber_rounded
+    },
+    {
+      'key': 'discriminacao',
+      'label': 'Discriminação / Preconceito',
+      'icon': Icons.front_hand_outlined
     },
     {
       'key': 'desvio_conduta',
@@ -807,7 +866,7 @@ class _NewReportSheetState extends ConsumerState<_NewReportSheet> {
     {
       'key': 'infraestrutura_risco',
       'label': 'Infraestrutura / Risco Hospitalar',
-      'icon': Icons.warning_amber_rounded
+      'icon': Icons.local_hospital_outlined
     },
     {
       'key': 'fraude_recursos',
@@ -820,6 +879,17 @@ class _NewReportSheetState extends ConsumerState<_NewReportSheet> {
       'icon': Icons.help_outline_rounded
     },
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialDescription != null) {
+      _descController.text = widget.initialDescription!;
+    }
+    if (widget.initialReportedUserName != null) {
+      _titleController.text = 'Ocorrência envolvendo ${widget.initialReportedUserName}';
+    }
+  }
 
   @override
   void dispose() {
@@ -844,24 +914,77 @@ class _NewReportSheetState extends ConsumerState<_NewReportSheet> {
     setState(() => _isSubmitting = true);
 
     try {
-      await ref.read(reportsRepositoryProvider).createReport(
+      final reportId = await ref.read(reportsRepositoryProvider).createReport(
             motivo: _selectedMotivo,
             descricao: desc,
             titulo: _titleController.text.trim().isNotEmpty
                 ? _titleController.text.trim()
                 : null,
+            reportedUserId: widget.initialReportedUserId,
+            messageId: widget.initialMessageId,
             anonimo: _isAnonimo,
           );
 
       if (mounted) {
         Navigator.pop(context);
         widget.onSubmitted();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(_isAnonimo
-                ? '🔒 Denúncia anônima registrada com sucesso. Seu sigilo está garantido.'
-                : '✅ Denúncia registrada com sucesso. A Direção Geral analisará o caso.'),
-            backgroundColor: AppColors.success,
+        
+        final protocolNumber = 'CS-${DateTime.now().year}-${reportId.substring(0, 8).toUpperCase()}';
+
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.verified_user_rounded, color: AppColors.success),
+                SizedBox(width: 8),
+                Text('Manifestação Registrada'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Sua manifestação foi recebida com sucesso pela Ouvidoria / Direção Geral e será tratada sob sigilo institucional.',
+                  style: TextStyle(fontSize: 13.5, height: 1.3),
+                ),
+                const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryContainer,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Número de Protocolo:',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
+                      ),
+                      const SizedBox(height: 4),
+                      SelectableText(
+                        protocolNumber,
+                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.primary),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                const Text(
+                  'Guarde este número para acompanhar o parecer institucional na sua aba de manifestações.',
+                  style: TextStyle(fontSize: 11.5, color: AppColors.neutral600),
+                ),
+              ],
+            ),
+            actions: [
+              ElevatedButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Concluir'),
+              ),
+            ],
           ),
         );
       }
