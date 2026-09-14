@@ -4,6 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../main.dart';
 import 'app_theme_tokens.dart';
 
+export 'app_theme_tokens.dart';
+
 class AppThemeModeNotifier extends StateNotifier<AppThemeMode> {
   final SharedPreferences _prefs;
   static const _key = 'app_theme_mode';
@@ -31,4 +33,7 @@ extension AppThemeContextExtension on BuildContext {
   AppThemeTokens get appTokens {
     return Theme.of(this).extension<AppThemeTokens>() ?? AppThemeTokens.susLight;
   }
+
+  bool get isDarkMode => Theme.of(this).brightness == Brightness.dark;
 }
+

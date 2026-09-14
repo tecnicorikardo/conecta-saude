@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_theme_provider.dart';
 import '../../../../core/auth/permissions_provider.dart';
 import '../../data/repositories/reports_repository.dart';
 import '../providers/reports_provider.dart';
@@ -83,9 +84,11 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
   // ─── VISÃO DA DIREÇÃO GERAL (INVESTIGAÇÃO & MODERAÇÃO) ──────────────────────
   Widget _buildDirecaoView(BuildContext context) {
     final reportsAsync = ref.watch(allReportsProvider(_selectedStatus));
+    final tokens = context.appTokens;
+    final isDark = context.isDarkMode;
 
     return RefreshIndicator(
-      color: AppColors.primary,
+      color: tokens.themeAccentColor,
       onRefresh: () async {
         ref.invalidate(allReportsProvider(_selectedStatus));
       },
@@ -94,19 +97,21 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
           // Banner de Identificação de Nível Direção
           Container(
             width: double.infinity,
-            color: AppColors.primary.withValues(alpha: 0.08),
+            color: isDark
+                ? tokens.themeAccentColor.withValues(alpha: 0.18)
+                : tokens.themeAccentColor.withValues(alpha: 0.08),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            child: const Row(
+            child: Row(
               children: [
-                Icon(Icons.shield_outlined, size: 18, color: AppColors.primary),
-                SizedBox(width: 8),
+                Icon(Icons.shield_outlined, size: 18, color: tokens.themeAccentColor),
+                const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     'PAINEL DA DIREÇÃO GERAL · Investigação e Tratamento Sigiloso',
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w700,
-                      color: AppColors.primary,
+                      color: tokens.themeAccentColor,
                       letterSpacing: 0.3,
                     ),
                   ),
@@ -450,18 +455,21 @@ class _StatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.appTokens;
+
     return FilterChip(
       label: Text(label),
       selected: isSelected,
       onSelected: (_) => onTap(),
-      selectedColor: color.withValues(alpha: 0.15),
+      backgroundColor: tokens.surface,
+      selectedColor: color.withValues(alpha: 0.18),
       labelStyle: TextStyle(
         fontSize: 12,
         fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-        color: isSelected ? color : AppColors.neutral700,
+        color: isSelected ? color : tokens.textPrimary,
       ),
       side: BorderSide(
-        color: isSelected ? color : AppColors.outlineVariant,
+        color: isSelected ? color : tokens.border,
       ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     );
@@ -480,6 +488,7 @@ class _DirecaoReportCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.appTokens;
     final statusColor = _statusColor(report.status);
     final statusLabel = _statusLabel(report.status);
     final categoryLabel = _categoryLabel(report.categoria);
@@ -487,28 +496,28 @@ class _DirecaoReportCard extends StatelessWidget {
 
     return Card(
       elevation: 0,
-      color: Colors.white,
+      color: tokens.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: AppColors.outlineVariant),
+        side: BorderSide(color: tokens.border),
       ),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Cabeçalho: Categoria + Status
               Row(
                 children: [
-                  Icon(categoryIcon, size: 16, color: AppColors.neutral600),
+                  Icon(categoryIcon, size: 16, color: tokens.textSecondary),
                   const SizedBox(width: 6),
                   Text(
                     categoryLabel,
-                    style: const TextStyle(
-                      color: AppColors.neutral700,
+                    style: TextStyle(
+                      color: tokens.textSecondary,
                       fontWeight: FontWeight.w600,
                       fontSize: 13,
                     ),
@@ -518,7 +527,7 @@ class _DirecaoReportCard extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: statusColor.withValues(alpha: 0.12),
+                      color: statusColor.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
@@ -536,10 +545,10 @@ class _DirecaoReportCard extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text(
                   report.titulo!,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.neutral900,
+                    color: tokens.textPrimary,
                   ),
                 ),
               ],
@@ -550,9 +559,9 @@ class _DirecaoReportCard extends StatelessWidget {
                 report.descricao,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
-                  color: AppColors.neutral800,
+                  color: tokens.textSecondary,
                 ),
               ),
               const SizedBox(height: 10),
@@ -565,33 +574,33 @@ class _DirecaoReportCard extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF673AB7).withValues(alpha: 0.12),
+                        color: const Color(0xFF673AB7).withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: const Row(
                         children: [
                           Icon(Icons.shield_outlined,
-                              size: 12, color: Color(0xFF673AB7)),
+                              size: 12, color: Color(0xFF9C27B0)),
                           SizedBox(width: 4),
                           Text(
                             'Anônima',
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
-                              color: Color(0xFF673AB7),
+                              color: Color(0xFFBA68C8),
                             ),
                           ),
                         ],
                       ),
                     ),
                   ] else ...[
-                    const Icon(Icons.person_outline,
-                        size: 13, color: AppColors.neutral500),
+                    Icon(Icons.person_outline,
+                        size: 13, color: tokens.textSecondary),
                     const SizedBox(width: 4),
                     Text(
                       '${report.denuncianteNome} (${report.denuncianteSetor ?? 'SUS'})',
-                      style: const TextStyle(
-                        color: AppColors.neutral600,
+                      style: TextStyle(
+                        color: tokens.textSecondary,
                         fontSize: 11,
                         fontWeight: FontWeight.w500,
                       ),
@@ -600,8 +609,8 @@ class _DirecaoReportCard extends StatelessWidget {
                   const Spacer(),
                   Text(
                     _formatDate(report.criadoEm),
-                    style: const TextStyle(
-                      color: AppColors.neutral500,
+                    style: TextStyle(
+                      color: tokens.textSecondary.withValues(alpha: 0.8),
                       fontSize: 11,
                     ),
                   ),
@@ -623,6 +632,7 @@ class _EmployeeReportCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.appTokens;
     final statusColor = _statusColor(report.status);
     final statusLabel = _statusLabel(report.status);
     final categoryLabel = _categoryLabel(report.categoria);
@@ -630,10 +640,10 @@ class _EmployeeReportCard extends StatelessWidget {
 
     return Card(
       elevation: 0,
-      color: Colors.white,
+      color: tokens.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: AppColors.outlineVariant),
+        side: BorderSide(color: tokens.border),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -642,12 +652,12 @@ class _EmployeeReportCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(categoryIcon, size: 16, color: AppColors.neutral600),
+                Icon(categoryIcon, size: 16, color: tokens.textSecondary),
                 const SizedBox(width: 6),
                 Text(
                   categoryLabel,
-                  style: const TextStyle(
-                    color: AppColors.neutral700,
+                  style: TextStyle(
+                    color: tokens.textSecondary,
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
                   ),
@@ -658,7 +668,7 @@ class _EmployeeReportCard extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF673AB7).withValues(alpha: 0.1),
+                      color: const Color(0xFF673AB7).withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: const Text(
@@ -666,7 +676,7 @@ class _EmployeeReportCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF673AB7),
+                        color: Color(0xFFBA68C8),
                       ),
                     ),
                   ),
@@ -676,7 +686,7 @@ class _EmployeeReportCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: statusColor.withValues(alpha: 0.12),
+                    color: statusColor.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -694,27 +704,28 @@ class _EmployeeReportCard extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 report.titulo!,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
+                  color: tokens.textPrimary,
                 ),
               ),
             ],
             const SizedBox(height: 6),
             Text(
               report.descricao,
-              style: const TextStyle(fontSize: 13, color: AppColors.neutral800),
+              style: TextStyle(fontSize: 13, color: tokens.textSecondary),
             ),
             const SizedBox(height: 10),
             Row(
               children: [
-                const Icon(Icons.access_time_rounded,
-                    size: 13, color: AppColors.neutral500),
+                Icon(Icons.access_time_rounded,
+                    size: 13, color: tokens.textSecondary),
                 const SizedBox(width: 4),
                 Text(
                   'Enviado ${_formatDate(report.criadoEm)}',
-                  style: const TextStyle(
-                    color: AppColors.neutral500,
+                  style: TextStyle(
+                    color: tokens.textSecondary.withValues(alpha: 0.8),
                     fontSize: 11,
                   ),
                 ),
@@ -725,7 +736,7 @@ class _EmployeeReportCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: AppColors.success.withValues(alpha: 0.08),
+                  color: AppColors.success.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                       color: AppColors.success.withValues(alpha: 0.3)),
@@ -751,8 +762,8 @@ class _EmployeeReportCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       report.resposta!,
-                      style: const TextStyle(
-                          fontSize: 12, color: AppColors.neutral800),
+                      style: TextStyle(
+                          fontSize: 12, color: tokens.textPrimary),
                     ),
                   ],
                 ),

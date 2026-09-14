@@ -28,6 +28,14 @@ class AppTheme {
         elevation: 0,
         centerTitle: false,
       ),
+      tabBarTheme: TabBarThemeData(
+        labelColor: Colors.white,
+        unselectedLabelColor: Colors.white.withValues(alpha: 0.65),
+        indicatorColor: Colors.white,
+        indicatorSize: TabBarIndicatorSize.tab,
+        labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+      ),
       cardTheme: CardThemeData(
         color: tokens.surface,
         elevation: 0,
@@ -67,6 +75,14 @@ class AppTheme {
         foregroundColor: Colors.white,
         elevation: 0,
         centerTitle: false,
+      ),
+      tabBarTheme: TabBarThemeData(
+        labelColor: Colors.white,
+        unselectedLabelColor: Colors.white.withValues(alpha: 0.65),
+        indicatorColor: tokens.primary,
+        indicatorSize: TabBarIndicatorSize.tab,
+        labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
       ),
       cardTheme: CardThemeData(
         color: tokens.surface,
@@ -108,6 +124,14 @@ class AppTheme {
         elevation: 0,
         centerTitle: false,
       ),
+      tabBarTheme: TabBarThemeData(
+        labelColor: Colors.white,
+        unselectedLabelColor: Colors.white.withValues(alpha: 0.65),
+        indicatorColor: Colors.white,
+        indicatorSize: TabBarIndicatorSize.tab,
+        labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+      ),
       cardTheme: CardThemeData(
         color: tokens.surface,
         elevation: 0,
@@ -147,6 +171,14 @@ class AppTheme {
         foregroundColor: Colors.white,
         elevation: 0,
         centerTitle: false,
+      ),
+      tabBarTheme: TabBarThemeData(
+        labelColor: Colors.white,
+        unselectedLabelColor: Colors.white.withValues(alpha: 0.65),
+        indicatorColor: Colors.white,
+        indicatorSize: TabBarIndicatorSize.tab,
+        labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
       ),
       cardTheme: CardThemeData(
         color: tokens.surface,

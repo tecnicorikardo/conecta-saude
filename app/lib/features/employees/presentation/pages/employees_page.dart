@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_theme_provider.dart';
 import '../../../../core/widgets/hierarchy_badge.dart';
 import '../../../../core/widgets/status_badge.dart';
 import '../../../auth/domain/entities/user_entity.dart';
@@ -81,8 +82,10 @@ class _EmployeesPageState extends ConsumerState<EmployeesPage>
           controller: _tabController,
           indicatorColor: Colors.white,
           indicatorWeight: 3,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white.withValues(alpha: 0.7),
           labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal),
+          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
           tabs: [
             const Tab(
               icon: Icon(Icons.people_alt_outlined, size: 20),
@@ -522,19 +525,22 @@ class _FilterChipButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.appTokens;
+    final primaryColor = tokens.themeAccentColor;
+
     return FilterChip(
       label: Text(label),
       selected: isSelected,
       onSelected: (_) => onTap(),
-      backgroundColor: Theme.of(context).cardColor,
-      selectedColor: AppColors.primary.withValues(alpha: 0.15),
+      backgroundColor: tokens.surface,
+      selectedColor: primaryColor.withValues(alpha: 0.18),
       labelStyle: TextStyle(
         fontSize: 12,
         fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-        color: isSelected ? AppColors.primary : AppColors.neutral800,
+        color: isSelected ? primaryColor : tokens.textPrimary,
       ),
       side: BorderSide(
-        color: isSelected ? AppColors.primary : AppColors.outlineVariant,
+        color: isSelected ? primaryColor : tokens.border,
       ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     );
@@ -552,6 +558,7 @@ class _UserCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.appTokens;
     final initials = user.nome.trim().isNotEmpty
         ? user.nome
             .trim()
@@ -563,6 +570,11 @@ class _UserCard extends StatelessWidget {
 
     return Card(
       elevation: 0,
+      color: tokens.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: tokens.border),
+      ),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
@@ -573,7 +585,7 @@ class _UserCard extends StatelessWidget {
               // Avatar
               CircleAvatar(
                 radius: 24,
-                backgroundColor: AppColors.primary.withValues(alpha: 0.85),
+                backgroundColor: tokens.themeAccentColor.withValues(alpha: 0.85),
                 backgroundImage: user.fotoUrl != null && user.fotoUrl!.isNotEmpty
                     ? NetworkImage(user.fotoUrl!)
                     : null,
@@ -605,6 +617,7 @@ class _UserCard extends StatelessWidget {
                                 .titleSmall
                                 ?.copyWith(
                                   fontWeight: FontWeight.bold,
+                                  color: tokens.textPrimary,
                                 ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -617,7 +630,7 @@ class _UserCard extends StatelessWidget {
                     Text(
                       user.cargo,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppColors.neutral700,
+                            color: tokens.textSecondary,
                           ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -638,7 +651,7 @@ class _UserCard extends StatelessWidget {
                                   .textTheme
                                   .bodySmall
                                   ?.copyWith(
-                                    color: AppColors.neutral600,
+                                    color: tokens.textSecondary,
                                     fontSize: 11,
                                   ),
                               maxLines: 1,
@@ -651,7 +664,7 @@ class _UserCard extends StatelessWidget {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: AppColors.neutral500),
+              Icon(Icons.chevron_right, color: tokens.textSecondary),
             ],
           ),
         ),
@@ -668,6 +681,9 @@ class _PendingApprovalsTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final tokens = context.appTokens;
+    final isDark = context.isDarkMode;
+
     return RefreshIndicator(
       onRefresh: () =>
           ref.read(pendingApprovalsProvider.notifier).fetchPending(),
@@ -684,6 +700,7 @@ class _PendingApprovalsTab extends ConsumerWidget {
                 Text(
                   'Erro ao carregar aprovações pendentes: $err',
                   textAlign: TextAlign.center,
+                  style: TextStyle(color: tokens.textPrimary),
                 ),
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
@@ -708,13 +725,15 @@ class _PendingApprovalsTab extends ConsumerWidget {
                       Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFE8F5E9),
+                          color: isDark
+                              ? const Color(0xFF1B5E20).withValues(alpha: 0.3)
+                              : const Color(0xFFE8F5E9),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
                           Icons.verified_user_outlined,
                           size: 56,
-                          color: Color(0xFF2E7D32),
+                          color: Color(0xFF4CAF50),
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -722,7 +741,7 @@ class _PendingApprovalsTab extends ConsumerWidget {
                         'Nenhuma aprovação pendente',
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.bold,
-                              color: AppColors.neutral800,
+                              color: tokens.textPrimary,
                             ),
                       ),
                       const SizedBox(height: 6),
@@ -732,7 +751,7 @@ class _PendingApprovalsTab extends ConsumerWidget {
                           'Todos os servidores da sua unidade estão aprovados e ativos no Conecta Saúde.',
                           textAlign: TextAlign.center,
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: AppColors.neutral600,
+                                color: tokens.textSecondary,
                                 height: 1.3,
                               ),
                         ),
@@ -753,21 +772,25 @@ class _PendingApprovalsTab extends ConsumerWidget {
                 return Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFFF8E1),
+                    color: isDark
+                        ? const Color(0xFF422B00)
+                        : const Color(0xFFFFF8E1),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFFFE082)),
+                    border: Border.all(
+                      color: isDark ? const Color(0xFFFFB300) : const Color(0xFFFFE082),
+                    ),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.info_outline, color: Color(0xFFF57F17), size: 20),
+                      const Icon(Icons.info_outline, color: Color(0xFFFFB300), size: 20),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
                           '${pendingList.length} ${pendingList.length == 1 ? 'solicitação aguardando' : 'solicitações aguardando'} validação pelo RH/Coordenação.',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12.5,
                             fontWeight: FontWeight.w600,
-                            color: Color(0xFFE65100),
+                            color: isDark ? const Color(0xFFFFE082) : const Color(0xFFE65100),
                           ),
                         ),
                       ),
@@ -874,6 +897,9 @@ class _PendingUserCardState extends ConsumerState<_PendingUserCard> {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.appTokens;
+    final isDark = context.isDarkMode;
+
     final initials = widget.user.nome.trim().isNotEmpty
         ? widget.user.nome
             .trim()
@@ -884,10 +910,11 @@ class _PendingUserCardState extends ConsumerState<_PendingUserCard> {
         : 'U';
 
     return Card(
-      elevation: 1,
+      elevation: 0,
+      color: tokens.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: Color(0xFFE0E0E0)),
+        side: BorderSide(color: tokens.border),
       ),
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -919,10 +946,10 @@ class _PendingUserCardState extends ConsumerState<_PendingUserCard> {
                           Expanded(
                             child: Text(
                               widget.user.nome,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 15,
                                 fontWeight: FontWeight.bold,
-                                color: Color(0xFF263238),
+                                color: tokens.textPrimary,
                               ),
                             ),
                           ),
@@ -930,16 +957,20 @@ class _PendingUserCardState extends ConsumerState<_PendingUserCard> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFFF3E0),
+                              color: isDark
+                                  ? const Color(0xFF5D4037)
+                                  : const Color(0xFFFFF3E0),
                               borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: const Color(0xFFFFB74D)),
+                              border: Border.all(
+                                color: isDark ? const Color(0xFFFFB74D) : const Color(0xFFFFB74D),
+                              ),
                             ),
-                            child: const Text(
+                            child: Text(
                               'PENDENTE',
                               style: TextStyle(
                                 fontSize: 10.5,
                                 fontWeight: FontWeight.w800,
-                                color: Color(0xFFE65100),
+                                color: isDark ? const Color(0xFFFFE082) : const Color(0xFFE65100),
                               ),
                             ),
                           ),
@@ -948,18 +979,18 @@ class _PendingUserCardState extends ConsumerState<_PendingUserCard> {
                       const SizedBox(height: 3),
                       Text(
                         widget.user.cargo,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
-                          color: Color(0xFF455A64),
+                          color: tokens.textSecondary,
                         ),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         widget.user.email,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: Color(0xFF78909C),
+                          color: tokens.textSecondary.withValues(alpha: 0.8),
                         ),
                       ),
                     ],
@@ -968,23 +999,23 @@ class _PendingUserCardState extends ConsumerState<_PendingUserCard> {
               ],
             ),
             const SizedBox(height: 12),
-            const Divider(height: 1),
+            Divider(height: 1, color: tokens.border),
             const SizedBox(height: 10),
 
             // Detalhes extras: Unidade e Matrícula
             Row(
               children: [
-                const Icon(Icons.local_hospital_outlined, size: 16, color: AppColors.primary),
+                Icon(Icons.local_hospital_outlined, size: 16, color: tokens.themeAccentColor),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     widget.user.setorNome.isNotEmpty
                         ? widget.user.setorNome
                         : 'Unidade não informada',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
-                      color: Color(0xFF37474F),
+                      color: tokens.textPrimary,
                     ),
                   ),
                 ),
@@ -994,11 +1025,11 @@ class _PendingUserCardState extends ConsumerState<_PendingUserCard> {
               const SizedBox(height: 4),
               Row(
                 children: [
-                  const Icon(Icons.badge_outlined, size: 16, color: Color(0xFF78909C)),
+                  Icon(Icons.badge_outlined, size: 16, color: tokens.textSecondary),
                   const SizedBox(width: 6),
                   Text(
                     'Matrícula SUS: ${widget.user.matricula}',
-                    style: const TextStyle(fontSize: 12, color: Color(0xFF546E7A)),
+                    style: TextStyle(fontSize: 12, color: tokens.textSecondary),
                   ),
                 ],
               ),
@@ -1048,7 +1079,6 @@ class _PendingUserCardState extends ConsumerState<_PendingUserCard> {
                         backgroundColor: const Color(0xFF2E7D32),
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 10),
-                        elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -1063,3 +1093,4 @@ class _PendingUserCardState extends ConsumerState<_PendingUserCard> {
     );
   }
 }
+

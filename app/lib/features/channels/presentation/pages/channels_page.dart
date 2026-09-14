@@ -47,7 +47,7 @@ class ChannelsPage extends ConsumerWidget {
           children: [
             // ─── Busca e Abas ──────────────────────────────────────────────
             Container(
-              color: Colors.white,
+              color: context.appTokens.surface,
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -65,10 +65,12 @@ class ChannelsPage extends ConsumerWidget {
                         vertical: 10,
                       ),
                       filled: true,
-                      fillColor: AppColors.surfaceVariant,
+                      fillColor: context.isDarkMode
+                          ? context.appTokens.background
+                          : AppColors.surfaceVariant,
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10),
-                        borderSide: BorderSide.none,
+                        borderSide: BorderSide(color: context.appTokens.border),
                       ),
                     ),
                   ),
@@ -81,6 +83,7 @@ class ChannelsPage extends ConsumerWidget {
                       children: [
                         if (state.isDirecao || state.userCentroTag == 'CCD' || state.userCentroTag == 'TODOS') ...[
                           _buildCategoryChip(
+                            context: context,
                             label: 'CCD (CCDTI)',
                             sublabel: 'Imagem e Diagnóstico',
                             isSelected: state.selectedTab == ChannelTab.ccd,
@@ -92,6 +95,7 @@ class ChannelsPage extends ConsumerWidget {
                         ],
                         if (state.isDirecao || state.userCentroTag == 'CCO' || state.userCentroTag == 'TODOS') ...[
                           _buildCategoryChip(
+                            context: context,
                             label: 'CCO',
                             sublabel: 'Centro do Olho',
                             isSelected: state.selectedTab == ChannelTab.cco,
@@ -103,6 +107,7 @@ class ChannelsPage extends ConsumerWidget {
                         ],
                         if (state.isDirecao || state.userCentroTag == 'CCE' || state.userCentroTag == 'TODOS') ...[
                           _buildCategoryChip(
+                            context: context,
                             label: 'CCE',
                             sublabel: 'Especialidades',
                             isSelected: state.selectedTab == ChannelTab.cce,
@@ -113,6 +118,7 @@ class ChannelsPage extends ConsumerWidget {
                           const SizedBox(width: 8),
                         ],
                         _buildCategoryChip(
+                          context: context,
                           label: '🚨 Emergência',
                           isSelected: state.selectedTab == ChannelTab.emergencia,
                           isUrgent: true,
@@ -123,6 +129,7 @@ class ChannelsPage extends ConsumerWidget {
                         if (state.isDirecao) ...[
                           const SizedBox(width: 8),
                           _buildCategoryChip(
+                            context: context,
                             label: 'Todos',
                             isSelected: state.selectedTab == ChannelTab.todos,
                             onTap: () => ref
@@ -136,7 +143,7 @@ class ChannelsPage extends ConsumerWidget {
                 ],
               ),
             ),
-            const Divider(height: 1),
+            Divider(height: 1, color: context.appTokens.border),
 
             // ─── Lista de Canais ───────────────────────────────────────────
             Expanded(
@@ -188,15 +195,21 @@ class ChannelsPage extends ConsumerWidget {
   }
 
   Widget _buildCategoryChip({
+    required BuildContext context,
     required String label,
     String? sublabel,
     required bool isSelected,
     required VoidCallback onTap,
     bool isUrgent = false,
   }) {
-    final activeBg = isUrgent ? const Color(0xFFFFEBEE) : AppColors.softBlue;
-    final activeBorder = isUrgent ? AppColors.emergency : AppColors.primary;
-    final activeText = isUrgent ? AppColors.emergency : AppColors.primary;
+    final tokens = context.appTokens;
+    final activeBg = isUrgent
+        ? const Color(0xFFFFEBEE)
+        : tokens.themeAccentColor.withValues(alpha: 0.15);
+    final activeBorder =
+        isUrgent ? AppColors.emergency : tokens.themeAccentColor;
+    final activeText =
+        isUrgent ? AppColors.emergency : tokens.themeAccentColor;
 
     return InkWell(
       onTap: onTap,
@@ -205,10 +218,10 @@ class ChannelsPage extends ConsumerWidget {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? activeBg : Colors.white,
+          color: isSelected ? activeBg : tokens.surface,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: isSelected ? activeBorder : AppColors.border,
+            color: isSelected ? activeBorder : tokens.border,
             width: isSelected ? 1.5 : 1,
           ),
         ),
@@ -221,7 +234,7 @@ class ChannelsPage extends ConsumerWidget {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected ? activeText : AppColors.navy,
+                color: isSelected ? activeText : tokens.textPrimary,
               ),
             ),
             if (sublabel != null)
@@ -230,7 +243,7 @@ class ChannelsPage extends ConsumerWidget {
                 style: TextStyle(
                   fontSize: 9.5,
                   fontWeight: FontWeight.w400,
-                  color: isSelected ? activeText : AppColors.textSecondary,
+                  color: isSelected ? activeText : tokens.textSecondary,
                 ),
               ),
           ],
@@ -240,9 +253,12 @@ class ChannelsPage extends ConsumerWidget {
   }
 
   Widget _buildEmergencyBanner(BuildContext context, ChannelEntity channel) {
+    final tokens = context.appTokens;
+    final isDark = context.isDarkMode;
+
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: tokens.surface,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: AppColors.emergency, width: 1.5),
       ),
@@ -267,7 +283,9 @@ class ChannelsPage extends ConsumerWidget {
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFFEBEE),
+                            color: isDark
+                                ? const Color(0xFFB71C1C).withValues(alpha: 0.25)
+                                : const Color(0xFFFFEBEE),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: const Icon(Icons.warning_amber_rounded,
@@ -312,8 +330,8 @@ class ChannelsPage extends ConsumerWidget {
                               const SizedBox(height: 3),
                               Text(
                                 channel.descricao ?? 'Canal prioritário hospitalar',
-                                style: const TextStyle(
-                                  color: AppColors.textSecondary,
+                                style: TextStyle(
+                                  color: tokens.textSecondary,
                                   fontSize: 12,
                                 ),
                                 maxLines: 2,
@@ -337,22 +355,24 @@ class ChannelsPage extends ConsumerWidget {
   }
 
   Widget _buildChannelCard(BuildContext context, ChannelEntity channel) {
+    final tokens = context.appTokens;
+    final isDark = context.isDarkMode;
     final isEmergencia = channel.tipo == ChannelType.emergencia;
     final icon = isEmergencia
         ? Icons.local_hospital_outlined
         : (channel.tipo == ChannelType.institucional
             ? Icons.campaign_outlined
             : Icons.groups_outlined);
-    final iconBg = isEmergencia ? const Color(0xFFFFEBEE) : AppColors.softBlue;
-    final iconColor = isEmergencia ? AppColors.emergency : AppColors.primary;
-    final stripeColor = isEmergencia ? AppColors.emergency : AppColors.primary;
+    final iconBg = isEmergencia
+        ? (isDark ? const Color(0xFFB71C1C).withValues(alpha: 0.25) : const Color(0xFFFFEBEE))
+        : tokens.iconContainerColor;
+    final iconColor = isEmergencia ? AppColors.emergency : tokens.themeAccentColor;
+    final stripeColor = isEmergencia ? AppColors.emergency : tokens.themeAccentColor;
 
     String timeStr = '';
     if (channel.ultimaMensagemHora != null) {
       timeStr = DateFormat('HH:mm').format(channel.ultimaMensagemHora!);
     }
-
-    final tokens = context.appTokens;
 
     return Container(
       decoration: tokens.cardDecoration(),
@@ -396,10 +416,10 @@ class ChannelsPage extends ConsumerWidget {
                                   Expanded(
                                     child: Text(
                                       channel.nome,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w700,
-                                        color: AppColors.navy,
+                                        color: tokens.textPrimary,
                                       ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
@@ -409,9 +429,9 @@ class ChannelsPage extends ConsumerWidget {
                                     const SizedBox(width: 8),
                                     Text(
                                       timeStr,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 11,
-                                        color: AppColors.textSecondary,
+                                        color: tokens.textSecondary,
                                       ),
                                     ),
                                   ],
@@ -421,10 +441,10 @@ class ChannelsPage extends ConsumerWidget {
                                 const SizedBox(height: 2),
                                 Text(
                                   channel.setorNome!,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 11.5,
                                     fontWeight: FontWeight.w600,
-                                    color: AppColors.primary,
+                                    color: tokens.themeAccentColor,
                                   ),
                                 ),
                               ],
@@ -432,9 +452,9 @@ class ChannelsPage extends ConsumerWidget {
                                 const SizedBox(height: 2),
                                 Text(
                                   channel.ultimaMensagem!,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 12,
-                                    color: AppColors.textSecondary,
+                                    color: tokens.textSecondary,
                                   ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
@@ -443,17 +463,17 @@ class ChannelsPage extends ConsumerWidget {
                               const SizedBox(height: 6),
                               Row(
                                 children: [
-                                  const Icon(
+                                  Icon(
                                     Icons.person_outline_rounded,
                                     size: 13,
-                                    color: AppColors.textSecondary,
+                                    color: tokens.textSecondary,
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
                                     '${channel.totalMembros} membros',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 11,
-                                      color: AppColors.textSecondary,
+                                      color: tokens.textSecondary,
                                     ),
                                   ),
                                   const Spacer(),
@@ -464,7 +484,7 @@ class ChannelsPage extends ConsumerWidget {
                                         vertical: 2,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: isEmergencia ? AppColors.emergency : AppColors.primary,
+                                        color: isEmergencia ? AppColors.emergency : tokens.themeAccentColor,
                                         borderRadius: BorderRadius.circular(10),
                                       ),
                                       child: Text(

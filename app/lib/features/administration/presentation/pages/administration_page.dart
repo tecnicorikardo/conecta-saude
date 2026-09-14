@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_theme_provider.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../core/auth/permissions_provider.dart';
 import '../../../employees/presentation/providers/employees_provider.dart';
@@ -84,10 +85,11 @@ class AdministrationPage extends ConsumerWidget {
         ? '...'
         : '$todayAuditCount';
 
+    final tokens = context.appTokens;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: tokens.background,
       appBar: AppBar(
-        backgroundColor: AppColors.primary,
         title: const Text('Administração'),
         actions: [
           IconButton(
@@ -115,7 +117,7 @@ class AdministrationPage extends ConsumerWidget {
             Text(
               'Resumo do Sistema',
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: AppColors.neutral600,
+                    color: tokens.textSecondary,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.5,
                   ),
@@ -129,7 +131,7 @@ class AdministrationPage extends ConsumerWidget {
                     label: 'Funcionários',
                     value: empValue,
                     sub: empSub,
-                    color: AppColors.primary,
+                    color: tokens.themeAccentColor,
                     onTap: perms.canManageEmployees
                         ? () => context.push(AppRoutes.employees)
                         : null,
@@ -184,7 +186,7 @@ class AdministrationPage extends ConsumerWidget {
             Text(
               'Ações',
               style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: AppColors.neutral600,
+                    color: tokens.textSecondary,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0.5,
                   ),
@@ -196,7 +198,7 @@ class AdministrationPage extends ConsumerWidget {
                 icon: Icons.person_add_outlined,
                 title: 'Gerenciar Funcionários',
                 subtitle: 'Cadastrar, editar e ativar/desativar funcionários.',
-                color: AppColors.primary,
+                color: tokens.themeAccentColor,
                 onTap: () => context.push(AppRoutes.employees),
               ),
             if (perms.canViewReports) ...[
@@ -215,7 +217,7 @@ class AdministrationPage extends ConsumerWidget {
                 icon: Icons.history_outlined,
                 title: 'Logs de Auditoria',
                 subtitle: 'Visualizar registro de ações administrativas.',
-                color: AppColors.neutral700,
+                color: tokens.textSecondary,
                 onTap: () => context.push(AppRoutes.auditLogs),
               ),
             ],
@@ -238,22 +240,25 @@ class AdministrationPage extends ConsumerWidget {
 class _NoAccessView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final tokens = context.appTokens;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.lock_outline,
-              size: 56, color: AppColors.neutral400),
+          Icon(Icons.lock_outline,
+              size: 56, color: tokens.textSecondary.withValues(alpha: 0.6)),
           const SizedBox(height: 16),
           Text(
             'Acesso restrito',
-            style: Theme.of(context).textTheme.titleMedium,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              color: tokens.textPrimary,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
             'Você não tem permissão para acessar esta área.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: AppColors.neutral500),
+                  color: tokens.textSecondary),
             textAlign: TextAlign.center,
           ),
         ],
@@ -281,7 +286,15 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.appTokens;
+
     final card = Card(
+      elevation: 0,
+      color: tokens.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: tokens.border),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(14),
         child: Column(
@@ -296,11 +309,16 @@ class _SummaryCard extends StatelessWidget {
                   color: color,
                 )),
             Text(label,
-                style: const TextStyle(
-                    fontSize: 13, fontWeight: FontWeight.w600)),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: tokens.textPrimary,
+                )),
             Text(sub,
-                style: const TextStyle(
-                    fontSize: 11, color: AppColors.neutral500)),
+                style: TextStyle(
+                  fontSize: 11,
+                  color: tokens.textSecondary,
+                )),
           ],
         ),
       ),
@@ -334,7 +352,15 @@ class _ActionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.appTokens;
+
     return Card(
+      elevation: 0,
+      color: tokens.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: tokens.border),
+      ),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
@@ -345,7 +371,7 @@ class _ActionCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
+                  color: color.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon, color: color, size: 22),
@@ -356,17 +382,22 @@ class _ActionCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(title,
-                        style: const TextStyle(
-                            fontSize: 14, fontWeight: FontWeight.w600)),
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: tokens.textPrimary,
+                        )),
                     const SizedBox(height: 2),
                     Text(subtitle,
-                        style: const TextStyle(
-                            fontSize: 12, color: AppColors.neutral600)),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: tokens.textSecondary,
+                        )),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right,
-                  color: AppColors.neutral500),
+              Icon(Icons.chevron_right,
+                  color: tokens.textSecondary),
             ],
           ),
         ),
