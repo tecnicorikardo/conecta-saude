@@ -89,13 +89,16 @@ class LanguageFilterService {
     'professora',
   };
 
-  // ─── NÍVEL 1: Termos Informais / Íntimos no Trabalho ───────────────────────
+  // ─── NÍVEL 1: Termos Informais / Íntimos / Expressões Inadequadas no Trabalho ───
   static const List<String> _level1IntimateTerms = [
     'meu bem',
     'meu amor',
     'amorzinho',
     'queridinha',
     'queridinho',
+    'querida',
+    'querido',
+    'amor',
     'docinho',
     'gatinha',
     'gatinho',
@@ -108,9 +111,15 @@ class LanguageFilterService {
     'fofinha',
     'fofinho',
     'delicia',
-    'gostosa',
-    'gostoso',
     'corpitcho',
+    'porcaria',
+    'que saco',
+    'droga',
+    'uma bosta',
+    'bosta',
+    'merda',
+    'cacete',
+    'caramba',
   ];
 
   // ─── NÍVEL 2: Insultos Direcionados, Palavrões e Humilhação ────────────────
