@@ -136,9 +136,7 @@ export async function getConversation(req: Request, res: Response): Promise<void
     where: {
       id,
       ativo: true,
-      ...(actor.hierarquiaNivel !== HierarquiaNivel.DIRECAO
-        ? { members: { some: { userId: actor.id } } }
-        : {}),
+      members: { some: { userId: actor.id } },
     },
     include: {
       members: {

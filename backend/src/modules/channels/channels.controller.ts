@@ -18,7 +18,7 @@ const addMemberSchema = z.object({
 });
 
 const postMessageSchema = z.object({
-  texto: z.string().min(1, 'Mensagem não pode ser vazia').max(10_000_000, 'Mensagem muito longa'),
+  texto: z.string().min(1, 'Mensagem não pode ser vazia').max(5_000, 'Mensagem excede o limite de 5.000 caracteres'),
 });
 
 // ─── Listar canais que o usuário tem acesso ───────────────────────────────────

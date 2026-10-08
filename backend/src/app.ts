@@ -32,27 +32,28 @@ export function createApp(): express.Application {
     .split(',')
     .map((o) => o.trim());
 
+  const trustedOrigins = [
+    'https://conecta-hospital.web.app',
+    'https://conecta-hospital.firebaseapp.com',
+    'https://slide-conecta-hospital.web.app',
+    'https://slide-conecta-hospital.firebaseapp.com',
+    ...allowedOrigins,
+  ];
+
   app.use(
     cors({
       origin: (origin, callback) => {
-        // Sem origin (mobile/Postman) ou origens confiáveis
+        // Sem origin (mobile apps nativos com Dio, Postman, server-side)
         if (!origin) return callback(null, true);
         if (
-          origin.startsWith('http://localhost') ||
-          origin.startsWith('http://127.0.0.1') ||
+          origin.startsWith('http://localhost:') ||
+          origin.startsWith('http://127.0.0.1:') ||
           origin.startsWith('http://192.168.') ||
-          origin.startsWith('http://10.') ||
-          origin.startsWith('http://172.') ||
-          origin.includes('web.app') ||
-          origin.includes('firebaseapp.com') ||
-          origin.includes('onrender.com') ||
-          origin.includes('loca.lt') ||
-          allowedOrigins.includes(origin)
+          trustedOrigins.includes(origin)
         ) {
           return callback(null, true);
         }
-        // Permitir qualquer origem web por padrão para evitar bloqueios no Flutter Web
-        return callback(null, true);
+        return callback(new Error('Origem não autorizada pela política de CORS institucional.'));
       },
       credentials: true,
     }),
@@ -62,7 +63,7 @@ export function createApp(): express.Application {
   app.use(
     rateLimit({
       windowMs: 15 * 60 * 1000, // 15 minutos
-      max: process.env.NODE_ENV === 'development' ? 50000 : 10000,
+      max: process.env.NODE_ENV === 'development' ? 50000 : 1000,
       skip: () => process.env.NODE_ENV === 'development',
       standardHeaders: true,
       legacyHeaders: false,
@@ -70,12 +71,12 @@ export function createApp(): express.Application {
     }),
   );
 
-  // Rate limit para autenticação
+  // Rate limit para autenticação (máximo 30 tentativas a cada 15 minutos em produção)
   const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: process.env.NODE_ENV === 'development' ? 5000 : 500,
+    max: process.env.NODE_ENV === 'development' ? 5000 : 30,
     skip: () => process.env.NODE_ENV === 'development',
-    message: { success: false, error: 'Muitas tentativas de autenticação.' },
+    message: { success: false, error: 'Muitas tentativas de autenticação. Tente novamente em instantes.' },
   });
 
   // ─── Body parsing ─────────────────────────────────────────────────────────
@@ -87,8 +88,6 @@ export function createApp(): express.Application {
     res.json({
       status: 'ok',
       timestamp: new Date().toISOString(),
-      environment: process.env.NODE_ENV,
-      revision: process.env.RENDER_GIT_COMMIT?.slice(0, 12) ?? 'local',
     });
   });
 
@@ -96,10 +95,7 @@ export function createApp(): express.Application {
     try {
       getFirebaseAdmin();
       await prisma.$queryRaw`SELECT 1`;
-      const hostname = new URL(process.env.DATABASE_URL ?? '').hostname;
-      const database = hostname.endsWith('.supabase.com') || hostname.endsWith('.supabase.co')
-        ? 'supabase' : 'postgresql';
-      res.json({ status: 'ready', database, revision: process.env.RENDER_GIT_COMMIT?.slice(0, 12) ?? 'local' });
+      res.json({ status: 'ready' });
     } catch {
       res.status(503).json({ status: 'unavailable' });
     }

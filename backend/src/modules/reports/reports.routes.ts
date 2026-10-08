@@ -35,7 +35,7 @@ async function createReport(req: Request, res: Response): Promise<void> {
 
   const report = await prisma.report.create({
     data: {
-      reporterId: actor.id,
+      reporterId: data.anonimo ? null : actor.id,
       reportedUserId: data.reportedUserId ?? null,
       messageId: data.messageId ?? null,
       anonimo: data.anonimo,
@@ -46,21 +46,23 @@ async function createReport(req: Request, res: Response): Promise<void> {
     },
   });
 
-  // Log de auditoria (se anônimo, oculta detalhes pessoais no log de evento)
-  await prisma.auditLog.create({
-    data: {
-      userId: actor.id,
-      acao: 'REPORT_CREATED',
-      entidade: 'Report',
-      entidadeId: report.id,
-      detalhes: JSON.stringify({
-        motivo: data.motivo,
-        anonimo: data.anonimo,
-      }),
-      ip: req.ip,
-      userAgent: req.get('user-agent'),
-    },
-  });
+  // Log de auditoria apenas se NÃO for anônimo (preserva sigilo absoluto em denúncia anônima)
+  if (!data.anonimo) {
+    await prisma.auditLog.create({
+      data: {
+        userId: actor.id,
+        acao: 'REPORT_CREATED',
+        entidade: 'Report',
+        entidadeId: report.id,
+        detalhes: JSON.stringify({
+          motivo: data.motivo,
+          anonimo: false,
+        }),
+        ip: req.ip,
+        userAgent: req.get('user-agent'),
+      },
+    });
+  }
 
   res.status(201).json({
     success: true,

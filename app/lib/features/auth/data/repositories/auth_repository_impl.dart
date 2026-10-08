@@ -215,7 +215,7 @@ class AuthRepositoryImpl implements AuthRepository {
       try {
         final idToken = await _firebaseAuth.currentUser?.getIdToken();
         if (idToken != null) {
-          await _buildDio(idToken).patch('/auth/fcm-token', data: {'fcmToken': null});
+          await _buildDio(idToken).post('/auth/logout');
         }
         await FirebaseMessaging.instance.deleteToken();
       } catch (_) {}

@@ -477,3 +477,24 @@ export async function testPushTyped(req: Request, res: Response): Promise<void> 
     });
   }
 }
+
+/**
+ * POST /api/auth/logout
+ * Encerra a sessão e revoga ativamente os tokens no Firebase Admin SDK
+ */
+export async function logoutUser(req: Request, res: Response): Promise<void> {
+  const actor = req.user!;
+  try {
+    // Revoga tokens de atualização emitidos no Firebase Auth
+    await getFirebaseAuth().revokeRefreshTokens(actor.firebaseUid);
+    // Limpa o FCM token para impedir pushes subsequentes
+    await prisma.user.update({
+      where: { id: actor.id },
+      data: { fcmToken: null },
+    });
+  } catch (error) {
+    console.warn(`[Auth] Falha ao revogar tokens para ${actor.firebaseUid}:`, error);
+  }
+
+  res.json({ success: true, message: 'Sessão encerrada e tokens revogados com sucesso.' });
+}
