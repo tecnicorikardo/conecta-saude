@@ -4,8 +4,8 @@ import { determineHierarquiaByCargo } from '../modules/auth/auth.controller';
 
 describe('Matriz de Permissões e Hierarquia do SUS (Pente Fino)', () => {
   function canManageAnnouncements(nivel: HierarquiaNivel): boolean {
-    // Apenas Direção (1) e Coordenação (2)
-    return nivel <= HierarquiaNivel.COORDENACAO;
+    // Liderança: Direção (1), Coordenação (2) e Supervisão (3)
+    return nivel <= HierarquiaNivel.SUPERVISAO;
   }
 
   function canManageEmployees(nivel: HierarquiaNivel): boolean {
@@ -33,8 +33,8 @@ describe('Matriz de Permissões e Hierarquia do SUS (Pente Fino)', () => {
     expect(canManageEmployees(HierarquiaNivel.COORDENACAO)).toBe(true);
   });
 
-  it('Supervisão (Nível 3) NÃO deve poder publicar comunicados institucionais', () => {
-    expect(canManageAnnouncements(HierarquiaNivel.SUPERVISAO)).toBe(false);
+  it('Supervisão (Nível 3) DEVE poder publicar comunicados e canais, mas NÃO aprovar colaboradores', () => {
+    expect(canManageAnnouncements(HierarquiaNivel.SUPERVISAO)).toBe(true);
     expect(canManageEmployees(HierarquiaNivel.SUPERVISAO)).toBe(false);
   });
 

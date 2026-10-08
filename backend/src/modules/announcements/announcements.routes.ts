@@ -318,13 +318,13 @@ router.use(authenticate);
 router.get('/', asyncHandler(listAnnouncements));
 router.post(
   '/',
-  requireHierarquia(HierarquiaNivel.COORDENACAO),
+  requireHierarquia(HierarquiaNivel.SUPERVISAO),
   asyncHandler(createAnnouncement)
 );
 router.post('/:id/read', asyncHandler(confirmRead));
 router.get(
   '/:id/stats',
-  requireHierarquia(HierarquiaNivel.COORDENACAO),
+  requireHierarquia(HierarquiaNivel.SUPERVISAO),
   asyncHandler(getAnnouncementStats)
 );
 

@@ -10,7 +10,7 @@ import '../../../../core/theme/app_theme_provider.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../core/services/language_filter_service.dart';
 import '../../../chat/presentation/widgets/language_warning_dialog.dart';
-import '../../../auth/presentation/providers/current_user_provider.dart';
+import '../../../../core/auth/permissions_provider.dart';
 import '../../domain/entities/channel_entity.dart';
 import '../providers/channels_provider.dart';
 
@@ -119,9 +119,8 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(channelMessagesProvider(widget.channelId));
-    final userAsync = ref.watch(currentUserProvider);
-    final user = userAsync.valueOrNull;
-    final canPublish = (user?.hierarquiaNivel ?? 4) <= 2; // Direção ou Coordenação
+    final perms = ref.watch(permissionsProvider);
+    final canPublish = perms.canCreateChannel; // Direção, Coordenação ou Supervisão
     final tokens = context.appTokens;
 
     final channelName = widget.channel?.nome ?? 'Canal Oficial';

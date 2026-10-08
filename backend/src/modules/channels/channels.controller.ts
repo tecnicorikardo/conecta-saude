@@ -125,32 +125,33 @@ export async function listAllChannels(req: Request, res: Response): Promise<void
 export async function createChannel(req: Request, res: Response): Promise<void> {
   const actor = req.user!;
 
-  // Coordenação pode criar somente canais do seu setor
+  // Supervisão e Coordenação podem criar canais do seu setor
   // Direção pode criar qualquer tipo
-  if (actor.hierarquiaNivel > HierarquiaNivel.COORDENACAO) {
-    throw new AppError('Apenas Coordenação e Direção podem criar canais.', 403);
+  if (actor.hierarquiaNivel > HierarquiaNivel.SUPERVISAO) {
+    throw new AppError('Apenas Supervisão, Coordenação e Direção podem criar canais.', 403);
   }
 
   const data = createChannelSchema.parse(req.body);
 
-  // Coordenação só pode criar canal institucional se for do seu setor
+  // Não-Direção não pode criar canais institucionais gerais sem setor
   if (
-    actor.hierarquiaNivel === HierarquiaNivel.COORDENACAO &&
-    data.tipo === 'institucional'
+    actor.hierarquiaNivel > HierarquiaNivel.DIRECAO &&
+    data.tipo === 'institucional' &&
+    !data.setorId
   ) {
-    throw new AppError('Coordenação não pode criar canais institucionais gerais.', 403);
+    throw new AppError('Apenas a Direção Geral pode criar canais institucionais gerais.', 403);
   }
 
   // Validar setor se informado
   if (data.setorId) {
     const setor = await prisma.sector.findUnique({ where: { id: data.setorId } });
     if (!setor) throw new AppError('Setor não encontrado.', 404);
-    // Coordenação só pode criar canal do próprio setor
+    // Não-Direção só pode criar canal do próprio setor
     if (
-      actor.hierarquiaNivel === HierarquiaNivel.COORDENACAO &&
+      actor.hierarquiaNivel > HierarquiaNivel.DIRECAO &&
       data.setorId !== actor.setorId
     ) {
-      throw new AppError('Coordenação só pode criar canais do próprio setor.', 403);
+      throw new AppError('Você só pode criar canais vinculados ao seu próprio setor.', 403);
     }
   }
 
@@ -375,10 +376,10 @@ export async function postChannelMessage(req: Request, res: Response): Promise<v
   const actor = req.user!;
   const { id: channelId } = req.params;
 
-  // Validação estrita de hierarquia: apenas Direção (1) e Coordenação (2)
-  if (actor.hierarquiaNivel > HierarquiaNivel.COORDENACAO) {
+  // Validação estrita de hierarquia: Direção (1), Coordenação (2) e Supervisão (3)
+  if (actor.hierarquiaNivel > HierarquiaNivel.SUPERVISAO) {
     throw new AppError(
-      'Apenas Coordenação e Direção podem publicar em canais oficiais.',
+      'Apenas Supervisão, Coordenação e Direção podem publicar em canais oficiais.',
       403
     );
   }
@@ -391,14 +392,14 @@ export async function postChannelMessage(req: Request, res: Response): Promise<v
     throw new AppError('Canal não encontrado.', 404);
   }
 
-  // Se for Coordenação, valida se o canal é do setor dele ou geral
+  // Se não for Direção Geral, valida se o canal é do setor dele ou sem setor restrito
   if (
-    actor.hierarquiaNivel === HierarquiaNivel.COORDENACAO &&
+    actor.hierarquiaNivel > HierarquiaNivel.DIRECAO &&
     channel.setorId &&
     channel.setorId !== actor.setorId
   ) {
     throw new AppError(
-      'Coordenação só pode publicar em canais do próprio setor.',
+      'Você só pode publicar em canais do seu próprio setor.',
       403
     );
   }

@@ -19,7 +19,7 @@ router.use(authenticate);
 
 router.get('/', asyncHandler(listChannels));           // meus canais
 router.get('/all', asyncHandler(listAllChannels));     // todos (admin)
-router.post('/', requireHierarquia(HierarquiaNivel.COORDENACAO), asyncHandler(createChannel));
+router.post('/', requireHierarquia(HierarquiaNivel.SUPERVISAO), asyncHandler(createChannel));
 router.get('/:id', asyncHandler(getChannel));
 router.post('/:id/members', asyncHandler(addMember));
 router.delete('/:id/members/:userId', asyncHandler(removeMember));
@@ -28,12 +28,12 @@ router.delete('/:id/members/:userId', asyncHandler(removeMember));
 router.get('/:id/messages', asyncHandler(listChannelMessages));
 router.post(
   '/:id/messages',
-  requireHierarquia(HierarquiaNivel.COORDENACAO),
+  requireHierarquia(HierarquiaNivel.SUPERVISAO),
   asyncHandler(postChannelMessage)
 );
 router.get(
   '/:id/messages/:messageId/reads',
-  requireHierarquia(HierarquiaNivel.COORDENACAO),
+  requireHierarquia(HierarquiaNivel.SUPERVISAO),
   asyncHandler(getMessageReaders)
 );
 

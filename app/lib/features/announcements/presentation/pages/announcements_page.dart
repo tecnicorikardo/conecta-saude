@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/auth/permissions_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme_provider.dart';
 import '../../domain/entities/announcement_entity.dart';
@@ -14,6 +15,7 @@ class AnnouncementsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(announcementsProvider);
+    final perms = ref.watch(permissionsProvider);
     final tokens = context.appTokens;
 
     return Scaffold(
@@ -52,6 +54,15 @@ class AnnouncementsPage extends ConsumerWidget {
           ),
         ],
       ),
+      floatingActionButton: perms.canCreateAnnouncement
+          ? FloatingActionButton.extended(
+              onPressed: () => _showCreateAnnouncementDialog(context, ref),
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Novo Comunicado'),
+              backgroundColor: tokens.primary,
+              foregroundColor: Colors.white,
+            )
+          : null,
       body: Builder(
         builder: (context) {
           if (state.isLoading) {
@@ -260,6 +271,185 @@ class AnnouncementsPage extends ConsumerWidget {
                 ),
               );
             },
+          );
+        },
+      ),
+    );
+  }
+
+  void _showCreateAnnouncementDialog(BuildContext context, WidgetRef ref) {
+    final tituloCtrl = TextEditingController();
+    final mensagemCtrl = TextEditingController();
+    AnnouncementPriority selectedPriority = AnnouncementPriority.normal;
+    bool isSubmitting = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          final tokens = context.appTokens;
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: tokens.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(Icons.campaign_rounded, color: tokens.primary, size: 24),
+                ),
+                const SizedBox(width: 12),
+                const Text(
+                  'Novo Comunicado',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextField(
+                    controller: tituloCtrl,
+                    decoration: InputDecoration(
+                      labelText: 'Título do Comunicado *',
+                      hintText: 'Ex: Escala de Plantão de Fim de Semana',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    textCapitalization: TextCapitalization.sentences,
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: mensagemCtrl,
+                    maxLines: 4,
+                    decoration: InputDecoration(
+                      labelText: 'Mensagem Oficial *',
+                      hintText: 'Digite as instruções completas para a equipe...',
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    textCapitalization: TextCapitalization.sentences,
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Prioridade:',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ChoiceChip(
+                          label: const Center(child: Text('Normal')),
+                          selected: selectedPriority == AnnouncementPriority.normal,
+                          onSelected: (val) {
+                            if (val) setDialogState(() => selectedPriority = AnnouncementPriority.normal);
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: ChoiceChip(
+                          label: const Center(child: Text('Alta')),
+                          selected: selectedPriority == AnnouncementPriority.alta,
+                          selectedColor: const Color(0xFFFFF3E0),
+                          onSelected: (val) {
+                            if (val) setDialogState(() => selectedPriority = AnnouncementPriority.alta);
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: ChoiceChip(
+                          label: const Center(child: Text('Urgente')),
+                          selected: selectedPriority == AnnouncementPriority.urgente,
+                          selectedColor: const Color(0xFFFFEBEE),
+                          onSelected: (val) {
+                            if (val) setDialogState(() => selectedPriority = AnnouncementPriority.urgente);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: isSubmitting ? null : () => Navigator.of(dialogCtx).pop(),
+                child: const Text('Cancelar'),
+              ),
+              FilledButton(
+                onPressed: isSubmitting
+                    ? null
+                    : () async {
+                        final titulo = tituloCtrl.text.trim();
+                        final mensagem = mensagemCtrl.text.trim();
+
+                        if (titulo.length < 3) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('O título deve ter no mínimo 3 caracteres.'),
+                              backgroundColor: AppColors.error,
+                            ),
+                          );
+                          return;
+                        }
+                        if (mensagem.length < 10) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('A mensagem deve ter no mínimo 10 caracteres.'),
+                              backgroundColor: AppColors.error,
+                            ),
+                          );
+                          return;
+                        }
+
+                        setDialogState(() => isSubmitting = true);
+
+                        final success = await ref
+                            .read(announcementsProvider.notifier)
+                            .createAnnouncement(
+                              titulo: titulo,
+                              mensagem: mensagem,
+                              prioridade: selectedPriority,
+                            );
+
+                        if (dialogCtx.mounted) {
+                          Navigator.of(dialogCtx).pop();
+                        }
+
+                        if (context.mounted) {
+                          if (success) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Comunicado oficial publicado com sucesso!'),
+                                backgroundColor: AppColors.secondary,
+                              ),
+                            );
+                            ref.read(announcementsProvider.notifier).loadAnnouncements();
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Falha ao publicar comunicado. Verifique suas credenciais.'),
+                                backgroundColor: AppColors.error,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                child: isSubmitting
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Text('Publicar'),
+              ),
+            ],
           );
         },
       ),

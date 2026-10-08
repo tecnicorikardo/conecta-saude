@@ -32,14 +32,14 @@ class UserPermissions {
   /// Pode ver painel de funcionários e aprovações
   bool get canManageEmployees => isAdmin;
 
-  /// Pode criar comunicados
-  bool get canCreateAnnouncement => isAdmin;
+  /// Pode criar comunicados (Direção, Coordenação e Supervisão)
+  bool get canCreateAnnouncement => isLideranca;
 
   /// Pode ver estatísticas de leitura dos comunicados
-  bool get canViewAnnouncementStats => isAdmin;
+  bool get canViewAnnouncementStats => isLideranca;
 
-  /// Pode criar canais
-  bool get canCreateChannel => isAdmin;
+  /// Pode criar canais (Direção, Coordenação e Supervisão)
+  bool get canCreateChannel => isLideranca;
 
   /// Pode ver painel de moderação de denúncias (exclusivo Direção Geral)
   bool get canViewReports => isDirecao;

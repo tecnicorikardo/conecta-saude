@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../../core/auth/permissions_provider.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme_provider.dart';
+import '../../../auth/presentation/providers/current_user_provider.dart';
 import '../../data/repositories/channels_repository.dart';
 import '../../domain/entities/channel_entity.dart';
 import '../providers/channels_provider.dart';
@@ -16,6 +18,7 @@ class ChannelsPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(channelsProvider);
+    final perms = ref.watch(permissionsProvider);
     final tokens = context.appTokens;
 
     return Scaffold(
@@ -32,7 +35,7 @@ class ChannelsPage extends ConsumerWidget {
           ),
         ],
       ),
-      floatingActionButton: ((state.currentUser?.hierarquiaNivel ?? 4) <= 2)
+      floatingActionButton: perms.canCreateChannel
           ? FloatingActionButton.extended(
               onPressed: () => _showCreateChannelDialog(context, ref, state),
               icon: const Icon(Icons.add_rounded),
@@ -563,9 +566,11 @@ class ChannelsPage extends ConsumerWidget {
     WidgetRef ref,
     ChannelsState state,
   ) {
+    final currentUser = ref.read(currentUserProvider).valueOrNull ?? state.currentUser;
+    final isDirecao = currentUser?.isDirecao ?? state.isDirecao;
     final nomeController = TextEditingController();
     final descController = TextEditingController();
-    String tipo = state.isDirecao ? 'institucional' : 'setor';
+    String tipo = isDirecao ? 'institucional' : 'setor';
 
     showDialog(
       context: context,
@@ -609,7 +614,7 @@ class ChannelsPage extends ConsumerWidget {
                   decoration: const InputDecoration(labelText: 'Tipo de Canal'),
                   items: [
                     const DropdownMenuItem(value: 'setor', child: Text('Canal de Setor')),
-                    if (state.isDirecao) ...[
+                    if (isDirecao) ...[
                       const DropdownMenuItem(value: 'institucional', child: Text('Institucional Geral')),
                       const DropdownMenuItem(value: 'emergencia', child: Text('Emergência')),
                       const DropdownMenuItem(value: 'geral', child: Text('Geral')),
@@ -637,7 +642,7 @@ class ChannelsPage extends ConsumerWidget {
                         nome: nome,
                         descricao: descController.text.trim(),
                         tipo: tipo,
-                        setorId: state.currentUser?.setorId,
+                        setorId: tipo == 'institucional' ? null : currentUser?.setorId,
                       );
                   ref.read(channelsProvider.notifier).loadChannels();
                   if (context.mounted) {
