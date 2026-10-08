@@ -69,6 +69,25 @@
 
 ---
 
+## 👥 5. Contas Oficiais e Estrutura Hierárquica (Foco CCO)
+
+> **Regra do Sistema:** As contas abaixo são as contas oficiais ativas no Supabase e Firebase Auth. Todas as demais contas legadas foram expurgadas.
+
+| Nível | Cargo / Perfil | E-mail de Acesso | Setor / Unidade | Senha Padrão | Escopo de Ação |
+| :---: | :--- | :--- | :--- | :--- | :--- |
+| **NV 1** | **Diretor(a) Geral** | `direcao@conectasaude.dev` | Direção Geral (Complexo: CCO, CCE, CCDTI) | `ConectaSUS@2026` | Acesso total irrestrito: Ouvidoria sigilosa, Auditoria de logs, Comunicados globais, Ativar/desativar servidores. |
+| **NV 2** | **Direção / Chefia de Enfermagem** | `direcao.cco@conectasaude.dev` | Centro Carioca do Olho (CCO) | `ConectaSUS@2026` | Acesso administrativo da unidade CCO: Aprovação de novos servidores do CCO, Comunicados da unidade, Gestão de canais do CCO. |
+| **NV 3** | **Supervisão e Enfermagem** | `supervisao.cco@conectasaude.dev` | Centro Carioca do Olho (CCO) | `ConectaSUS@2026` | Liderança direta da equipe operacional (NV 4): Postagem de alertas em protocolo de emergência, Supervisão de plantões e equipes. |
+| **NV 4** | **Funcionário Comum / Apoio Operacional** | `tecnicorikardo@gmail.com` | Centro Carioca do Olho (CCO) | `ConectaSUS@2026` | Operação na ponta (Técnicos, Maqueiros, Portaria, Recepção, Aux. Adm): Chat com equipe, Leitura de comunicados com confirmação, Status de serviço. |
+
+### 📋 Regra de Auto-Cadastro Inteligente (`/api/auth/register`)
+- **Se cadastrar como Direção / Coordenação / Chefia:** O sistema atribui automaticamente **Nível 2 (NV 2)**.
+- **Se cadastrar como Enfermeiro(a) / Supervisão:** O sistema atribui automaticamente **Nível 3 (NV 3)**.
+- **Se cadastrar como Maqueiro, Recepção, Portaria, Auxiliar:** O sistema atribui automaticamente **Nível 4 (NV 4)**.
+- **Status Inicial:** Todo auto-cadastro entra como `ativo: false` (Pendente) e deve ser aprovado pelo NV 1 (Direção Geral) ou NV 2 (Direção CCO) antes do primeiro acesso.
+
+---
+
 ## ⚠️ Cuidados de Segurança Operacional
 
 1. **Nunca versionar arquivos com senhas:** Os arquivos `.env` e chaves `.json` devem permanecer exclusivamente no computador local e nos painéis oficiais do Render.

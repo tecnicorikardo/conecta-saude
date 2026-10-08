@@ -270,6 +270,40 @@ function getHierarquiaNome(nivel: number): string {
 }
 
 /**
+ * Determina o nível hierárquico inicial com base no cargo informado no cadastro.
+ * - Direção / Coordenação / Chefia -> Nível 2 (COORDENACAO / Direção da Unidade)
+ * - Enfermeiro(a) / Supervisão -> Nível 3 (SUPERVISAO / Chefia da equipe operacional)
+ * - Apoio Operacional (Maqueiro, Recepção, Portaria, Auxiliar, Técnico, etc.) -> Nível 4 (FUNCIONARIO)
+ */
+export function determineHierarquiaByCargo(cargo: string): HierarquiaNivel {
+  const c = (cargo || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  // 1. Cargos de Direção, Coordenação e Chefia de Unidade -> Nível 2
+  if (
+    c.includes('diretor') ||
+    c.includes('direcao') ||
+    c.includes('coordenad') ||
+    (c.includes('chefe') && (c.includes('enferm') || c.includes('supervis')))
+  ) {
+    return HierarquiaNivel.COORDENACAO;
+  }
+
+  // 2. Enfermeiros e Supervisão -> Nível 3
+  if (
+    c.includes('enfermeir') ||
+    c.includes('supervis')
+  ) {
+    return HierarquiaNivel.SUPERVISAO;
+  }
+
+  // 3. Demais funções operacionais (Maqueiro, Recepção, Portaria, Auxiliar Adm, etc.) -> Nível 4
+  return HierarquiaNivel.FUNCIONARIO;
+}
+
+/**
  * POST /api/auth/register
  * Auto-cadastro de novos servidores públicos.
  * Cria a conta no Firebase Auth e no PostgreSQL com status ativo = false (pendente de aprovação).
@@ -303,8 +337,9 @@ export async function registerUser(req: Request, res: Response): Promise<void> {
     throw new AppError('Falha ao registrar credenciais no Firebase.', 500);
   }
 
-  // 4. Criar no banco de dados como PENDENTE (ativo: false)
+  // 4. Criar no banco de dados como PENDENTE (ativo: false) com nível conforme cargo
   const unitId = data.unitId ?? setor.unitId ?? null;
+  const hierarquiaNivel = determineHierarquiaByCargo(data.cargo);
   const user = await prisma.user.create({
     data: {
       firebaseUid: firebaseUser.uid,
@@ -312,7 +347,7 @@ export async function registerUser(req: Request, res: Response): Promise<void> {
       email: data.email,
       cargo: data.cargo,
       matricula: data.matricula ?? null,
-      hierarquiaNivel: HierarquiaNivel.FUNCIONARIO,
+      hierarquiaNivel,
       setorId: data.setorId,
       unitId,
       jornadaInicio: data.jornadaInicio ?? '07:00',

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { HierarquiaNivel } from '../types';
+import { determineHierarquiaByCargo } from '../modules/auth/auth.controller';
 
 describe('Matriz de Permissões e Hierarquia do SUS (Pente Fino)', () => {
   function canManageAnnouncements(nivel: HierarquiaNivel): boolean {
@@ -45,5 +46,35 @@ describe('Matriz de Permissões e Hierarquia do SUS (Pente Fino)', () => {
   it('Funcionário operacional (Nível 4) DEVE poder acionar emergências e visualizar perfis de colegas', () => {
     expect(canBroadcastEmergency(HierarquiaNivel.FUNCIONARIO)).toBe(true);
     expect(canViewColleagueProfile(true)).toBe(true);
+  });
+
+  describe('Auto-atribuição de nível por cargo no cadastro (determineHierarquiaByCargo)', () => {
+    it('Cargos de Direção / Coordenação / Chefia de Enfermagem devem receber Nível 2 (COORDENACAO)', () => {
+      expect(determineHierarquiaByCargo('Diretor(a) Geral')).toBe(HierarquiaNivel.COORDENACAO);
+      expect(determineHierarquiaByCargo('Diretoria Clínica')).toBe(HierarquiaNivel.COORDENACAO);
+      expect(determineHierarquiaByCargo('Diretor Administrativo')).toBe(HierarquiaNivel.COORDENACAO);
+      expect(determineHierarquiaByCargo('Coordenador(a) de Setor / Unidade')).toBe(HierarquiaNivel.COORDENACAO);
+      expect(determineHierarquiaByCargo('Enfermeiro(a) Chefe / Coordenação')).toBe(HierarquiaNivel.COORDENACAO);
+      expect(determineHierarquiaByCargo('Chefe de Supervisão e Enfermagem')).toBe(HierarquiaNivel.COORDENACAO);
+    });
+
+    it('Cargos de Enfermeiro(a) e Supervisão devem receber Nível 3 (SUPERVISAO)', () => {
+      expect(determineHierarquiaByCargo('Enfermeiro(a) Geral')).toBe(HierarquiaNivel.SUPERVISAO);
+      expect(determineHierarquiaByCargo('Enfermeiro(a) UTI')).toBe(HierarquiaNivel.SUPERVISAO);
+      expect(determineHierarquiaByCargo('Enfermeiro(a) Emergencista')).toBe(HierarquiaNivel.SUPERVISAO);
+      expect(determineHierarquiaByCargo('Supervisor(a) de Enfermagem')).toBe(HierarquiaNivel.SUPERVISAO);
+      expect(determineHierarquiaByCargo('Supervisor(a) Administrativo')).toBe(HierarquiaNivel.SUPERVISAO);
+      expect(determineHierarquiaByCargo('Enfermeira')).toBe(HierarquiaNivel.SUPERVISAO);
+    });
+
+    it('Cargos de apoio operacional (Maqueiro, Recepção, Portaria, Auxiliar Adm, etc.) devem receber Nível 4 (FUNCIONARIO)', () => {
+      expect(determineHierarquiaByCargo('Maqueiro(a)')).toBe(HierarquiaNivel.FUNCIONARIO);
+      expect(determineHierarquiaByCargo('Recepcionista / Atendente Hospitalar')).toBe(HierarquiaNivel.FUNCIONARIO);
+      expect(determineHierarquiaByCargo('Agente de Portaria / Controle de Acesso')).toBe(HierarquiaNivel.FUNCIONARIO);
+      expect(determineHierarquiaByCargo('Auxiliar Administrativo')).toBe(HierarquiaNivel.FUNCIONARIO);
+      expect(determineHierarquiaByCargo('Auxiliar de Higiene e Limpeza')).toBe(HierarquiaNivel.FUNCIONARIO);
+      expect(determineHierarquiaByCargo('Motorista de Ambulância / Condutor')).toBe(HierarquiaNivel.FUNCIONARIO);
+      expect(determineHierarquiaByCargo('Outro')).toBe(HierarquiaNivel.FUNCIONARIO);
+    });
   });
 });
