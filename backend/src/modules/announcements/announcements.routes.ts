@@ -10,7 +10,7 @@ import { z } from 'zod';
 
 const createAnnouncementSchema = z.object({
   titulo: z.string().min(3).max(120),
-  mensagem: z.string().min(10).max(5000),
+  mensagem: z.string().min(3, 'A mensagem deve ter no mínimo 3 caracteres').max(5000),
   prioridade: z.enum(['normal', 'alta', 'urgente']).default('normal'),
 });
 

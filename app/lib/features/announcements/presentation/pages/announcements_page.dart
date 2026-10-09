@@ -317,6 +317,7 @@ class AnnouncementsPage extends ConsumerWidget {
                     controller: tituloCtrl,
                     decoration: InputDecoration(
                       labelText: 'Título do Comunicado *',
+                      helperText: 'Mínimo de 3 caracteres',
                       hintText: 'Ex: Escala de Plantão de Fim de Semana',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                     ),
@@ -328,6 +329,7 @@ class AnnouncementsPage extends ConsumerWidget {
                     maxLines: 4,
                     decoration: InputDecoration(
                       labelText: 'Mensagem Oficial *',
+                      helperText: 'Mínimo de 3 caracteres',
                       hintText: 'Digite as instruções completas para a equipe...',
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                     ),
@@ -398,10 +400,10 @@ class AnnouncementsPage extends ConsumerWidget {
                           );
                           return;
                         }
-                        if (mensagem.length < 10) {
+                        if (mensagem.length < 3) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('A mensagem deve ter no mínimo 10 caracteres.'),
+                              content: Text('A mensagem deve ter no mínimo 3 caracteres.'),
                               backgroundColor: AppColors.error,
                             ),
                           );
