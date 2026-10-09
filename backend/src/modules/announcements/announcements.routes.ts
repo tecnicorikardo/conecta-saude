@@ -66,9 +66,9 @@ async function listAnnouncements(req: Request, res: Response): Promise<void> {
 async function createAnnouncement(req: Request, res: Response): Promise<void> {
   const actor = req.user!;
 
-  if (actor.hierarquiaNivel > HierarquiaNivel.COORDENACAO) {
+  if (actor.hierarquiaNivel > HierarquiaNivel.SUPERVISAO) {
     throw new AppError(
-      'Apenas Coordenação e Direção podem publicar comunicados oficiais.',
+      'Apenas Lideranças (Supervisão, Coordenação e Direção Geral) podem publicar comunicados oficiais.',
       403
     );
   }
@@ -230,9 +230,9 @@ async function getAnnouncementStats(req: Request, res: Response): Promise<void> 
   const { id } = req.params;
 
   // Apenas Gestores (Coordenação e Direção)
-  if (actor.hierarquiaNivel > HierarquiaNivel.COORDENACAO) {
+  if (actor.hierarquiaNivel > HierarquiaNivel.SUPERVISAO) {
     throw new AppError(
-      'Apenas Coordenação e Direção têm permissão para ver estatísticas de leitura.',
+      'Apenas Lideranças têm permissão para ver estatísticas de leitura.',
       403
     );
   }

@@ -8,9 +8,9 @@ import { getFirebaseMessaging } from '../../config/firebase';
 
 const createChannelSchema = z.object({
   nome: z.string().min(2).max(80),
-  descricao: z.string().max(300).optional(),
+  descricao: z.string().max(300).optional().nullable(),
   tipo: z.enum(['institucional', 'setor', 'emergencia', 'geral']).default('geral'),
-  setorId: z.string().uuid().optional(),
+  setorId: z.string().uuid().optional().nullable(),
 });
 
 const addMemberSchema = z.object({
@@ -133,23 +133,29 @@ export async function createChannel(req: Request, res: Response): Promise<void> 
 
   const data = createChannelSchema.parse(req.body);
 
+  // Fallback e validação de setor para lideranças de setor/unidade
+  const targetSetorId =
+    actor.hierarquiaNivel === HierarquiaNivel.DIRECAO
+      ? (data.setorId ?? null)
+      : (data.setorId ?? actor.setorId ?? null);
+
   // Não-Direção não pode criar canais institucionais gerais sem setor
   if (
     actor.hierarquiaNivel > HierarquiaNivel.DIRECAO &&
     data.tipo === 'institucional' &&
-    !data.setorId
+    !targetSetorId
   ) {
     throw new AppError('Apenas a Direção Geral pode criar canais institucionais gerais.', 403);
   }
 
-  // Validar setor se informado
-  if (data.setorId) {
-    const setor = await prisma.sector.findUnique({ where: { id: data.setorId } });
+  // Validar setor se informado ou resolvido
+  if (targetSetorId) {
+    const setor = await prisma.sector.findUnique({ where: { id: targetSetorId } });
     if (!setor) throw new AppError('Setor não encontrado.', 404);
     // Não-Direção só pode criar canal do próprio setor
     if (
       actor.hierarquiaNivel > HierarquiaNivel.DIRECAO &&
-      data.setorId !== actor.setorId
+      targetSetorId !== actor.setorId
     ) {
       throw new AppError('Você só pode criar canais vinculados ao seu próprio setor.', 403);
     }
@@ -158,9 +164,9 @@ export async function createChannel(req: Request, res: Response): Promise<void> 
   const channel = await prisma.channel.create({
     data: {
       nome: data.nome,
-      descricao: data.descricao,
+      descricao: data.descricao ?? null,
       tipo: data.tipo,
-      setorId: data.setorId ?? null,
+      setorId: targetSetorId,
       criadoPor: actor.id,
       ativo: true,
       members: {
@@ -199,9 +205,9 @@ export async function addMember(req: Request, res: Response): Promise<void> {
 
   // Somente admin ou criador pode adicionar membros
   const isCreator = channel.criadoPor === actor.id;
-  const isAdmin = actor.hierarquiaNivel <= HierarquiaNivel.COORDENACAO;
+  const isLideranca = actor.hierarquiaNivel <= HierarquiaNivel.SUPERVISAO;
 
-  if (!isCreator && !isAdmin) {
+  if (!isCreator && !isLideranca) {
     throw new AppError('Sem permissão para adicionar membros.', 403);
   }
 
@@ -213,7 +219,7 @@ export async function addMember(req: Request, res: Response): Promise<void> {
 
   // Coordenação só pode adicionar usuários do mesmo setor
   if (
-    actor.hierarquiaNivel === HierarquiaNivel.COORDENACAO &&
+    actor.hierarquiaNivel > HierarquiaNivel.DIRECAO &&
     targetUser.setorId !== actor.setorId
   ) {
     throw new AppError('Coordenação só pode adicionar membros do próprio setor.', 403);
@@ -237,10 +243,10 @@ export async function removeMember(req: Request, res: Response): Promise<void> {
   if (!channel) throw new AppError('Canal não encontrado.', 404);
 
   const isCreator = channel.criadoPor === actor.id;
-  const isAdmin = actor.hierarquiaNivel <= HierarquiaNivel.COORDENACAO;
+  const isLideranca = actor.hierarquiaNivel <= HierarquiaNivel.SUPERVISAO;
   const isSelf = userId === actor.id;
 
-  if (!isCreator && !isAdmin && !isSelf) {
+  if (!isCreator && !isLideranca && !isSelf) {
     throw new AppError('Sem permissão para remover este membro.', 403);
   }
 
@@ -540,9 +546,9 @@ export async function getMessageReaders(req: Request, res: Response): Promise<vo
   const { id: channelId, messageId } = req.params;
 
   // Apenas Coordenação e Direção podem auditar leituras
-  if (actor.hierarquiaNivel > HierarquiaNivel.COORDENACAO) {
+  if (actor.hierarquiaNivel > HierarquiaNivel.SUPERVISAO) {
     throw new AppError(
-      'Apenas Coordenação e Direção têm permissão para ver quem visualizou.',
+      'Apenas Lideranças têm permissão para ver quem visualizou.',
       403
     );
   }
