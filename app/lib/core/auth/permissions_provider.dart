@@ -5,6 +5,8 @@ import '../../core/constants/app_constants.dart';
 
 // ─── Modelo de permissões ─────────────────────────────────────────────────────
 class UserPermissions {
+  // Estas regras controlam botões e navegação. A API repete as verificações
+  // usando seu próprio cadastro, pois o perfil local pode estar em cache.
   final UserEntity? user;
 
   const UserPermissions(this.user);
@@ -85,6 +87,7 @@ class UserPermissions {
 
 // ─── Provider global de permissões ────────────────────────────────────────────
 final permissionsProvider = Provider<UserPermissions>((ref) {
+  // watch refaz as permissões quando o usuário muda; read apenas consulta uma vez.
   final userAsync = ref.watch(currentUserProvider);
   return UserPermissions(userAsync.value);
 });

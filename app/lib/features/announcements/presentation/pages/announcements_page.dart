@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/auth/permissions_provider.dart';
+import '../../../../core/widgets/delete_content_dialog.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme_provider.dart';
 import '../../domain/entities/announcement_entity.dart';
@@ -201,6 +202,24 @@ class AnnouncementsPage extends ConsumerWidget {
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
+                                      if (a.canDelete)
+                                        IconButton(
+                                          tooltip: 'Excluir comunicado',
+                                          icon: const Icon(Icons.delete_outline),
+                                          onPressed: () async {
+                                            final deleted = await showDeleteContentDialog(
+                                              context: context,
+                                              kind: 'comunicado',
+                                              title: a.titulo,
+                                              onDelete: () => ref.read(announcementsProvider.notifier).deleteAnnouncement(a.id),
+                                            );
+                                            if (deleted && context.mounted) {
+                                              ScaffoldMessenger.of(context).showSnackBar(
+                                                const SnackBar(content: Text('Comunicado excluído.')),
+                                              );
+                                            }
+                                          },
+                                        ),
                                       const SizedBox(width: 6),
                                       Icon(
                                         Icons.chevron_right,
@@ -412,6 +431,8 @@ class AnnouncementsPage extends ConsumerWidget {
 
                         setDialogState(() => isSubmitting = true);
 
+                        // O notifier devolve null no sucesso ou uma mensagem na
+                        // falha. await impede anunciar sucesso antes da resposta.
                         final error = await ref
                             .read(announcementsProvider.notifier)
                             .createAnnouncement(

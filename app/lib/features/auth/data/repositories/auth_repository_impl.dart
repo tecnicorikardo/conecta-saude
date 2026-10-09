@@ -230,6 +230,8 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<Either<Failure, UserEntity?>> getCurrentUser() async {
+    // Firebase confirma a identidade; /me fornece cargo, setor e nível atuais.
+    // Right contém sucesso (inclusive null sem sessão); Left contém uma falha.
     try {
       final firebaseUser = _firebaseAuth.currentUser;
       if (firebaseUser == null) {
@@ -281,6 +283,9 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Stream<UserEntity?> get authStateChanges {
+    // Stream entrega eventos de login/logout ao provider. Perfil em cache mantém
+    // a interface disponível quando a rede falha, mas pode estar desatualizado;
+    // o servidor continua decidindo cada permissão com os dados do seu cadastro.
     return _firebaseAuth.authStateChanges().asyncMap((firebaseUser) async {
       if (firebaseUser == null) {
         await _clearCachedUser();

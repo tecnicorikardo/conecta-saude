@@ -15,6 +15,8 @@ enum ChannelTab {
 }
 
 class ChannelsState {
+  // Estado é uma fotografia da tela. copyWith cria outra fotografia mantendo
+  // valores não informados; o Riverpod avisa a interface sobre a mudança.
   final bool isLoading;
   final List<ChannelEntity> channels;
   final ChannelTab selectedTab;
@@ -104,6 +106,17 @@ class ChannelsState {
 }
 
 class ChannelsNotifier extends StateNotifier<ChannelsState> {
+  // Impede que uma consulta iniciada antes da exclusão recoloque o item na tela.
+  final Set<String> _deletedIds = {};
+
+  Future<void> deleteChannel(String id) async {
+    await _repository.deleteChannel(id);
+    _deletedIds.add(id);
+    if (!mounted) return;
+    state = state.copyWith(channels: state.channels.where((c) => c.id != id).toList());
+  }
+  // Coordena carregamento e filtros. O polling consulta novidades periodicamente;
+  // cancelar o Timer em dispose evita consultas depois do descarte do notifier.
   final ChannelsRepository _repository;
   Timer? _pollingTimer;
 
@@ -122,7 +135,9 @@ class ChannelsNotifier extends StateNotifier<ChannelsState> {
 
   Future<void> _pollChannels() async {
     try {
-      final channels = await _repository.listAllChannels();
+      final fetched = await _repository.listAllChannels();
+      if (!mounted) return;
+      final channels = fetched.where((c) => !_deletedIds.contains(c.id)).toList();
       if (!listEquals(state.channels, channels)) {
         state = state.copyWith(channels: channels);
       }
@@ -155,7 +170,9 @@ class ChannelsNotifier extends StateNotifier<ChannelsState> {
     state = state.copyWith(isLoading: true, errorMessage: null);
 
     try {
-      final channels = await _repository.listAllChannels();
+      final fetched = await _repository.listAllChannels();
+      if (!mounted) return;
+      final channels = fetched.where((c) => !_deletedIds.contains(c.id)).toList();
       state = state.copyWith(
         isLoading: false,
         channels: channels,

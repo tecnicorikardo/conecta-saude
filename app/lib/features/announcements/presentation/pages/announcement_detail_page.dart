@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart';
+import '../../../../core/widgets/delete_content_dialog.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../auth/presentation/providers/current_user_provider.dart';
@@ -118,6 +120,20 @@ class _AnnouncementDetailPageState
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Detalhes do Comunicado'),
+        actions: [
+          if (announcement.canDelete)
+            IconButton(
+              tooltip: 'Excluir comunicado',
+              icon: const Icon(Icons.delete_outline),
+              onPressed: () async {
+                final deleted = await showDeleteContentDialog(
+                  context: context, kind: 'comunicado', title: announcement.titulo,
+                  onDelete: () => ref.read(announcementsProvider.notifier).deleteAnnouncement(announcement.id),
+                );
+                if (deleted && context.mounted) context.go('/announcements');
+              },
+            ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),

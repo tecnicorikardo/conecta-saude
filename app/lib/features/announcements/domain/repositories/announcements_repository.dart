@@ -1,6 +1,7 @@
 import '../entities/announcement_entity.dart';
 
 abstract class AnnouncementsRepository {
+  Future<void> deleteAnnouncement(String id);
   Future<List<AnnouncementEntity>> getAnnouncements();
   Future<bool> confirmRead(String id);
   Future<AnnouncementEntity> createAnnouncement({

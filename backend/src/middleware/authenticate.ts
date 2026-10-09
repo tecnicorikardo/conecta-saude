@@ -133,7 +133,10 @@ export async function authenticate(
 }
 
 /**
- * Middleware de autorização por nível hierárquico mínimo.
+ * Middleware de autorização: recebe o maior número de nível permitido.
+ * Números menores representam mais autoridade: SUPERVISAO (3) inclui 1, 2 e 3.
+ * Esta verificação acontece antes do controller. Um 403 aqui significa que
+ * o formulário ainda não foi validado e nenhum canal/comunicado foi criado.
  * Uso: requireHierarquia(HierarquiaNivel.DIRECAO)
  */
 export function requireHierarquia(nivelMinimo: HierarquiaNivel) {
@@ -144,7 +147,7 @@ export function requireHierarquia(nivelMinimo: HierarquiaNivel) {
       return;
     }
 
-    // Nível 1 é o mais alto (Direção), nível 4 é o mais baixo (Funcionário)
+    // Exemplo: 4 > 3 bloqueia funcionário; 3 > 3 é falso e libera supervisão.
     if (user.hierarquiaNivel > nivelMinimo) {
       res.status(403).json({
         success: false,

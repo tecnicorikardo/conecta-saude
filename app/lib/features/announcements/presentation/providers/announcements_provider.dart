@@ -10,6 +10,7 @@ import '../../domain/repositories/announcements_repository.dart';
 enum AnnouncementFilter { todos, naoLidos, urgentes }
 
 class AnnouncementsState {
+  // Lista original e filtros ficam separados: pesquisar não apaga comunicados.
   final bool isLoading;
   final List<AnnouncementEntity> announcements;
   final AnnouncementFilter filter;
@@ -82,6 +83,14 @@ class AnnouncementsState {
 }
 
 class AnnouncementsNotifier extends StateNotifier<AnnouncementsState> {
+  final Set<String> _deletedIds = {};
+
+  Future<void> deleteAnnouncement(String id) async {
+    await _repository.deleteAnnouncement(id);
+    _deletedIds.add(id);
+    if (!mounted) return;
+    state = state.copyWith(announcements: state.announcements.where((a) => a.id != id).toList());
+  }
   final AnnouncementsRepository _repository;
   Timer? _pollingTimer;
 
@@ -100,7 +109,9 @@ class AnnouncementsNotifier extends StateNotifier<AnnouncementsState> {
 
   Future<void> _pollAnnouncements() async {
     try {
-      final list = await _repository.getAnnouncements();
+      final fetched = await _repository.getAnnouncements();
+      if (!mounted) return;
+      final list = fetched.where((a) => !_deletedIds.contains(a.id)).toList();
       if (!listEquals(state.announcements, list)) {
         state = state.copyWith(announcements: list);
       }
@@ -112,7 +123,9 @@ class AnnouncementsNotifier extends StateNotifier<AnnouncementsState> {
   Future<void> loadAnnouncements() async {
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
-      final list = await _repository.getAnnouncements();
+      final fetched = await _repository.getAnnouncements();
+      if (!mounted) return;
+      final list = fetched.where((a) => !_deletedIds.contains(a.id)).toList();
       state = state.copyWith(isLoading: false, announcements: list);
     } catch (e) {
       state = state.copyWith(
@@ -158,6 +171,8 @@ class AnnouncementsNotifier extends StateNotifier<AnnouncementsState> {
     required String mensagem,
     required AnnouncementPriority prioridade,
   }) async {
+    // Convenção deste método: null significa sucesso; uma String explica a
+    // falha para a tela mostrar a explicação recebida do servidor.
     try {
       final created = await _repository.createAnnouncement(
         titulo: titulo,

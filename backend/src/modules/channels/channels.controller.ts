@@ -5,8 +5,10 @@ import { HierarquiaNivel } from '../../types';
 import { AppError } from '../../middleware/errorHandler';
 import { auditLog } from '../../utils/auditLogger';
 import { getFirebaseMessaging } from '../../config/firebase';
+import { canDeletePublication } from '../../utils/publicationPermissions';
 
 const createChannelSchema = z.object({
+  // optional aceita campo ausente; nullable aceita null explícito no JSON.
   nome: z.string().min(2).max(80),
   descricao: z.string().max(300).optional().nullable(),
   tipo: z.enum(['institucional', 'setor', 'emergencia', 'geral']).default('geral'),
@@ -55,6 +57,7 @@ export async function listChannels(req: Request, res: Response): Promise<void> {
     const lastMsg = c.messages[0];
     return {
       id: c.id,
+      canDelete: canDeletePublication(actor, c.criadoPor),
       nome: c.nome,
       descricao: c.descricao,
       tipo: c.tipo,
@@ -106,6 +109,7 @@ export async function listAllChannels(req: Request, res: Response): Promise<void
     const lastMsg = c.messages[0];
     return {
       id: c.id,
+      canDelete: canDeletePublication(actor, c.criadoPor),
       nome: c.nome,
       descricao: c.descricao,
       tipo: c.tipo,
@@ -138,6 +142,8 @@ export async function createChannel(req: Request, res: Response): Promise<void> 
     actor.hierarquiaNivel === HierarquiaNivel.DIRECAO
       ? (data.setorId ?? null)
       : (data.setorId ?? actor.setorId ?? null);
+  // ?? usa a alternativa somente quando o valor anterior é null/undefined.
+  // O fallback usa o cadastro atual do servidor, não o cache do aplicativo.
 
   // Não-Direção não pode criar canais institucionais gerais sem setor
   if (
@@ -162,6 +168,7 @@ export async function createChannel(req: Request, res: Response): Promise<void> 
   }
 
   const channel = await prisma.channel.create({
+    // O cadastro do canal e a inclusão de seu criador são uma gravação aninhada.
     data: {
       nome: data.nome,
       descricao: data.descricao ?? null,
@@ -187,7 +194,23 @@ export async function createChannel(req: Request, res: Response): Promise<void> 
     req,
   });
 
-  res.status(201).json({ success: true, data: channel });
+  res.status(201).json({ success: true, data: { ...channel, canDelete: true } });
+}
+
+/** Exclusão lógica: oculta canal e mensagens sem apagar o histórico institucional. */
+export async function deleteChannel(req: Request, res: Response): Promise<void> {
+  const actor = req.user!;
+  const { id } = req.params;
+  const channel = await prisma.channel.findUnique({ where: { id } });
+  if (!channel || !channel.ativo) throw new AppError('Canal não encontrado.', 404);
+  if (!canDeletePublication(actor, channel.criadoPor)) {
+    throw new AppError('Você só pode excluir canais que criou. A Direção pode excluir qualquer canal.', 403);
+  }
+  // updateMany com ativo impede registrar duas exclusões em pedidos concorrentes.
+  const result = await prisma.channel.updateMany({ where: { id, ativo: true }, data: { ativo: false } });
+  if (result.count === 0) throw new AppError('Canal não encontrado.', 404);
+  await auditLog({ userId: actor.id, acao: 'excluir_canal', entidade: 'channel', entidadeId: id, req });
+  res.json({ success: true, message: 'Canal excluído.' });
 }
 
 // ─── Adicionar membro ao canal ────────────────────────────────────────────────
@@ -201,7 +224,7 @@ export async function addMember(req: Request, res: Response): Promise<void> {
     include: { members: { where: { userId: actor.id } } },
   });
 
-  if (!channel) throw new AppError('Canal não encontrado.', 404);
+  if (!channel || !channel.ativo) throw new AppError('Canal não encontrado.', 404);
 
   // Somente admin ou criador pode adicionar membros
   const isCreator = channel.criadoPor === actor.id;
@@ -240,7 +263,7 @@ export async function removeMember(req: Request, res: Response): Promise<void> {
   const { id: channelId, userId } = req.params;
 
   const channel = await prisma.channel.findUnique({ where: { id: channelId } });
-  if (!channel) throw new AppError('Canal não encontrado.', 404);
+  if (!channel || !channel.ativo) throw new AppError('Canal não encontrado.', 404);
 
   const isCreator = channel.criadoPor === actor.id;
   const isLideranca = actor.hierarquiaNivel <= HierarquiaNivel.SUPERVISAO;
@@ -275,7 +298,7 @@ export async function getChannel(req: Request, res: Response): Promise<void> {
     },
   });
 
-  if (!channel) throw new AppError('Canal não encontrado.', 404);
+  if (!channel || !channel.ativo) throw new AppError('Canal não encontrado.', 404);
 
   // Verificar se o usuário é membro
   const isMember = channel.members.some((m) => m.userId === actor.id);
@@ -285,7 +308,7 @@ export async function getChannel(req: Request, res: Response): Promise<void> {
     throw new AppError('Você não tem acesso a este canal.', 403);
   }
 
-  res.json({ success: true, data: channel });
+  res.json({ success: true, data: { ...channel, canDelete: canDeletePublication(actor, channel.criadoPor) } });
 }
 
 // ─── Listar mensagens do canal (com confirmação automática de leitura) ─────────
@@ -377,7 +400,7 @@ export async function listChannelMessages(req: Request, res: Response): Promise<
   res.json({ success: true, data: mapped });
 }
 
-// ─── Publicar mensagem no canal (Apenas Direção e Coordenação) ────────────────
+// ─── Publicar mensagem no canal (Direção, Coordenação e Supervisão) ──────────
 export async function postChannelMessage(req: Request, res: Response): Promise<void> {
   const actor = req.user!;
   const { id: channelId } = req.params;
@@ -554,7 +577,7 @@ export async function getMessageReaders(req: Request, res: Response): Promise<vo
   }
 
   const message = await prisma.channelMessage.findFirst({
-    where: { id: messageId, channelId },
+    where: { id: messageId, channelId, channel: { ativo: true } },
   });
 
   if (!message) {

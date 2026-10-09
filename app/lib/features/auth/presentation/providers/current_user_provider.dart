@@ -6,6 +6,8 @@ import '../../domain/entities/user_entity.dart';
 import 'auth_provider.dart';
 
 class CurrentUserNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
+  // AsyncValue representa carregamento, sucesso ou erro; UserEntity? aceita
+  // null para indicar que nenhuma pessoa está autenticada neste momento.
   final Ref _ref;
   StreamSubscription<UserEntity?>? _sub;
 
@@ -14,6 +16,7 @@ class CurrentUserNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
   }
 
   void _init() {
+    // A assinatura acompanha login/logout. dispose cancela essa assinatura.
     final repository = _ref.read(authRepositoryProvider);
     _sub = repository.authStateChanges.listen(
       (user) {
@@ -46,6 +49,8 @@ class CurrentUserNotifier extends StateNotifier<AsyncValue<UserEntity?>> {
 
   /// Recarrega os dados do usuário atual do backend
   Future<void> refreshUser() async {
+    // Atualizar o perfil corrige a interface após mudanças de cargo/setor.
+    // Não altera permissões nem substitui a autorização feita pelo servidor.
     try {
       final repository = _ref.read(authRepositoryProvider);
       // Força reload do usuário via getMe

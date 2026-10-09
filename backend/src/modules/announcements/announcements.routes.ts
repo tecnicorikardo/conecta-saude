@@ -7,8 +7,10 @@ import { getFirebaseMessaging } from '../../config/firebase';
 import { AppError } from '../../middleware/errorHandler';
 import { auditLog } from '../../utils/auditLogger';
 import { z } from 'zod';
+import { canDeletePublication } from '../../utils/publicationPermissions';
 
 const createAnnouncementSchema = z.object({
+  // Zod valida o JSON recebido antes de qualquer gravação. Falhas viram HTTP 422.
   titulo: z.string().min(3).max(120),
   mensagem: z.string().min(3, 'A mensagem deve ter no mínimo 3 caracteres').max(5000),
   prioridade: z.enum(['normal', 'alta', 'urgente']).default('normal'),
@@ -45,6 +47,7 @@ async function listAnnouncements(req: Request, res: Response): Promise<void> {
         const percentual = totalUsers > 0 ? Math.round((readsCount / totalUsers) * 100) : 0;
         return {
           id: a.id,
+          canDelete: canDeletePublication(actor, a.criadoPor),
           titulo: a.titulo,
           mensagem: a.mensagem,
           prioridade: a.prioridade,
@@ -64,6 +67,8 @@ async function listAnnouncements(req: Request, res: Response): Promise<void> {
 }
 
 async function createAnnouncement(req: Request, res: Response): Promise<void> {
+  // O ponto de exclamação informa ao TypeScript que authenticate já preencheu
+  // req.user. Não se deve receber hierarquia ou identificador do autor do cliente.
   const actor = req.user!;
 
   if (actor.hierarquiaNivel > HierarquiaNivel.SUPERVISAO) {
@@ -75,6 +80,7 @@ async function createAnnouncement(req: Request, res: Response): Promise<void> {
 
   const data = createAnnouncementSchema.parse(req.body);
 
+  // await aguarda a gravação. O autor é sempre a pessoa autenticada no servidor.
   const announcement = await prisma.announcement.create({
     data: {
       titulo: data.titulo,
@@ -118,6 +124,7 @@ async function createAnnouncement(req: Request, res: Response): Promise<void> {
     success: true,
     data: {
       id: announcement.id,
+      canDelete: true,
       titulo: announcement.titulo,
       mensagem: announcement.mensagem,
       prioridade: announcement.prioridade,
@@ -195,12 +202,28 @@ async function createAnnouncement(req: Request, res: Response): Promise<void> {
   });
 }
 
+/** Autor de qualquer nível e Direção podem retirar um comunicado do aplicativo. */
+async function deleteAnnouncement(req: Request, res: Response): Promise<void> {
+  const actor = req.user!;
+  const { id } = req.params;
+  const announcement = await prisma.announcement.findUnique({ where: { id } });
+  if (!announcement || !announcement.ativo) throw new AppError('Comunicado não encontrado.', 404);
+  if (!canDeletePublication(actor, announcement.criadoPor)) {
+    throw new AppError('Você só pode excluir comunicados que criou. A Direção pode excluir qualquer comunicado.', 403);
+  }
+  // Mantém texto e leituras no banco para preservar o histórico de auditoria.
+  const result = await prisma.announcement.updateMany({ where: { id, ativo: true }, data: { ativo: false } });
+  if (result.count === 0) throw new AppError('Comunicado não encontrado.', 404);
+  await auditLog({ userId: actor.id, acao: 'excluir_comunicado', entidade: 'announcement', entidadeId: id, req });
+  res.json({ success: true, message: 'Comunicado excluído.' });
+}
+
 async function confirmRead(req: Request, res: Response): Promise<void> {
   const actor = req.user!;
   const { id } = req.params;
 
   const announcement = await prisma.announcement.findUnique({ where: { id } });
-  if (!announcement) throw new AppError('Comunicado não encontrado.', 404);
+  if (!announcement || !announcement.ativo) throw new AppError('Comunicado não encontrado.', 404);
 
   const readRecord = await prisma.announcementRead.upsert({
     where: { announcementId_userId: { announcementId: id, userId: actor.id } },
@@ -238,7 +261,7 @@ async function getAnnouncementStats(req: Request, res: Response): Promise<void> 
   }
 
   const announcement = await prisma.announcement.findUnique({ where: { id } });
-  if (!announcement) throw new AppError('Comunicado não encontrado.', 404);
+  if (!announcement || !announcement.ativo) throw new AppError('Comunicado não encontrado.', 404);
 
   // Buscar todos os usuários ativos
   const allUsers = await prisma.user.findMany({
@@ -316,8 +339,11 @@ const router = Router();
 router.use(authenticate);
 
 router.get('/', asyncHandler(listAnnouncements));
+router.delete('/:id', asyncHandler(deleteAnnouncement));
 router.post(
   '/',
+  // Supervisão é nível 3; o middleware também aceita Direção e Coordenação.
+  // Alterar somente o controller não libera uma requisição bloqueada aqui.
   requireHierarquia(HierarquiaNivel.SUPERVISAO),
   asyncHandler(createAnnouncement)
 );

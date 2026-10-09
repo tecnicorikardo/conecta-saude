@@ -29,6 +29,7 @@ enum AnnouncementPriority {
 }
 
 class AnnouncementEntity extends Equatable {
+  final bool canDelete;
   final String id;
   final String titulo;
   final String mensagem;
@@ -42,6 +43,7 @@ class AnnouncementEntity extends Equatable {
   final int totalUsuarios;
 
   const AnnouncementEntity({
+    this.canDelete = false,
     required this.id,
     required this.titulo,
     required this.mensagem,
@@ -59,6 +61,7 @@ class AnnouncementEntity extends Equatable {
       totalUsuarios > 0 ? ((totalLeituras / totalUsuarios) * 100).round() : 0;
 
   AnnouncementEntity copyWith({
+    bool? canDelete,
     String? id,
     String? titulo,
     String? mensagem,
@@ -72,6 +75,7 @@ class AnnouncementEntity extends Equatable {
     int? totalUsuarios,
   }) {
     return AnnouncementEntity(
+      canDelete: canDelete ?? this.canDelete,
       id: id ?? this.id,
       titulo: titulo ?? this.titulo,
       mensagem: mensagem ?? this.mensagem,
@@ -88,6 +92,7 @@ class AnnouncementEntity extends Equatable {
 
   @override
   List<Object?> get props => [
+        canDelete,
         id,
         titulo,
         mensagem,

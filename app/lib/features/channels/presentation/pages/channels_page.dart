@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../core/auth/permissions_provider.dart';
+import '../../../../core/widgets/delete_content_dialog.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_theme_provider.dart';
@@ -184,7 +185,7 @@ class ChannelsPage extends ConsumerWidget {
                             ...state.filteredChannels.map((channel) {
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 10),
-                                child: _buildChannelCard(context, channel),
+                                child: _buildChannelCard(context, ref, channel),
                               );
                             }),
                         ],
@@ -357,7 +358,7 @@ class ChannelsPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildChannelCard(BuildContext context, ChannelEntity channel) {
+  Widget _buildChannelCard(BuildContext context, WidgetRef ref, ChannelEntity channel) {
     final tokens = context.appTokens;
     final isDark = context.isDarkMode;
     final isEmergencia = channel.tipo == ChannelType.emergencia;
@@ -428,6 +429,24 @@ class ChannelsPage extends ConsumerWidget {
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
+                                  if (channel.canDelete)
+                                    IconButton(
+                                      tooltip: 'Excluir canal',
+                                      icon: const Icon(Icons.delete_outline),
+                                      onPressed: () async {
+                                        final deleted = await showDeleteContentDialog(
+                                          context: context,
+                                          kind: 'canal',
+                                          title: channel.nome,
+                                          onDelete: () => ref.read(channelsProvider.notifier).deleteChannel(channel.id),
+                                        );
+                                        if (deleted && context.mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text('Canal excluído.')),
+                                          );
+                                        }
+                                      },
+                                    ),
                                   if (timeStr.isNotEmpty) ...[
                                     const SizedBox(width: 8),
                                     Text(
@@ -566,6 +585,8 @@ class ChannelsPage extends ConsumerWidget {
     WidgetRef ref,
     ChannelsState state,
   ) {
+    // Lê o perfil para montar as opções do formulário. A autorização definitiva
+    // é da API: ver o botão não garante que a versão publicada aceite o pedido.
     final currentUser = ref.read(currentUserProvider).valueOrNull ?? state.currentUser;
     final isDirecao = currentUser?.isDirecao ?? state.isDirecao;
     final nomeController = TextEditingController();
@@ -638,6 +659,7 @@ class ChannelsPage extends ConsumerWidget {
                 if (nome.isEmpty) return;
                 Navigator.of(ctx).pop();
                 try {
+                  // O repositório envia o JSON; só mostramos sucesso após o await.
                   await ref.read(channelsRepositoryProvider).createChannel(
                         nome: nome,
                         descricao: descController.text.trim(),

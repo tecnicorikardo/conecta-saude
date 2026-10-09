@@ -6,9 +6,20 @@ import '../../domain/entities/announcement_entity.dart';
 import '../../domain/repositories/announcements_repository.dart';
 
 class AnnouncementsRepositoryImpl implements AnnouncementsRepository {
+  // Implementa o contrato do domínio usando HTTP. A tela depende do contrato,
+  // enquanto este arquivo conhece os caminhos e o formato JSON do servidor.
   final HttpService _http;
 
   AnnouncementsRepositoryImpl(this._http);
+
+  @override
+  Future<void> deleteAnnouncement(String id) async {
+    try {
+      await _http.delete('/announcements/$id');
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
 
   @override
   Future<List<AnnouncementEntity>> getAnnouncements() async {
@@ -39,6 +50,8 @@ class AnnouncementsRepositoryImpl implements AnnouncementsRepository {
     required String mensagem,
     required AnnouncementPriority prioridade,
   }) async {
+    // O servidor obtém o autor pela sessão. Não enviamos cargo, nível ou autor
+    // no formulário: esses valores não podem ser escolhidos pelo aplicativo.
     try {
       final response = await _http.post('/announcements', data: {
         'titulo': titulo,
@@ -124,6 +137,7 @@ class AnnouncementsRepositoryImpl implements AnnouncementsRepository {
     final lidoEm = lidoEmStr != null ? DateTime.tryParse(lidoEmStr)?.toLocal() : null;
 
     return AnnouncementEntity(
+      canDelete: j['canDelete'] == true,
       id: j['id'] as String,
       titulo: j['titulo'] as String? ?? '',
       mensagem: j['mensagem'] as String? ?? '',
@@ -139,6 +153,8 @@ class AnnouncementsRepositoryImpl implements AnnouncementsRepository {
   }
 
   Exception _handleError(DioException e) {
+    // DioException representa uma falha HTTP/rede. Quando existe resposta,
+    // mostramos a explicação da API em vez de esconder a causa do bloqueio.
     final msg = e.response?.data?['error'] as String?;
     final status = e.response?.statusCode;
     if (status == 401) return Exception('Sessão expirada.');

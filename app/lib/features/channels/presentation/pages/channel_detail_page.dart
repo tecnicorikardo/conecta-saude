@@ -11,6 +11,7 @@ import '../../../../core/routes/app_routes.dart';
 import '../../../../core/services/language_filter_service.dart';
 import '../../../chat/presentation/widgets/language_warning_dialog.dart';
 import '../../../../core/auth/permissions_provider.dart';
+import '../../../../core/widgets/delete_content_dialog.dart';
 import '../../domain/entities/channel_entity.dart';
 import '../providers/channels_provider.dart';
 
@@ -183,6 +184,18 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
           ],
         ),
         actions: [
+          if (widget.channel?.canDelete == true)
+            IconButton(
+              tooltip: 'Excluir canal',
+              icon: const Icon(Icons.delete_outline),
+              onPressed: () async {
+                final deleted = await showDeleteContentDialog(
+                  context: context, kind: 'canal', title: channelName,
+                  onDelete: () => ref.read(channelsProvider.notifier).deleteChannel(widget.channelId),
+                );
+                if (deleted && context.mounted) context.go('/channels');
+              },
+            ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             tooltip: 'Atualizar mensagens',

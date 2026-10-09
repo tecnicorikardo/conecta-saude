@@ -34,6 +34,8 @@ enum ChannelType {
 }
 
 class ChannelEntity extends Equatable {
+  // A API calcula a permissão com o cadastro atual, não com o cargo em cache.
+  final bool canDelete;
   final String id;
   final String nome;
   final String? descricao;
@@ -47,6 +49,7 @@ class ChannelEntity extends Equatable {
   final int naoLidas;
 
   const ChannelEntity({
+    this.canDelete = false,
     required this.id,
     required this.nome,
     this.descricao,
@@ -63,6 +66,7 @@ class ChannelEntity extends Equatable {
   bool get isEmergencia => tipo == ChannelType.emergencia || centroTag == 'EMERGENCIA';
 
   ChannelEntity copyWith({
+    bool? canDelete,
     String? id,
     String? nome,
     String? descricao,
@@ -76,6 +80,7 @@ class ChannelEntity extends Equatable {
     int? naoLidas,
   }) {
     return ChannelEntity(
+      canDelete: canDelete ?? this.canDelete,
       id: id ?? this.id,
       nome: nome ?? this.nome,
       descricao: descricao ?? this.descricao,
@@ -92,6 +97,7 @@ class ChannelEntity extends Equatable {
 
   @override
   List<Object?> get props => [
+        canDelete,
         id,
         nome,
         descricao,

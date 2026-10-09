@@ -35,6 +35,8 @@ class LoginError extends LoginState {
 
 // ─── LoginNotifier ────────────────────────────────────────────────────────────
 class LoginNotifier extends StateNotifier<LoginState> {
+  // O notifier coordena a tela: exibe progresso, chama o repositório e guarda
+  // sucesso/erro. A comunicação com Firebase/API fica no repositório.
   final Ref _ref;
   LoginNotifier(this._ref) : super(const LoginInitial());
 
@@ -50,7 +52,10 @@ class LoginNotifier extends StateNotifier<LoginState> {
       password: password,
     );
 
+    // A tela pode ter sido fechada durante o await; não atualize estado descartado.
     if (!mounted) return;
+    // fold trata as duas possibilidades do resultado: falha à esquerda e
+    // usuário à direita, sem fazer a tela conhecer detalhes da requisição.
     result.fold(
       (failure) => state = LoginError(failure.message),
       (user) {

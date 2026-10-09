@@ -5,9 +5,19 @@ import '../../../../core/services/http_service.dart';
 import '../../domain/entities/channel_entity.dart';
 
 class ChannelsRepository {
+  // Repositório traduz JSON da API em objetos Dart usados pela interface.
+  // HttpService adiciona a sessão; este arquivo não decide a permissão do usuário.
   final HttpService _http;
 
   ChannelsRepository(this._http);
+
+  Future<void> deleteChannel(String id) async {
+    try {
+      await _http.delete('/channels/$id');
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
 
   Future<List<ChannelEntity>> listAllChannels() async {
     try {
@@ -35,6 +45,8 @@ class ChannelsRepository {
     required String tipo,
     String? setorId,
   }) async {
+    // Future representa uma resposta que chegará depois. await aguarda a API;
+    // somente após sucesso convertemos o JSON em ChannelEntity.
     try {
       final response = await _http.post('/channels', data: {
         'nome': nome,
@@ -143,6 +155,7 @@ class ChannelsRepository {
     }
 
     return ChannelEntity(
+      canDelete: j['canDelete'] == true,
       id: j['id'] as String,
       nome: j['nome'] as String? ?? '',
       descricao: j['descricao'] as String?,
@@ -174,6 +187,8 @@ class ChannelsRepository {
   }
 
   Exception _handleError(DioException e) {
+    // Preserve a mensagem do servidor: um 403 pode indicar hierarquia ou setor.
+    // 401 pede novo login; falha de FCM é independente destas requisições HTTP.
     final msg = e.response?.data?['error'] as String?;
     final status = e.response?.statusCode;
     if (status == 401) return Exception('Sessão expirada. Faça login novamente.');
