@@ -44,3 +44,11 @@
 O perfil em cache permite abrir o aplicativo com instabilidade de rede. Ele pode mostrar botões incompatíveis com o cadastro atual. A API sempre deve decidir a autorização. Se os testes locais passam e a produção recusa o mesmo nível, confira a versão efetivamente publicada antes de alterar permissões.
 
 Os comentários acrescentados explicam as decisões e os trechos centrais destes três fluxos. Este guia complementa a leitura; não representa documentação linha a linha de todo o projeto.
+
+## Como funciona a exclusão
+
+O servidor calcula `canDelete` para cada item: verdadeiro para o autor ou para Direção. Esse valor controla a lixeira no aplicativo, mas a rota DELETE verifica a permissão novamente. Mesmo um autor que passou ao nível 4 pode excluir o que criou.
+
+O diálogo compartilhado em `app/lib/core/widgets/delete_content_dialog.dart` pede confirmação, bloqueia cliques repetidos durante a requisição e mantém a mensagem de erro visível se a API recusar. Depois do sucesso, o provider remove o item da lista. Uma consulta antiga ainda em andamento não pode recolocá-lo na tela.
+
+No banco, a exclusão muda `ativo` para `false`. As listas exibem apenas ativos e as consultas diretas rejeitam itens excluídos. Os dados históricos continuam armazenados e a exclusão individual gera auditoria. Não existe botão de recuperação nesta entrega; eventual recuperação exige manutenção administrativa no banco.

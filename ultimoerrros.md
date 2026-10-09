@@ -11,7 +11,10 @@ Regra escolhida pelo usuário: autor pode excluir seu próprio conteúdo em qual
 - API informa `canDelete` para mostrar botões somente quando permitido. Confirmação antes de excluir, bloqueio de cliques repetidos e erro exibido no diálogo sem fechá-lo.
 - A exclusão individual registra usuário e conteúdo na auditoria. Consultas iniciadas antes da exclusão não recolocam o item na lista local.
 - Testes: **63 aprovados no servidor**, incluindo autorização, exclusão, conteúdo inativo e repetição; **3 testes Flutter aprovados** para confirmação/cancelamento/erro. Análise Flutter dos módulos alterados sem problemas. Backend compilado com sucesso.
-- Publicação desta funcionalidade: em preparação; atualizar este registro após conferir Render e Firebase.
+- Servidor publicado no Render: commit `38f45c7a0745ead1086ac1e6286314c999222a9c`, deploy `dep-db4ngkvavr4c73df5at0`, iniciado às 20:27:16 (GMT-3), concluído em 1 minuto com **Deploy succeeded | Live**.
+- Verificação remota somente com Supervisão: GET `/channels/all` e `/announcements` retornaram HTTP 200 e zero itens. DELETE nos IDs já excluídos retornou HTTP 404 com a mensagem específica de conteúdo não encontrado, confirmando que as rotas novas estão publicadas sem alterar mais dados.
+- Build web release concluído. Avisos preexistentes de compatibilidade WASM e fonte Cupertino não impediram a geração JavaScript. Firebase Hosting `conecta-hospital` publicado com **Deploy complete**; aplicativo disponível em `https://conecta-hospital.web.app`.
+- Verificação pós-publicação web: `main.dart.js` retornou HTTP 200 e seu SHA-256 é idêntico ao artefato local recém-compilado, confirmando entrega da nova interface.
 
 ### Limpeza solicitada explicitamente: “exclusão de todos, deixar zerado”
 
