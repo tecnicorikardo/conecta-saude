@@ -153,7 +153,7 @@ class AnnouncementsNotifier extends StateNotifier<AnnouncementsState> {
     }
   }
 
-  Future<bool> createAnnouncement({
+  Future<String?> createAnnouncement({
     required String titulo,
     required String mensagem,
     required AnnouncementPriority prioridade,
@@ -167,9 +167,9 @@ class AnnouncementsNotifier extends StateNotifier<AnnouncementsState> {
       state = state.copyWith(
         announcements: [created, ...state.announcements],
       );
-      return true;
-    } catch (_) {
-      return false;
+      return null;
+    } catch (e) {
+      return e.toString().replaceAll('Exception: ', '');
     }
   }
 

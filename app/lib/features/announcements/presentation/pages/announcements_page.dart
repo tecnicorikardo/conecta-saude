@@ -410,7 +410,7 @@ class AnnouncementsPage extends ConsumerWidget {
 
                         setDialogState(() => isSubmitting = true);
 
-                        final success = await ref
+                        final error = await ref
                             .read(announcementsProvider.notifier)
                             .createAnnouncement(
                               titulo: titulo,
@@ -423,7 +423,7 @@ class AnnouncementsPage extends ConsumerWidget {
                         }
 
                         if (context.mounted) {
-                          if (success) {
+                          if (error == null) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text('Comunicado oficial publicado com sucesso!'),
@@ -433,8 +433,8 @@ class AnnouncementsPage extends ConsumerWidget {
                             ref.read(announcementsProvider.notifier).loadAnnouncements();
                           } else {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Falha ao publicar comunicado. Verifique suas credenciais.'),
+                              SnackBar(
+                                content: Text('Falha ao publicar comunicado: $error'),
                                 backgroundColor: AppColors.error,
                               ),
                             );

@@ -25,7 +25,7 @@ class ChannelsState {
   const ChannelsState({
     this.isLoading = false,
     this.channels = const [],
-    this.selectedTab = ChannelTab.ccd,
+    this.selectedTab = ChannelTab.cco,
     this.searchQuery = '',
     this.errorMessage,
     this.currentUser,
@@ -71,11 +71,11 @@ class ChannelsState {
       // 3. Filtro por Aba Selecionada
       switch (selectedTab) {
         case ChannelTab.ccd:
-          return c.centroTag == 'CCD' || (!isDirecao && c.centroTag == 'GERAL' && allowedCentro == 'CCD');
+          return c.centroTag == 'CCD' || c.centroTag == 'GERAL';
         case ChannelTab.cco:
-          return c.centroTag == 'CCO' || (!isDirecao && c.centroTag == 'GERAL' && allowedCentro == 'CCO');
+          return c.centroTag == 'CCO' || c.centroTag == 'GERAL';
         case ChannelTab.cce:
-          return c.centroTag == 'CCE' || (!isDirecao && c.centroTag == 'GERAL' && allowedCentro == 'CCE');
+          return c.centroTag == 'CCE' || c.centroTag == 'GERAL';
         case ChannelTab.emergencia:
           return c.isEmergencia;
         case ChannelTab.todos:
