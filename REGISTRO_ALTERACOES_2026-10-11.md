@@ -185,3 +185,18 @@ Os demais achados do `report.md` permanecem como itens de revisão. As vulnerabi
 - Firebase Hosting confirmou a publicação em `https://conecta-hospital.web.app`. O SHA-256 do `main.dart.js` publicado coincide com o build local: `d5693b8127eb85cdbee6b3bcbaecfffb8867ff0ae75db98c8b43ee7e97eb359e`.
 - Chrome desktop: Central de Emergência carregada, estado normal confirmado pela consulta, histórico e controles visíveis. Nenhum chamado de emergência foi criado. Evidência visual local: `C:/Users/Ricardo/.codex/visualizations/2026/10/11/01a12a97-b7a3-7291-8a6d-440d097ff3b3/emergencia-publicacao-final.png`.
 - Este registro final é um commit somente de documentação posterior ao código publicado. Os arquivos locais `report.md` e os dois scripts de teste do responsável foram preservados e não incluídos nos commits.
+
+## 11. Publicação dos ajustes adicionais — commit `96dd7b4`
+
+- Versão: `96dd7b4cb82978cb560b7c6deb9c6cdf28325415`, enviada ao GitHub antes dos deploys separados.
+- `backend/src/modules/auth/auth.controller.ts`: auditoria `login_falha` nas recusas de acesso por rejeição, pendência e inatividade.
+- `backend/src/modules/users/users.controller.ts`: rejeição verificada antes de atualizar a aprovação na transação; consulta de rejeições restrita aos candidatos pendentes.
+- `backend/src/modules/conversations/conversations.controller.ts`: removida verificação duplicada de participação após a verificação inicial.
+- `app/lib/features/employees/data/repositories/employees_repository_impl.dart`: resposta inválida na lista de pendentes retorna erro em vez de lista vazia.
+- `app/lib/features/emergency/presentation/providers/emergency_provider.dart`: falha no histórico preserva status de emergência já confirmado.
+- `app/lib/features/chat/presentation/providers/chat_provider.dart`: identidade capturada antes da requisição; marcador local de limpeza persiste após sucesso da API mesmo com fechamento da tela.
+- Validação desta publicação: 119 testes do backend aprovados; TypeScript sem erros; 16 testes focados do aplicativo aprovados; análise dos três arquivos Flutter envolvidos sem problemas; build web release concluído. Aviso preexistente de fonte Cupertino ausente.
+- As três divergências conhecidas nos testes de escala continuam registradas na seção 9. Os testes não alteraram dados de produção. Não foi executada migração de banco.
+- Render confirmou o commit `96dd7b4` em `Deploy succeeded|Live`; `/health` respondeu HTTP 200.
+- Firebase Hosting confirmou a publicação. `main.dart.js` respondeu HTTP 200 e coincidiu por SHA-256 com o build local: `0baa156abe54bdcb78cbbc3f03fa63719585fff52a122100b603b21204523121`.
+- O commit deste registro é somente documentação posterior à versão publicada. Os arquivos locais não versionados do responsável permaneceram intactos.
