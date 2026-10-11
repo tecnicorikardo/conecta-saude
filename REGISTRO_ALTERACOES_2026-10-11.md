@@ -218,3 +218,6 @@ Os demais achados do `report.md` permanecem como itens de revisão. As vulnerabi
 - Script observa inputs de senha com `autocomplete=off` e configura `current-password` na rota de login. Cadastro e demais rotas não são alvo do ajuste.
 - Sintaxe dos scripts inline verificada pelo Node sem erros. Publicação solicitada pelo responsável, somente no Firebase Hosting.
 - O arquivo local `serve_probe.cjs`, o relatório e os scripts de teste permanecem fora dos commits. Confirmação de publicação registrada após deploy.
+
+- Publicação `e4e6f06` confirmada no Firebase Hosting; build web release concluído. HTML e JavaScript publicados responderam HTTP 200 e coincidiram com o build local por SHA-256. HTML: `060a113d780b98f4c3db0b16fe06d909d7bef4513f1fc55062b7ef5cc6b9c405`. JavaScript: `eb02cfbabf1245dae4ae15a693504b200f82ce4430e91ceefab6935062c59381`.
+- Não foi efetuado login com credenciais salvas nem acessado o gerenciador de senhas. Backend não foi alterado nem republicado nesta entrega.
