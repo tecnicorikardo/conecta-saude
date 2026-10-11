@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -75,7 +76,7 @@ class _LoginFormState extends ConsumerState<LoginForm> {
       if (mounted) {
         setState(() {
           _rememberMe = remember;
-          if (remember && savedEmail != null && savedEmail.isNotEmpty) {
+          if (remember && savedEmail != null && savedEmail.isNotEmpty && _emailCtrl.text.isEmpty) {
             _emailCtrl.text = savedEmail;
           }
         });
@@ -117,7 +118,14 @@ class _LoginFormState extends ConsumerState<LoginForm> {
 
   @override
   Widget build(BuildContext context) {
-    return Form(
+    ref.listen<LoginState>(loginNotifierProvider, (previous, next) {
+      if (next is LoginSuccess) {
+        TextInput.finishAutofillContext(shouldSave: true);
+      }
+    });
+    return AutofillGroup(
+      onDisposeAction: AutofillContextAction.cancel,
+      child: Form(
       key: _formKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -196,6 +204,7 @@ class _LoginFormState extends ConsumerState<LoginForm> {
           // ─── Campo E-mail Institucional ──────────────────────────────────
           TextFormField(
             controller: _emailCtrl,
+            autofillHints: const [AutofillHints.username, AutofillHints.email],
             focusNode: _emailFocus,
             keyboardType: TextInputType.emailAddress,
             textInputAction: TextInputAction.next,
@@ -266,6 +275,9 @@ class _LoginFormState extends ConsumerState<LoginForm> {
           // ─── Campo Senha ─────────────────────────────────────────────────
           TextFormField(
             controller: _passCtrl,
+            autofillHints: const [AutofillHints.password],
+            autocorrect: false,
+            enableSuggestions: false,
             focusNode: _passFocus,
             obscureText: _obscure,
             textInputAction: TextInputAction.done,
@@ -547,6 +559,7 @@ class _LoginFormState extends ConsumerState<LoginForm> {
             ],
           ),
         ],
+      ),
       ),
     );
   }

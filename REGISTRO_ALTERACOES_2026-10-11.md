@@ -200,3 +200,11 @@ Os demais achados do `report.md` permanecem como itens de revisão. As vulnerabi
 - Render confirmou o commit `96dd7b4` em `Deploy succeeded|Live`; `/health` respondeu HTTP 200.
 - Firebase Hosting confirmou a publicação. `main.dart.js` respondeu HTTP 200 e coincidiu por SHA-256 com o build local: `0baa156abe54bdcb78cbbc3f03fa63719585fff52a122100b603b21204523121`.
 - O commit deste registro é somente documentação posterior à versão publicada. Os arquivos locais não versionados do responsável permaneceram intactos.
+
+## 12. Preenchimento automático de login
+
+- Arquivo: `app/lib/features/auth/presentation/widgets/login_form.dart`.
+- E-mail e senha foram associados em `AutofillGroup`, com identificação `username/email` e `password` para o gerenciador de credenciais. Login confirmado encerra o contexto solicitando salvamento; saída da tela sem sucesso cancela o contexto.
+- O e-mail lembrado pelo aplicativo só é aplicado se o campo estiver vazio, evitando substituir um preenchimento já realizado. A opção de lembrar e-mail permanece sem armazenamento de senha no SharedPreferences.
+- Diagnóstico: diferenciar sugestão de e-mail de uma credencial completa salva para o domínio. O navegador decide o preenchimento e pode pedir confirmação. A correção integra os campos; não cria nem recupera uma senha ausente do gerenciador.
+- Análise do arquivo sem problemas. Publicação somente do aplicativo web; backend inalterado. Verificação final registrada após deploy.
