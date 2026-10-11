@@ -14,6 +14,8 @@ enum AuditAction {
   reportUpdated,
   loginSuccess,
   loginFailed,
+  channelCreated,
+  other,
 }
 
 class AuditLogEntity {
@@ -93,13 +95,19 @@ class AuditRepository {
       case 'announcementcreated':
         return AuditAction.announcementCreated;
       case 'criar_canal':
+        return AuditAction.channelCreated;
+      case 'report_created':
+      case 'report_status_updated':
       case 'reportupdated':
         return AuditAction.reportUpdated;
       case 'login_sucesso':
       case 'loginsuccess':
         return AuditAction.loginSuccess;
+      case 'login_falha':
+      case 'loginfailed':
+        return AuditAction.loginFailed;
       default:
-        return AuditAction.userUpdated;
+        return AuditAction.other;
     }
   }
 
@@ -114,7 +122,8 @@ class AuditRepository {
       atorNome: user?['nome'] as String? ?? 'Sistema',
       atorSetor: user?['cargo'] as String? ?? 'Direção Geral',
       descricao: 'Ação: $acaoStr sobre $entidade (${j['entidadeId'] ?? ''})',
-      criadoEm: DateTime.tryParse(j['criadoEm'] as String? ?? '')?.toLocal() ?? DateTime.now(),
+      criadoEm: DateTime.tryParse(j['criadoEm'] as String? ?? '')?.toLocal() ??
+          DateTime.now(),
       ip: j['ip'] as String? ?? '127.0.0.1',
     );
   }
@@ -123,7 +132,9 @@ class AuditRepository {
     final msg = e.response?.data?['error'] as String?;
     final status = e.response?.statusCode;
     if (status == 401) return Exception('Sessão expirada.');
-    if (status == 403) return Exception(msg ?? 'Acesso exclusivo da Direção Geral.');
+    if (status == 403) {
+      return Exception(msg ?? 'Acesso exclusivo da Direção Geral.');
+    }
     return Exception(msg ?? 'Erro ao carregar logs de auditoria.');
   }
 }

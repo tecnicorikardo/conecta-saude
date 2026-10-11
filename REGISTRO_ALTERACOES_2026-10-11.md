@@ -123,17 +123,17 @@ Reverter código não recupera mensagens apagadas anteriormente, não limpa marc
 |---|---|---|
 | Funcionários fictícios quando a API falha | `EmployeesRepositoryImpl.listUsers` retorna fallback em erros e respostas inesperadas | Corrigido e testado; ver seção 8 |
 | Erro de emergência interpretado como ausência de alerta | `EmergencyRepositoryImpl.getActiveEmergency` retorna `null` no catch | Corrigido e testado; ver seção 8 |
-| Ações de auditoria rotuladas incorretamente | `_parseAction` mapeia `criar_canal` para denúncia e usa usuário editado como default | Confirmado por leitura; não corrigido |
+| Ações de auditoria rotuladas incorretamente | `_parseAction` mapeia `criar_canal` para denúncia e usa usuário editado como default | Corrigido e testado; ver seção 9 |
 | Protocolo de denúncia com ID curto | Tela usa `reportId.substring(0, 8)` sem proteger tamanho | Corrigido e testado; ver seção 8 |
-| Cursor de mensagens por UUID | `listMessages` filtra `id < cursor` e ordena por `criadoEm` | Confirmado por leitura; não corrigido |
+| Cursor de mensagens por UUID | `listMessages` filtra `id < cursor` e ordena por `criadoEm` | Corrigido e testado; ver seção 9 |
 | Rotas async sem encaminhamento de rejeições | Rotas de unidades, emergência e `/api/me` têm handlers sem `asyncHandler` | Corrigido e testado; ver seção 8 |
-| Escrita de state após fechamento da tela de canal | `ChannelMessagesNotifier` contém awaits sem checagem posterior de mounted | Confirmado por leitura; não corrigido |
+| Escrita de state após fechamento da tela de canal | `ChannelMessagesNotifier` contém awaits sem checagem posterior de mounted | Corrigido e testado; ver seção 9 |
 
 Os demais achados do `report.md` permanecem como itens de revisão. As vulnerabilidades de dependências não foram recontadas nesta rodada. Nenhuma rotação de senha/chave, remoção de legado ou alteração de funcionalidades foi feita nesta rodada de documentação.
 
 ## 8. Continuação autorizada — respostas de erro e informações exibidas
 
-**Publicação:** pendente. Esta seção descreve alterações locais verificadas; não afirma que estão em produção.
+**Publicação:** incluída na entrega final junto da seção 9; confirmação registrada na seção 10 após publicação.
 
 ### Colaboradores
 
@@ -167,4 +167,13 @@ Os demais achados do `report.md` permanecem como itens de revisão. As vulnerabi
 - Novos testes: `backend/src/__tests__/async_error_routes.test.ts`, `app/test/api_failure_feedback_test.dart`, `app/test/emergency_status_feedback_test.dart`; ampliado `app/test/reports_submission_test.dart`.
 - Build web release concluído; somente o aviso preexistente de fonte Cupertino ausente.
 - Nenhum dado de produção foi criado, alterado ou excluído pelos testes. Não houve migração de banco, alteração de níveis ou de regras de aprovação nesta rodada.
-- Auditoria, cursor de mensagens e atualização de estado em canais continuam pendentes na seção 7.
+- Auditoria, cursor de mensagens e atualização de estado em canais foram concluídos na seção 9.
+
+## 9. Conclusão das três correções pendentes
+
+- **Auditoria:** `app/lib/features/administration/data/repositories/audit_repository.dart` e `app/lib/features/administration/presentation/pages/audit_logs_page.dart`. Criação de canal agora tem categoria própria; ações de denúncia emitidas pela API são reconhecidas; login falho é identificado. Ações desconhecidas exibem OUTRA AÇÃO, preservando o nome original na descrição, em vez de afirmar edição de usuário. Nenhum log existente foi alterado. Teste: `app/test/audit_action_test.dart`.
+- **Histórico de mensagens:** `backend/src/modules/messages/messages.controller.ts`. Cursor continua sendo o ID, mas sua data é consultada dentro da conversa autorizada. Paginação filtra por data anterior e desempata pelo ID; ordenação usa os mesmos campos. Preserva ordem de exibição, marcação de leitura e janela de 24 horas. Cursor inexistente ou de outra conversa retorna 400. Testes: `backend/src/__tests__/messages_pagination.test.ts`. Se houver falha, verificar cursor e conversa enviados; não voltar à comparação global de UUIDs.
+- **Fechamento de canal:** `app/lib/features/channels/presentation/providers/channels_provider.dart`. Carregamento, atualização periódica e envio verificam se o notifier continua ativo depois de aguardar a API, incluindo erros. Fechar a tela não cancela uma mensagem que já foi enviada ao servidor; impede escrita em estado descartado. Testes: `app/test/channel_disposal_test.dart`.
+- **Validação:** backend com 115 testes aprovados e TypeScript sem erros. Testes focados do aplicativo abrangem as duas rodadas de correção.
+- **Limitação encontrada na suíte completa:** três testes em `app/test/schedule_work_status_test.dart` falham nas expectativas de plantão extra, conta inativa e dia de folga. Tanto esse arquivo quanto `app/lib/features/auth/domain/entities/user_entity.dart` permaneceram iguais à versão anterior, com última alteração em `c6aa229`. A revisão não modificou regras de escala/serviço para fazer esses testes passarem. Essa divergência permanece documentada para revisão própria.
+- **Escopo:** os sete achados específicos da seção 7 foram tratados. Isso não significa encerramento de todos os itens do relatório original: dependências, legado, credenciais e demais sugestões continuam exigindo avaliação própria. Não houve migração nem alteração de dados de produção.

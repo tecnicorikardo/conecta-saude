@@ -37,13 +37,22 @@ export async function listMessages(req: Request, res: Response): Promise<void> {
   const isAutoExcluir = membership.conversation?.autoExcluir24h ?? false;
   const cutoffTime = isAutoExcluir ? new Date(Date.now() - 24 * 60 * 60 * 1000) : undefined;
 
+  const anchor = query.cursor ? await prisma.message.findFirst({
+    where: { id: query.cursor, conversationId },
+    select: { id: true, criadoEm: true },
+  }) : null;
+  if (query.cursor && !anchor) throw new AppError('Cursor de mensagem inválido.', 400);
+
   const messages = await prisma.message.findMany({
     where: {
       conversationId,
-      ...(query.cursor && { id: { lt: query.cursor } }),
+      ...(anchor && { OR: [
+        { criadoEm: { lt: anchor.criadoEm } },
+        { criadoEm: anchor.criadoEm, id: { lt: anchor.id } },
+      ] }),
       ...(cutoffTime && { criadoEm: { gte: cutoffTime } }),
     },
-    orderBy: { criadoEm: 'desc' },
+    orderBy: [{ criadoEm: 'desc' }, { id: 'desc' }],
     take: query.limit,
     include: {
       remetente: {

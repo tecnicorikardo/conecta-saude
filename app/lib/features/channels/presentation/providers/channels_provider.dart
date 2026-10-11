@@ -7,11 +7,11 @@ import '../../../auth/domain/entities/user_entity.dart';
 import '../../../auth/presentation/providers/current_user_provider.dart';
 
 enum ChannelTab {
-  ccd,        // Esquerda: Centro Carioca de Diagnóstico e Tratamento por Imagem (CCDTI)
-  cco,        // Meio: Centro Carioca do Olho (CCO)
-  cce,        // Direita: Centro Carioca de Especialidades (CCE)
+  ccd, // Esquerda: Centro Carioca de Diagnóstico e Tratamento por Imagem (CCDTI)
+  cco, // Meio: Centro Carioca do Olho (CCO)
+  cce, // Direita: Centro Carioca de Especialidades (CCE)
   emergencia, // Alerta e Emergência
-  todos,      // Visão Geral (Admin)
+  todos, // Visão Geral (Admin)
 }
 
 class ChannelsState {
@@ -37,7 +37,8 @@ class ChannelsState {
 
   String get userCentroTag {
     if (currentUser == null || isDirecao) return 'TODOS';
-    final s = ('${currentUser!.setorNome} ${currentUser!.setorId}').toUpperCase();
+    final s =
+        ('${currentUser!.setorNome} ${currentUser!.setorId}').toUpperCase();
     if (s.contains('CCD') || s.contains('IMAGEM')) return 'CCD';
     if (s.contains('CCO') || s.contains('OLHO')) return 'CCO';
     if (s.contains('CCE') || s.contains('ESPECIALIDADE')) return 'CCE';
@@ -113,14 +114,17 @@ class ChannelsNotifier extends StateNotifier<ChannelsState> {
     await _repository.deleteChannel(id);
     _deletedIds.add(id);
     if (!mounted) return;
-    state = state.copyWith(channels: state.channels.where((c) => c.id != id).toList());
+    state = state.copyWith(
+        channels: state.channels.where((c) => c.id != id).toList());
   }
+
   // Coordena carregamento e filtros. O polling consulta novidades periodicamente;
   // cancelar o Timer em dispose evita consultas depois do descarte do notifier.
   final ChannelsRepository _repository;
   Timer? _pollingTimer;
 
-  ChannelsNotifier(this._repository, UserEntity? user) : super(ChannelsState(currentUser: user)) {
+  ChannelsNotifier(this._repository, UserEntity? user)
+      : super(ChannelsState(currentUser: user)) {
     _initDefaultTab(user);
     loadChannels();
     _startPolling();
@@ -137,7 +141,8 @@ class ChannelsNotifier extends StateNotifier<ChannelsState> {
     try {
       final fetched = await _repository.listAllChannels();
       if (!mounted) return;
-      final channels = fetched.where((c) => !_deletedIds.contains(c.id)).toList();
+      final channels =
+          fetched.where((c) => !_deletedIds.contains(c.id)).toList();
       if (!listEquals(state.channels, channels)) {
         state = state.copyWith(channels: channels);
       }
@@ -172,7 +177,8 @@ class ChannelsNotifier extends StateNotifier<ChannelsState> {
     try {
       final fetched = await _repository.listAllChannels();
       if (!mounted) return;
-      final channels = fetched.where((c) => !_deletedIds.contains(c.id)).toList();
+      final channels =
+          fetched.where((c) => !_deletedIds.contains(c.id)).toList();
       state = state.copyWith(
         isLoading: false,
         channels: channels,
@@ -259,12 +265,14 @@ class ChannelMessagesNotifier extends StateNotifier<ChannelMessagesState> {
   Future<void> loadMessages() async {
     try {
       final messages = await _repository.listChannelMessages(_channelId);
+      if (!mounted) return;
       state = state.copyWith(
         isLoading: false,
         messages: messages,
         errorMessage: null,
       );
     } catch (e) {
+      if (!mounted) return;
       state = state.copyWith(
         isLoading: false,
         errorMessage: e.toString(),
@@ -275,6 +283,7 @@ class ChannelMessagesNotifier extends StateNotifier<ChannelMessagesState> {
   Future<void> _pollMessages() async {
     try {
       final messages = await _repository.listChannelMessages(_channelId);
+      if (!mounted) return;
       if (!listEquals(state.messages, messages)) {
         state = state.copyWith(messages: messages);
       }
@@ -285,11 +294,12 @@ class ChannelMessagesNotifier extends StateNotifier<ChannelMessagesState> {
 
   Future<bool> postMessage(String texto) async {
     final trimmed = texto.trim();
-    if (trimmed.isEmpty) return false;
+    if (!mounted || trimmed.isEmpty) return false;
 
     state = state.copyWith(isSending: true);
     try {
       final newMsg = await _repository.postChannelMessage(_channelId, trimmed);
+      if (!mounted) return false;
       final updatedList = [...state.messages, newMsg];
       state = state.copyWith(
         isSending: false,
@@ -297,6 +307,7 @@ class ChannelMessagesNotifier extends StateNotifier<ChannelMessagesState> {
       );
       return true;
     } catch (e) {
+      if (!mounted) return false;
       state = state.copyWith(
         isSending: false,
         errorMessage: e.toString(),
@@ -305,7 +316,8 @@ class ChannelMessagesNotifier extends StateNotifier<ChannelMessagesState> {
     }
   }
 
-  Future<ChannelMessageStatsEntity> fetchMessageReaders(String messageId) async {
+  Future<ChannelMessageStatsEntity> fetchMessageReaders(
+      String messageId) async {
     return await _repository.getMessageReaders(_channelId, messageId);
   }
 
@@ -316,8 +328,9 @@ class ChannelMessagesNotifier extends StateNotifier<ChannelMessagesState> {
   }
 }
 
-final channelMessagesProvider = StateNotifierProvider.autoDispose.family<
-    ChannelMessagesNotifier, ChannelMessagesState, String>((ref, channelId) {
+final channelMessagesProvider = StateNotifierProvider.autoDispose
+    .family<ChannelMessagesNotifier, ChannelMessagesState, String>(
+        (ref, channelId) {
   final repository = ref.watch(channelsRepositoryProvider);
   return ChannelMessagesNotifier(repository, channelId);
 });

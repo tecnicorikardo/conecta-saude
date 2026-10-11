@@ -99,8 +99,8 @@ class _AuditLogsPageState extends ConsumerState<AuditLogsPage> {
               // ─── Filtros ─────────────────────────────────────────────
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 10),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 child: Row(
                   children: [
                     _ActionChip(
@@ -193,8 +193,7 @@ class _ActionChip extends StatelessWidget {
         color: isSelected ? AppColors.primary : AppColors.neutral700,
       ),
       side: BorderSide(
-        color:
-            isSelected ? AppColors.primary : AppColors.outlineVariant,
+        color: isSelected ? AppColors.primary : AppColors.outlineVariant,
       ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     );
@@ -335,6 +334,9 @@ class _AuditLogTile extends StatelessWidget {
 
 Color _actionColor(AuditAction action) {
   switch (action) {
+    case AuditAction.channelCreated:
+    case AuditAction.other:
+      return AppColors.primary;
     case AuditAction.userCreated:
     case AuditAction.userReactivated:
       return AppColors.success;
@@ -354,6 +356,10 @@ Color _actionColor(AuditAction action) {
 
 IconData _actionIcon(AuditAction action) {
   switch (action) {
+    case AuditAction.channelCreated:
+      return Icons.forum_rounded;
+    case AuditAction.other:
+      return Icons.history_rounded;
     case AuditAction.userCreated:
       return Icons.person_add_rounded;
     case AuditAction.userUpdated:
@@ -379,6 +385,10 @@ IconData _actionIcon(AuditAction action) {
 
 String _actionLabel(AuditAction action) {
   switch (action) {
+    case AuditAction.channelCreated:
+      return 'CANAL CRIADO';
+    case AuditAction.other:
+      return 'OUTRA AÇÃO';
     case AuditAction.userCreated:
       return 'USUÁRIO CRIADO';
     case AuditAction.userUpdated:
