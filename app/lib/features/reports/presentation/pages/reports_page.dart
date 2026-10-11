@@ -35,7 +35,8 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
     super.initState();
     _startPolling();
 
-    if (widget.initialDescription != null || widget.initialReportedUserId != null) {
+    if (widget.initialDescription != null ||
+        widget.initialReportedUserId != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _showNewReportModal(
           context,
@@ -72,7 +73,7 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
     final isDirecao = perms.isDirecao;
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: context.appTokens.background,
       appBar: AppBar(
         title: Text(isDirecao
             ? 'Ouvidoria & Moderação'
@@ -126,7 +127,8 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             child: Row(
               children: [
-                Icon(Icons.shield_outlined, size: 18, color: tokens.themeAccentColor),
+                Icon(Icons.shield_outlined,
+                    size: 18, color: tokens.themeAccentColor),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -152,7 +154,7 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                 _StatusChip(
                   label: 'Todas',
                   isSelected: _selectedStatus == null,
-                  color: AppColors.neutral700,
+                  color: context.appTokens.textSecondary,
                   onTap: () => setState(() => _selectedStatus = null),
                 ),
                 const SizedBox(width: 8),
@@ -183,7 +185,7 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                 _StatusChip(
                   label: 'Arquivadas',
                   isSelected: _selectedStatus == ReportStatus.arquivado,
-                  color: AppColors.neutral500,
+                  color: context.appTokens.textSecondary,
                   onTap: () =>
                       setState(() => _selectedStatus = ReportStatus.arquivado),
                 ),
@@ -225,14 +227,16 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(Icons.assignment_turned_in_outlined,
-                                  size: 56, color: AppColors.neutral400),
+                                  size: 56,
+                                  color: context.appTokens.textSecondary),
                               const SizedBox(height: 12),
                               Text(
                                 _selectedStatus == null
                                     ? 'Nenhuma denúncia registrada.'
                                     : 'Nenhuma denúncia com status "${_statusLabel(_selectedStatus!)}".',
-                                style: const TextStyle(
-                                    color: AppColors.neutral600, fontSize: 14),
+                                style: TextStyle(
+                                    color: context.appTokens.textSecondary,
+                                    fontSize: 14),
                               ),
                             ],
                           ),
@@ -309,14 +313,15 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                       Icon(Icons.verified_user_rounded,
                           color: Colors.white, size: 24),
                       SizedBox(width: 10),
-                      Text(
+                      Expanded(
+                          child: Text(
                         'Canal Sigiloso e Seguro SUS',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                         ),
-                      ),
+                      )),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -354,19 +359,20 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
             const SizedBox(height: 24),
 
             // Título de Seção
-            const Row(
+            Row(
               children: [
                 Icon(Icons.history_edu_rounded,
-                    size: 20, color: AppColors.neutral700),
-                SizedBox(width: 8),
-                Text(
+                    size: 20, color: context.appTokens.textSecondary),
+                const SizedBox(width: 8),
+                Expanded(
+                    child: Text(
                   'Minhas Manifestações Registradas',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.neutral800,
+                    color: context.appTokens.textPrimary,
                   ),
-                ),
+                )),
               ],
             ),
             const SizedBox(height: 12),
@@ -387,23 +393,25 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
                 if (reports.isEmpty) {
                   return Card(
                     elevation: 0,
-                    color: Colors.white,
+                    color: context.appTokens.surface,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
-                      side: const BorderSide(color: AppColors.outlineVariant),
+                      side: BorderSide(color: context.appTokens.border),
                     ),
-                    child: const Padding(
-                      padding: EdgeInsets.all(24),
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
                       child: Center(
                         child: Column(
                           children: [
                             Icon(Icons.inbox_outlined,
-                                size: 44, color: AppColors.neutral400),
-                            SizedBox(height: 8),
+                                size: 44,
+                                color: context.appTokens.textSecondary),
+                            const SizedBox(height: 8),
                             Text(
                               'Você ainda não registrou nenhuma ocorrência.',
                               style: TextStyle(
-                                  color: AppColors.neutral600, fontSize: 13),
+                                  color: context.appTokens.textSecondary,
+                                  fontSize: 13),
                             ),
                           ],
                         ),
@@ -522,7 +530,7 @@ class _DirecaoReportCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.appTokens;
-    final statusColor = _statusColor(report.status);
+    final statusColor = _statusColor(report.status, context);
     final statusLabel = _statusLabel(report.status);
     final categoryLabel = _categoryLabel(report.categoria);
     final categoryIcon = _categoryIcon(report.categoria);
@@ -607,20 +615,20 @@ class _DirecaoReportCard extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF673AB7).withValues(alpha: 0.15),
+                        color: _privacyColor(context).withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(6),
                       ),
-                      child: const Row(
+                      child: Row(
                         children: [
                           Icon(Icons.shield_outlined,
-                              size: 12, color: Color(0xFF9C27B0)),
-                          SizedBox(width: 4),
+                              size: 12, color: _privacyColor(context)),
+                          const SizedBox(width: 4),
                           Text(
                             'Anônima',
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
-                              color: Color(0xFFBA68C8),
+                              color: _privacyColor(context),
                             ),
                           ),
                         ],
@@ -666,7 +674,7 @@ class _EmployeeReportCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tokens = context.appTokens;
-    final statusColor = _statusColor(report.status);
+    final statusColor = _statusColor(report.status, context);
     final statusLabel = _statusLabel(report.status);
     final categoryLabel = _categoryLabel(report.categoria);
     final categoryIcon = _categoryIcon(report.categoria);
@@ -701,15 +709,15 @@ class _EmployeeReportCard extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF673AB7).withValues(alpha: 0.15),
+                      color: _privacyColor(context).withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: const Text(
+                    child: Text(
                       '🔒 Anônimo',
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFFBA68C8),
+                        color: _privacyColor(context),
                       ),
                     ),
                   ),
@@ -795,8 +803,7 @@ class _EmployeeReportCard extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       report.resposta!,
-                      style: TextStyle(
-                          fontSize: 12, color: tokens.textPrimary),
+                      style: TextStyle(fontSize: 12, color: tokens.textPrimary),
                     ),
                   ],
                 ),
@@ -808,7 +815,6 @@ class _EmployeeReportCard extends StatelessWidget {
     );
   }
 }
-
 
 // ─── BOTTOM SHEET: NOVA DENÚNCIA (COLABORADOR / GERAL) ─────────────────────────
 class _NewReportSheet extends ConsumerStatefulWidget {
@@ -887,7 +893,8 @@ class _NewReportSheetState extends ConsumerState<_NewReportSheet> {
       _descController.text = widget.initialDescription!;
     }
     if (widget.initialReportedUserName != null) {
-      _titleController.text = 'Ocorrência envolvendo ${widget.initialReportedUserName}';
+      _titleController.text =
+          'Ocorrência envolvendo ${widget.initialReportedUserName}';
     }
   }
 
@@ -928,8 +935,9 @@ class _NewReportSheetState extends ConsumerState<_NewReportSheet> {
       if (mounted) {
         Navigator.pop(context);
         widget.onSubmitted();
-        
-        final protocolNumber = 'CS-${DateTime.now().year}-${reportId.substring(0, 8).toUpperCase()}';
+
+        final protocolNumber =
+            'CS-${DateTime.now().year}-${reportId.substring(0, 8).toUpperCase()}';
 
         showDialog(
           context: context,
@@ -953,29 +961,37 @@ class _NewReportSheetState extends ConsumerState<_NewReportSheet> {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: AppColors.primaryContainer,
+                    color: context.appTokens.primarySoft,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                    border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.3)),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
                         'Número de Protocolo:',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
+                        style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary),
                       ),
                       const SizedBox(height: 4),
                       SelectableText(
                         protocolNumber,
-                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.primary),
+                        style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.primary),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 10),
-                const Text(
+                Text(
                   'Guarde este número para acompanhar o parecer institucional na sua aba de manifestações.',
-                  style: TextStyle(fontSize: 11.5, color: AppColors.neutral600),
+                  style: TextStyle(
+                      fontSize: 11.5, color: context.appTokens.textSecondary),
                 ),
               ],
             ),
@@ -1004,9 +1020,9 @@ class _NewReportSheetState extends ConsumerState<_NewReportSheet> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      decoration: BoxDecoration(
+        color: context.appTokens.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       padding: EdgeInsets.only(
         left: 20,
@@ -1025,37 +1041,38 @@ class _NewReportSheetState extends ConsumerState<_NewReportSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.neutral400,
+                  color: context.appTokens.textSecondary,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
             ),
             const SizedBox(height: 16),
 
-            const Row(
+            Row(
               children: [
-                Icon(Icons.add_moderator_rounded,
+                const Icon(Icons.add_moderator_rounded,
                     color: AppColors.primary, size: 24),
-                SizedBox(width: 8),
-                Text(
+                const SizedBox(width: 8),
+                Expanded(
+                    child: Text(
                   'Registrar Manifestação / Denúncia',
                   style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.neutral900,
+                    color: context.appTokens.textPrimary,
                   ),
-                ),
+                )),
               ],
             ),
             const SizedBox(height: 16),
 
             // Categoria
-            const Text(
+            Text(
               'Tipo de Ocorrência',
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
-                color: AppColors.neutral800,
+                color: context.appTokens.textPrimary,
               ),
             ),
             const SizedBox(height: 8),
@@ -1065,16 +1082,12 @@ class _NewReportSheetState extends ConsumerState<_NewReportSheet> {
               children: _motivos.map((m) {
                 final isSel = _selectedMotivo == m['key'];
                 return ChoiceChip(
-                  label: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(m['icon'] as IconData,
-                          size: 14,
-                          color: isSel ? Colors.white : AppColors.neutral700),
-                      const SizedBox(width: 6),
-                      Text(m['label'] as String),
-                    ],
-                  ),
+                  avatar: Icon(m['icon'] as IconData,
+                      size: 14,
+                      color: isSel
+                          ? Colors.white
+                          : context.appTokens.textSecondary),
+                  label: Text(m['label'] as String, maxLines: 2),
                   selected: isSel,
                   onSelected: (_) =>
                       setState(() => _selectedMotivo = m['key'] as String),
@@ -1082,7 +1095,7 @@ class _NewReportSheetState extends ConsumerState<_NewReportSheet> {
                   labelStyle: TextStyle(
                     fontSize: 12,
                     fontWeight: isSel ? FontWeight.bold : FontWeight.w500,
-                    color: isSel ? Colors.white : AppColors.neutral800,
+                    color: isSel ? Colors.white : context.appTokens.textPrimary,
                   ),
                 );
               }).toList(),
@@ -1117,13 +1130,13 @@ class _NewReportSheetState extends ConsumerState<_NewReportSheet> {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: _isAnonimo
-                    ? const Color(0xFF673AB7).withValues(alpha: 0.08)
-                    : AppColors.surfaceVariant,
+                    ? _privacyColor(context).withValues(alpha: 0.08)
+                    : context.appTokens.surfaceMuted,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: _isAnonimo
-                      ? const Color(0xFF673AB7).withValues(alpha: 0.3)
-                      : AppColors.outlineVariant,
+                      ? _privacyColor(context).withValues(alpha: 0.3)
+                      : context.appTokens.border,
                 ),
               ),
               child: Row(
@@ -1131,8 +1144,8 @@ class _NewReportSheetState extends ConsumerState<_NewReportSheet> {
                   Icon(
                     _isAnonimo ? Icons.shield_rounded : Icons.person_outline,
                     color: _isAnonimo
-                        ? const Color(0xFF673AB7)
-                        : AppColors.neutral600,
+                        ? _privacyColor(context)
+                        : context.appTokens.textSecondary,
                     size: 24,
                   ),
                   const SizedBox(width: 12),
@@ -1148,17 +1161,17 @@ class _NewReportSheetState extends ConsumerState<_NewReportSheet> {
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
                             color: _isAnonimo
-                                ? const Color(0xFF673AB7)
-                                : AppColors.neutral800,
+                                ? _privacyColor(context)
+                                : context.appTokens.textPrimary,
                           ),
                         ),
                         Text(
                           _isAnonimo
                               ? 'Seu nome e setor não serão revelados a ninguém.'
                               : 'Seu nome será visível apenas para a Direção Geral.',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 11,
-                            color: AppColors.neutral600,
+                            color: context.appTokens.textSecondary,
                           ),
                         ),
                       ],
@@ -1166,7 +1179,7 @@ class _NewReportSheetState extends ConsumerState<_NewReportSheet> {
                   ),
                   Switch(
                     value: _isAnonimo,
-                    activeThumbColor: const Color(0xFF673AB7),
+                    activeThumbColor: _privacyColor(context),
                     onChanged: (val) => setState(() => _isAnonimo = val),
                   ),
                 ],
@@ -1181,6 +1194,7 @@ class _NewReportSheetState extends ConsumerState<_NewReportSheet> {
               child: FilledButton.icon(
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
                 ),
                 onPressed: _isSubmitting ? null : _submit,
                 icon: _isSubmitting
@@ -1254,7 +1268,7 @@ class _InvestigationSheetState extends ConsumerState<_InvestigationSheet> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Status atualizado para: ${_statusLabel(newStatus)}'),
-            backgroundColor: _statusColor(newStatus),
+            backgroundColor: _statusColor(newStatus, context),
           ),
         );
       }
@@ -1274,12 +1288,12 @@ class _InvestigationSheetState extends ConsumerState<_InvestigationSheet> {
   @override
   Widget build(BuildContext context) {
     final report = widget.report;
-    final statusColor = _statusColor(report.status);
+    final statusColor = _statusColor(report.status, context);
 
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      decoration: BoxDecoration(
+        color: context.appTokens.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       padding: EdgeInsets.only(
         left: 20,
@@ -1298,7 +1312,7 @@ class _InvestigationSheetState extends ConsumerState<_InvestigationSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: AppColors.neutral400,
+                  color: context.appTokens.textSecondary,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -1327,8 +1341,8 @@ class _InvestigationSheetState extends ConsumerState<_InvestigationSheet> {
                 const SizedBox(width: 8),
                 Text(
                   _categoryLabel(report.categoria),
-                  style: const TextStyle(
-                    color: AppColors.neutral700,
+                  style: TextStyle(
+                    color: context.appTokens.textSecondary,
                     fontWeight: FontWeight.w600,
                     fontSize: 13,
                   ),
@@ -1336,8 +1350,8 @@ class _InvestigationSheetState extends ConsumerState<_InvestigationSheet> {
                 const Spacer(),
                 Text(
                   _formatDate(report.criadoEm),
-                  style: const TextStyle(
-                    color: AppColors.neutral500,
+                  style: TextStyle(
+                    color: context.appTokens.textSecondary,
                     fontSize: 12,
                   ),
                 ),
@@ -1348,22 +1362,22 @@ class _InvestigationSheetState extends ConsumerState<_InvestigationSheet> {
             if (report.titulo != null && report.titulo!.isNotEmpty) ...[
               Text(
                 report.titulo!,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
-                  color: AppColors.neutral900,
+                  color: context.appTokens.textPrimary,
                 ),
               ),
               const SizedBox(height: 8),
             ],
 
             // Descrição da Denúncia
-            const Text(
+            Text(
               'Descrição do Fato',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
-                color: AppColors.neutral600,
+                color: context.appTokens.textSecondary,
                 letterSpacing: 0.5,
               ),
             ),
@@ -1372,13 +1386,15 @@ class _InvestigationSheetState extends ConsumerState<_InvestigationSheet> {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.surfaceVariant,
+                color: context.appTokens.surfaceMuted,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
                 report.descricao,
-                style: const TextStyle(
-                    fontSize: 13, color: AppColors.neutral900, height: 1.4),
+                style: TextStyle(
+                    fontSize: 13,
+                    color: context.appTokens.textPrimary,
+                    height: 1.4),
               ),
             ),
             const SizedBox(height: 16),
@@ -1388,13 +1404,13 @@ class _InvestigationSheetState extends ConsumerState<_InvestigationSheet> {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: report.isAnonimo
-                    ? const Color(0xFF673AB7).withValues(alpha: 0.08)
-                    : AppColors.surfaceVariant,
+                    ? _privacyColor(context).withValues(alpha: 0.08)
+                    : context.appTokens.surfaceMuted,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                   color: report.isAnonimo
-                      ? const Color(0xFF673AB7).withValues(alpha: 0.2)
-                      : AppColors.outlineVariant,
+                      ? _privacyColor(context).withValues(alpha: 0.2)
+                      : context.appTokens.border,
                 ),
               ),
               child: Row(
@@ -1405,8 +1421,8 @@ class _InvestigationSheetState extends ConsumerState<_InvestigationSheet> {
                         : Icons.person_outline,
                     size: 20,
                     color: report.isAnonimo
-                        ? const Color(0xFF673AB7)
-                        : AppColors.neutral700,
+                        ? _privacyColor(context)
+                        : context.appTokens.textSecondary,
                   ),
                   const SizedBox(width: 10),
                   Column(
@@ -1418,14 +1434,15 @@ class _InvestigationSheetState extends ConsumerState<_InvestigationSheet> {
                           fontWeight: FontWeight.w700,
                           fontSize: 13,
                           color: report.isAnonimo
-                              ? const Color(0xFF673AB7)
-                              : AppColors.neutral900,
+                              ? _privacyColor(context)
+                              : context.appTokens.textPrimary,
                         ),
                       ),
                       Text(
                         'Setor: ${report.denuncianteSetor ?? 'SUS'}',
-                        style: const TextStyle(
-                            fontSize: 11, color: AppColors.neutral600),
+                        style: TextStyle(
+                            fontSize: 11,
+                            color: context.appTokens.textSecondary),
                       ),
                     ],
                   ),
@@ -1438,12 +1455,12 @@ class _InvestigationSheetState extends ConsumerState<_InvestigationSheet> {
             const SizedBox(height: 12),
 
             // Parecer / Resolução da Direção
-            const Text(
+            Text(
               'Parecer e Resolução da Direção Geral',
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
-                color: AppColors.neutral900,
+                color: context.appTokens.textPrimary,
               ),
             ),
             const SizedBox(height: 8),
@@ -1460,12 +1477,12 @@ class _InvestigationSheetState extends ConsumerState<_InvestigationSheet> {
             const SizedBox(height: 16),
 
             // Ações de Mudança de Status
-            const Text(
+            Text(
               'Ações de Investigação:',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: AppColors.neutral700,
+                color: context.appTokens.textSecondary,
               ),
             ),
             const SizedBox(height: 10),
@@ -1485,7 +1502,7 @@ class _InvestigationSheetState extends ConsumerState<_InvestigationSheet> {
                       icon: const Icon(Icons.archive_outlined, size: 16),
                       label: const Text('Arquivar'),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.neutral700,
+                        foregroundColor: context.appTokens.textSecondary,
                       ),
                       onPressed: () => _updateStatus(ReportStatus.arquivado),
                     ),
@@ -1497,6 +1514,7 @@ class _InvestigationSheetState extends ConsumerState<_InvestigationSheet> {
                       label: const Text('Em Análise'),
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.warning,
+                        foregroundColor: const Color(0xFF263238),
                       ),
                       onPressed: () => _updateStatus(ReportStatus.emAnalise),
                     ),
@@ -1509,6 +1527,7 @@ class _InvestigationSheetState extends ConsumerState<_InvestigationSheet> {
                 child: FilledButton.icon(
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.success,
+                    foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                   icon: const Icon(Icons.check_circle_rounded),
@@ -1527,16 +1546,16 @@ class _InvestigationSheetState extends ConsumerState<_InvestigationSheet> {
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 
-Color _statusColor(ReportStatus status) {
+Color _statusColor(ReportStatus status, BuildContext context) {
   switch (status) {
     case ReportStatus.pendente:
-      return AppColors.error;
+      return context.appTokens.critical;
     case ReportStatus.emAnalise:
-      return AppColors.warning;
+      return context.appTokens.warning;
     case ReportStatus.resolvido:
-      return AppColors.success;
+      return context.appTokens.success;
     case ReportStatus.arquivado:
-      return AppColors.neutral500;
+      return context.appTokens.textSecondary;
   }
 }
 
@@ -1596,4 +1615,5 @@ String _formatDate(DateTime date) {
   }
 }
 
-
+Color _privacyColor(BuildContext context) =>
+    context.isDarkMode ? const Color(0xFFD0B4FF) : const Color(0xFF5E35B1);

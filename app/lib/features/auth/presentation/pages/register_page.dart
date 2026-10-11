@@ -40,6 +40,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   String? _selectedSectorId;
   String? _selectedRole;
   int? _selectedRegistrationLevel;
+  int _step = 0;
+  final _scrollController = ScrollController();
   bool _isCustomRole = false;
 
   // Escala inicial sugerida
@@ -67,6 +69,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _nomeCtrl.dispose();
     _emailCtrl.dispose();
     _matriculaCtrl.dispose();
@@ -81,6 +84,36 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     _passFocus.dispose();
     _confirmPassFocus.dispose();
     super.dispose();
+  }
+
+  void _continue() {
+    if (!_formKey.currentState!.validate()) return;
+    FocusScope.of(context).unfocus();
+    setState(() => _step++);
+    _scrollController.animateTo(0,
+        duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+  }
+
+  Widget _stepHeader() {
+    const titles = ['Seus dados', 'Vínculo profissional', 'Acesso e jornada'];
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text('Etapa ${_step + 1} de 3 · ${titles[_step]}',
+          style: const TextStyle(
+              color: _primaryBlue, fontWeight: FontWeight.w700)),
+      const SizedBox(height: 10),
+      Row(
+          children: List.generate(
+              3,
+              (index) => Expanded(
+                      child: Container(
+                    margin: EdgeInsets.only(right: index < 2 ? 6 : 0),
+                    height: 5,
+                    decoration: BoxDecoration(
+                        color: index <= _step ? _primaryBlue : _borderColor,
+                        borderRadius: BorderRadius.circular(4)),
+                  )))),
+      const SizedBox(height: 18),
+    ]);
   }
 
   void _submit() {
@@ -130,6 +163,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       context: context,
       barrierDismissible: false,
       builder: (dialogCtx) => AlertDialog(
+        backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Column(
           children: [
@@ -215,7 +249,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
               ),
               child: const Text(
                 'IR PARA O LOGIN',
-                style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.5),
+                style:
+                    TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.5),
               ),
             ),
           ),
@@ -234,14 +269,16 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
           SnackBar(
             content: Row(
               children: [
-                const Icon(Icons.error_outline_rounded, color: Colors.white, size: 18),
+                const Icon(Icons.error_outline_rounded,
+                    color: Colors.white, size: 18),
                 const SizedBox(width: 10),
                 Expanded(child: Text(next.message)),
               ],
             ),
             backgroundColor: _errorColor,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             margin: const EdgeInsets.all(16),
             duration: const Duration(seconds: 4),
           ),
@@ -260,7 +297,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: _primaryBlue, size: 20),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded,
+              color: _primaryBlue, size: 20),
           onPressed: () => context.go(AppRoutes.login),
           tooltip: 'Voltar ao Login',
         ),
@@ -284,7 +322,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 520),
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                controller: _scrollController,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -293,7 +333,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
 
                     // ─── Card Formulário ────────────────────────────────────
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 20),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 22, vertical: 20),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(12),
@@ -331,273 +372,361 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                             ),
                             const SizedBox(height: 18),
 
-                            // Nome Completo
-                            TextFormField(
-                              controller: _nomeCtrl,
-                              focusNode: _nomeFocus,
-                              textInputAction: TextInputAction.next,
-                              enabled: !isLoading,
-                              style: const TextStyle(color: _textPrimary, fontSize: 14),
-                              onFieldSubmitted: (_) =>
-                                  FocusScope.of(context).requestFocus(_emailFocus),
-                              decoration: _inputDecoration(
-                                label: 'Nome Completo *',
-                                hint: 'Ex: Ricardo Silva',
-                                icon: Icons.person_outline_rounded,
-                              ),
-                              validator: (v) {
-                                if (v == null || v.trim().length < 3) {
-                                  return 'Informe seu nome completo.';
-                                }
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: 12),
-
-                            // E-mail Institucional
-                            TextFormField(
-                              controller: _emailCtrl,
-                              focusNode: _emailFocus,
-                              keyboardType: TextInputType.emailAddress,
-                              textInputAction: TextInputAction.next,
-                              enabled: !isLoading,
-                              style: const TextStyle(color: _textPrimary, fontSize: 14),
-                              onFieldSubmitted: (_) =>
-                                  FocusScope.of(context).requestFocus(_matriculaFocus),
-                              decoration: _inputDecoration(
-                                label: 'E-mail Institucional / Profissional *',
-                                hint: 'seu.email@conectasaude.dev',
-                                icon: Icons.mail_outline_rounded,
-                              ),
-                              validator: (v) {
-                                if (v == null || v.trim().isEmpty) {
-                                  return 'Informe seu e-mail.';
-                                }
-                                if (!RegExp(r'^[^@]+@[^@]+\.[^@]+$').hasMatch(v.trim())) {
-                                  return 'E-mail com formato inválido.';
-                                }
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: 12),
-
-                            // Matrícula SUS (Opcional)
-                            TextFormField(
-                              controller: _matriculaCtrl,
-                              focusNode: _matriculaFocus,
-                              textInputAction: TextInputAction.next,
-                              enabled: !isLoading,
-                              style: const TextStyle(color: _textPrimary, fontSize: 14),
-                              decoration: _inputDecoration(
-                                label: 'Matrícula / Registro SUS (opcional)',
-                                hint: 'Ex: 245.890-1',
-                                icon: Icons.badge_outlined,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-
-                            // Unidade Hospitalar / Hospital (Dropdown)
-                            unitsAsync.when(
-                              loading: () => const Center(
-                                child: Padding(
-                                  padding: EdgeInsets.all(8.0),
-                                  child: CircularProgressIndicator(strokeWidth: 2),
+                            _stepHeader(),
+                            AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 280),
+                              transitionBuilder: (child, animation) =>
+                                  FadeTransition(
+                                opacity: animation,
+                                child: SlideTransition(
+                                  position: Tween<Offset>(
+                                          begin: const Offset(0, 0.04),
+                                          end: Offset.zero)
+                                      .animate(animation),
+                                  child: child,
                                 ),
-                              ),
-                              error: (_, __) => _buildUnitDropdown(_fallbackUnits, isLoading),
-                              data: (units) => _buildUnitDropdown(
-                                units.isNotEmpty ? units : _fallbackUnits,
-                                isLoading,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-
-                            // Setor de Lotação (Dropdown filtrado dinamicamente pela Unidade)
-                            sectorsAsync.when(
-                              loading: () => const Center(
-                                child: Padding(
-                                  padding: EdgeInsets.all(8.0),
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                ),
-                              ),
-                              error: (_, __) => _buildSectorDropdown(
-                                _fallbackSectors
-                                    .where((s) => s.unitId == null || _selectedUnitId == null || s.unitId == _selectedUnitId)
-                                    .toList(),
-                                isLoading,
-                              ),
-                              data: (sectors) {
-                                final allList = sectors.isNotEmpty ? sectors : _fallbackSectors;
-                                final filtered = allList
-                                    .where((s) => s.unitId == null || _selectedUnitId == null || s.unitId == _selectedUnitId)
-                                    .toList();
-                                return _buildSectorDropdown(filtered, isLoading);
-                              },
-                            ),
-                            const SizedBox(height: 12),
-
-                            // Cargo / Função Padronizado (SUS CBO)
-                            _buildRoleSelector(isLoading),
-
-                            if (_isCustomRole) ...[
-                              const SizedBox(height: 12),
-                              TextFormField(
-                                controller: _cargoCustomCtrl,
-                                focusNode: _cargoCustomFocus,
-                                textInputAction: TextInputAction.next,
-                                enabled: !isLoading,
-                                style: const TextStyle(color: _textPrimary, fontSize: 14),
-                                decoration: _inputDecoration(
-                                  label: 'Especifique o seu Cargo / Função *',
-                                  hint: 'Digite seu cargo conforme contratação',
-                                  icon: Icons.edit_outlined,
-                                ),
-                                validator: (v) {
-                                  if (_isCustomRole && (v == null || v.trim().length < 2)) {
-                                    return 'Especifique o cargo.';
-                                  }
-                                  return null;
-                                },
-                              ),
-                            ],
-                            const SizedBox(height: 16),
-
-                            // ─── Seção Horário de Trabalho / Plantão (Informativo) ────────────
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF1F5F9),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: _borderColor),
                               ),
                               child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                                key: ValueKey(_step),
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
                                 children: [
-                                  const Row(
-                                    children: [
-                                      Icon(Icons.schedule_rounded, size: 18, color: _primaryBlue),
-                                      SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          'Horário Habitual de Turno / Plantão (Informativo)',
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            fontWeight: FontWeight.w700,
-                                            color: _textPrimary,
+                                  if (_step == 0) ...[
+                                    // Nome Completo
+                                    TextFormField(
+                                      controller: _nomeCtrl,
+                                      focusNode: _nomeFocus,
+                                      textInputAction: TextInputAction.next,
+                                      enabled: !isLoading,
+                                      style: const TextStyle(
+                                          color: _textPrimary, fontSize: 14),
+                                      onFieldSubmitted: (_) =>
+                                          FocusScope.of(context)
+                                              .requestFocus(_emailFocus),
+                                      decoration: _inputDecoration(
+                                        label: 'Nome Completo *',
+                                        hint: 'Ex: Ricardo Silva',
+                                        icon: Icons.person_outline_rounded,
+                                      ),
+                                      validator: (v) {
+                                        if (v == null || v.trim().length < 3) {
+                                          return 'Informe seu nome completo.';
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                    const SizedBox(height: 12),
+
+                                    // E-mail Institucional
+                                    TextFormField(
+                                      controller: _emailCtrl,
+                                      focusNode: _emailFocus,
+                                      keyboardType: TextInputType.emailAddress,
+                                      textInputAction: TextInputAction.next,
+                                      enabled: !isLoading,
+                                      style: const TextStyle(
+                                          color: _textPrimary, fontSize: 14),
+                                      onFieldSubmitted: (_) =>
+                                          FocusScope.of(context)
+                                              .requestFocus(_matriculaFocus),
+                                      decoration: _inputDecoration(
+                                        label:
+                                            'E-mail Institucional / Profissional *',
+                                        hint: 'seu.email@conectasaude.dev',
+                                        icon: Icons.mail_outline_rounded,
+                                      ),
+                                      validator: (v) {
+                                        if (v == null || v.trim().isEmpty) {
+                                          return 'Informe seu e-mail.';
+                                        }
+                                        if (!RegExp(r'^[^@]+@[^@]+\.[^@]+$')
+                                            .hasMatch(v.trim())) {
+                                          return 'E-mail com formato inválido.';
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                    const SizedBox(height: 12),
+
+                                    // Matrícula SUS (Opcional)
+                                    TextFormField(
+                                      controller: _matriculaCtrl,
+                                      focusNode: _matriculaFocus,
+                                      textInputAction: TextInputAction.next,
+                                      enabled: !isLoading,
+                                      style: const TextStyle(
+                                          color: _textPrimary, fontSize: 14),
+                                      decoration: _inputDecoration(
+                                        label:
+                                            'Matrícula / Registro SUS (opcional)',
+                                        hint: 'Ex: 245.890-1',
+                                        icon: Icons.badge_outlined,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+                                  ],
+                                  if (_step == 1) ...[
+                                    // Unidade Hospitalar / Hospital (Dropdown)
+                                    unitsAsync.when(
+                                      loading: () => const Center(
+                                        child: Padding(
+                                          padding: EdgeInsets.all(8.0),
+                                          child: CircularProgressIndicator(
+                                              strokeWidth: 2),
+                                        ),
+                                      ),
+                                      error: (_, __) => _buildUnitDropdown(
+                                          _fallbackUnits, isLoading),
+                                      data: (units) => _buildUnitDropdown(
+                                        units.isNotEmpty
+                                            ? units
+                                            : _fallbackUnits,
+                                        isLoading,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 12),
+
+                                    // Setor de Lotação (Dropdown filtrado dinamicamente pela Unidade)
+                                    sectorsAsync.when(
+                                      loading: () => const Center(
+                                        child: Padding(
+                                          padding: EdgeInsets.all(8.0),
+                                          child: CircularProgressIndicator(
+                                              strokeWidth: 2),
+                                        ),
+                                      ),
+                                      error: (_, __) => _buildSectorDropdown(
+                                        _fallbackSectors
+                                            .where((s) =>
+                                                s.unitId == null ||
+                                                _selectedUnitId == null ||
+                                                s.unitId == _selectedUnitId)
+                                            .toList(),
+                                        isLoading,
+                                      ),
+                                      data: (sectors) {
+                                        final allList = sectors.isNotEmpty
+                                            ? sectors
+                                            : _fallbackSectors;
+                                        final filtered = allList
+                                            .where((s) =>
+                                                s.unitId == null ||
+                                                _selectedUnitId == null ||
+                                                s.unitId == _selectedUnitId)
+                                            .toList();
+                                        return _buildSectorDropdown(
+                                            filtered, isLoading);
+                                      },
+                                    ),
+                                    const SizedBox(height: 12),
+
+                                    // Cargo / Função Padronizado (SUS CBO)
+                                    _buildRoleSelector(
+                                        isLoading || _selectedSectorId == null),
+
+                                    if (_isCustomRole) ...[
+                                      const SizedBox(height: 12),
+                                      TextFormField(
+                                        controller: _cargoCustomCtrl,
+                                        focusNode: _cargoCustomFocus,
+                                        textInputAction: TextInputAction.next,
+                                        enabled: !isLoading,
+                                        style: const TextStyle(
+                                            color: _textPrimary, fontSize: 14),
+                                        decoration: _inputDecoration(
+                                          label:
+                                              'Especifique o seu Cargo / Função *',
+                                          hint:
+                                              'Digite seu cargo conforme contratação',
+                                          icon: Icons.edit_outlined,
+                                        ),
+                                        validator: (v) {
+                                          if (_isCustomRole &&
+                                              (v == null ||
+                                                  v.trim().length < 2)) {
+                                            return 'Especifique o cargo.';
+                                          }
+                                          return null;
+                                        },
+                                      ),
+                                    ],
+                                    const SizedBox(height: 16),
+                                  ],
+                                  if (_step == 2) ...[
+                                    Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                          color: const Color(0xFFEAF3FB),
+                                          borderRadius:
+                                              BorderRadius.circular(8)),
+                                      child: Text(
+                                        "${_nomeCtrl.text.trim()}\n${_selectedRole == kOtherRoleOption ? _cargoCustomCtrl.text.trim() : (_selectedRole ?? "")} · Nível $_selectedRegistrationLevel",
+                                        style: const TextStyle(
+                                            color: _textPrimary, height: 1.5),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    // ─── Seção Horário de Trabalho / Plantão (Informativo) ────────────
+                                    Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF1F5F9),
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(color: _borderColor),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          const Row(
+                                            children: [
+                                              Icon(Icons.schedule_rounded,
+                                                  size: 18,
+                                                  color: _primaryBlue),
+                                              SizedBox(width: 8),
+                                              Expanded(
+                                                child: Text(
+                                                  'Horário Habitual de Turno / Plantão (Informativo)',
+                                                  style: TextStyle(
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: _textPrimary,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
                                           ),
+                                          const SizedBox(height: 4),
+                                          const Text(
+                                            'Informe seu horário habitual para constar no seu perfil institucional e orientar sua equipe.',
+                                            style: TextStyle(
+                                                fontSize: 11.5,
+                                                color: _textSecondary),
+                                          ),
+                                          const SizedBox(height: 10),
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: _buildTimePickerField(
+                                                  label: 'Entrada',
+                                                  time: _jornadaInicio,
+                                                  onSelected: (t) => setState(
+                                                      () => _jornadaInicio = t),
+                                                  enabled: !isLoading,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 10),
+                                              Expanded(
+                                                child: _buildTimePickerField(
+                                                  label: 'Saída',
+                                                  time: _jornadaFim,
+                                                  onSelected: (t) => setState(
+                                                      () => _jornadaFim = t),
+                                                  enabled: !isLoading,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 14),
+
+                                    // Senha
+                                    TextFormField(
+                                      controller: _passCtrl,
+                                      focusNode: _passFocus,
+                                      obscureText: _obscurePass,
+                                      textInputAction: TextInputAction.next,
+                                      enabled: !isLoading,
+                                      style: const TextStyle(
+                                          color: _textPrimary, fontSize: 14),
+                                      onFieldSubmitted: (_) =>
+                                          FocusScope.of(context)
+                                              .requestFocus(_confirmPassFocus),
+                                      decoration: _inputDecoration(
+                                        label: 'Senha (mínimo 8 caracteres) *',
+                                        hint: 'Crie uma senha segura',
+                                        icon: Icons.lock_outline_rounded,
+                                        suffix: IconButton(
+                                          icon: Icon(
+                                            _obscurePass
+                                                ? Icons.visibility_outlined
+                                                : Icons.visibility_off_outlined,
+                                            size: 20,
+                                            color: _textSecondary,
+                                          ),
+                                          onPressed: () => setState(() =>
+                                              _obscurePass = !_obscurePass),
                                         ),
                                       ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                  const Text(
-                                    'Informe seu horário habitual para constar no seu perfil institucional e orientar sua equipe.',
-                                    style: TextStyle(fontSize: 11.5, color: _textSecondary),
-                                  ),
-                                  const SizedBox(height: 10),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: _buildTimePickerField(
-                                          label: 'Entrada',
-                                          time: _jornadaInicio,
-                                          onSelected: (t) => setState(() => _jornadaInicio = t),
-                                          enabled: !isLoading,
+                                      validator: (v) {
+                                        if (v == null || v.length < 8) {
+                                          return 'A senha deve ter ao menos 8 caracteres.';
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                    const SizedBox(height: 12),
+
+                                    // Confirmar Senha
+                                    TextFormField(
+                                      controller: _confirmPassCtrl,
+                                      focusNode: _confirmPassFocus,
+                                      obscureText: _obscureConfirm,
+                                      textInputAction: TextInputAction.done,
+                                      enabled: !isLoading,
+                                      style: const TextStyle(
+                                          color: _textPrimary, fontSize: 14),
+                                      onFieldSubmitted: (_) => _submit(),
+                                      decoration: _inputDecoration(
+                                        label: 'Confirmar Senha *',
+                                        hint: 'Repita sua senha',
+                                        icon: Icons.lock_clock_outlined,
+                                        suffix: IconButton(
+                                          icon: Icon(
+                                            _obscureConfirm
+                                                ? Icons.visibility_outlined
+                                                : Icons.visibility_off_outlined,
+                                            size: 20,
+                                            color: _textSecondary,
+                                          ),
+                                          onPressed: () => setState(() =>
+                                              _obscureConfirm =
+                                                  !_obscureConfirm),
                                         ),
                                       ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: _buildTimePickerField(
-                                          label: 'Saída',
-                                          time: _jornadaFim,
-                                          onSelected: (t) => setState(() => _jornadaFim = t),
-                                          enabled: !isLoading,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                      validator: (v) {
+                                        if (v == null || v.isEmpty) {
+                                          return 'Confirme sua senha.';
+                                        }
+                                        if (v != _passCtrl.text) {
+                                          return 'As senhas não coincidem.';
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                    const SizedBox(height: 20),
+                                  ],
                                 ],
                               ),
                             ),
-                            const SizedBox(height: 14),
-
-                            // Senha
-                            TextFormField(
-                              controller: _passCtrl,
-                              focusNode: _passFocus,
-                              obscureText: _obscurePass,
-                              textInputAction: TextInputAction.next,
-                              enabled: !isLoading,
-                              style: const TextStyle(color: _textPrimary, fontSize: 14),
-                              onFieldSubmitted: (_) =>
-                                  FocusScope.of(context).requestFocus(_confirmPassFocus),
-                              decoration: _inputDecoration(
-                                label: 'Senha (mínimo 8 caracteres) *',
-                                hint: 'Crie uma senha segura',
-                                icon: Icons.lock_outline_rounded,
-                                suffix: IconButton(
-                                  icon: Icon(
-                                    _obscurePass
-                                        ? Icons.visibility_outlined
-                                        : Icons.visibility_off_outlined,
-                                    size: 20,
-                                    color: _textSecondary,
-                                  ),
-                                  onPressed: () =>
-                                      setState(() => _obscurePass = !_obscurePass),
-                                ),
+                            if (_step > 0)
+                              TextButton.icon(
+                                onPressed: isLoading
+                                    ? null
+                                    : () => setState(() => _step--),
+                                icon: const Icon(Icons.arrow_back_rounded),
+                                label: const Text("Voltar à etapa anterior"),
+                                style: TextButton.styleFrom(
+                                    foregroundColor: _primaryBlue),
                               ),
-                              validator: (v) {
-                                if (v == null || v.length < 8) {
-                                  return 'A senha deve ter ao menos 8 caracteres.';
-                                }
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: 12),
-
-                            // Confirmar Senha
-                            TextFormField(
-                              controller: _confirmPassCtrl,
-                              focusNode: _confirmPassFocus,
-                              obscureText: _obscureConfirm,
-                              textInputAction: TextInputAction.done,
-                              enabled: !isLoading,
-                              style: const TextStyle(color: _textPrimary, fontSize: 14),
-                              onFieldSubmitted: (_) => _submit(),
-                              decoration: _inputDecoration(
-                                label: 'Confirmar Senha *',
-                                hint: 'Repita sua senha',
-                                icon: Icons.lock_clock_outlined,
-                                suffix: IconButton(
-                                  icon: Icon(
-                                    _obscureConfirm
-                                        ? Icons.visibility_outlined
-                                        : Icons.visibility_off_outlined,
-                                    size: 20,
-                                    color: _textSecondary,
-                                  ),
-                                  onPressed: () =>
-                                      setState(() => _obscureConfirm = !_obscureConfirm),
-                                ),
-                              ),
-                              validator: (v) {
-                                if (v == null || v.isEmpty) {
-                                  return 'Confirme sua senha.';
-                                }
-                                if (v != _passCtrl.text) {
-                                  return 'As senhas não coincidem.';
-                                }
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: 20),
-
                             // Botão Enviar
                             SizedBox(
                               height: 48,
                               child: ElevatedButton(
-                                onPressed: isLoading ? null : _submit,
+                                onPressed: isLoading
+                                    ? null
+                                    : (_step < 2 ? _continue : _submit),
                                 style: ElevatedButton.styleFrom(
                                   backgroundColor: _primaryBlue,
                                   foregroundColor: Colors.white,
@@ -614,13 +743,16 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                                         height: 22,
                                         child: CircularProgressIndicator(
                                           strokeWidth: 2.2,
-                                          valueColor: AlwaysStoppedAnimation<Color>(
-                                              Colors.white),
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                  Colors.white),
                                         ),
                                       )
-                                    : const Text(
-                                        'SOLICITAR CADASTRO',
-                                        style: TextStyle(
+                                    : Text(
+                                        _step < 2
+                                            ? 'CONTINUAR'
+                                            : 'SOLICITAR CADASTRO',
+                                        style: const TextStyle(
                                           fontSize: 14,
                                           fontWeight: FontWeight.w700,
                                           letterSpacing: 0.8,
@@ -634,9 +766,12 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                             // Voltar ao Login
                             Center(
                               child: TextButton.icon(
-                                onPressed: isLoading ? null : () => context.go(AppRoutes.login),
+                                onPressed: isLoading
+                                    ? null
+                                    : () => context.go(AppRoutes.login),
                                 icon: const Icon(Icons.arrow_back, size: 16),
-                                label: const Text('Já possui conta? Faça login'),
+                                label:
+                                    const Text('Já possui conta? Faça login'),
                                 style: TextButton.styleFrom(
                                   foregroundColor: _primaryBlue,
                                   textStyle: const TextStyle(
@@ -674,17 +809,13 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   }
 
   Widget _buildUnitDropdown(List<HospitalUnitEntity> units, bool isLoading) {
-    final currentUnitId = _selectedUnitId ?? (units.isNotEmpty ? units.first.id : null);
-    if (_selectedUnitId == null && currentUnitId != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _selectedUnitId == null) {
-          setState(() => _selectedUnitId = currentUnitId);
-        }
-      });
-    }
-
     return DropdownButtonFormField<String>(
-      value: _selectedUnitId,
+      key: ValueKey(_selectedUnitId),
+      initialValue: _selectedUnitId,
+      hint: const Text('Selecione o hospital / complexo',
+          style: TextStyle(color: _textSecondary)),
+      disabledHint: const Text('Selecione o hospital / complexo',
+          style: TextStyle(color: _textSecondary)),
       isExpanded: true,
       dropdownColor: Colors.white,
       style: const TextStyle(
@@ -698,6 +829,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
         hint: 'Selecione o hospital / complexo',
         icon: Icons.domain_rounded,
       ),
+      validator: (value) =>
+          value == null ? 'Selecione seu hospital / complexo.' : null,
       items: units.map((u) {
         return DropdownMenuItem<String>(
           value: u.id,
@@ -729,7 +862,12 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     final effectiveSectorId = isValidSelection ? _selectedSectorId : null;
 
     return DropdownButtonFormField<String>(
-      value: effectiveSectorId,
+      key: ValueKey("sector-$_selectedUnitId-$effectiveSectorId"),
+      initialValue: effectiveSectorId,
+      hint: const Text('Selecione a unidade / setor',
+          style: TextStyle(color: _textSecondary)),
+      disabledHint: const Text('Selecione primeiro o hospital',
+          style: TextStyle(color: _textSecondary)),
       isExpanded: true,
       dropdownColor: Colors.white,
       style: const TextStyle(
@@ -740,7 +878,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       icon: const Icon(Icons.arrow_drop_down, color: _primaryBlue),
       decoration: _inputDecoration(
         label: 'Unidade Interna / Setor de Lotação *',
-        hint: sectors.isEmpty ? 'Nenhum setor disponível para este hospital' : 'Selecione a unidade / setor',
+        hint: sectors.isEmpty
+            ? 'Nenhum setor disponível para este hospital'
+            : 'Selecione a unidade / setor',
         icon: Icons.local_hospital_outlined,
       ),
       items: sectors.map((s) {
@@ -757,7 +897,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
           ),
         );
       }).toList(),
-      onChanged: isLoading || sectors.isEmpty
+      onChanged: isLoading || _selectedUnitId == null || sectors.isEmpty
           ? null
           : (val) {
               setState(() => _selectedSectorId = val);
@@ -777,6 +917,14 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       children: [
         DropdownButtonFormField<int>(
           initialValue: _selectedRegistrationLevel,
+          hint: const Text('Selecione o grupo do seu cargo',
+              style: TextStyle(color: _textSecondary)),
+          disabledHint: const Text('Selecione primeiro a unidade / setor',
+              style: TextStyle(color: _textSecondary)),
+          dropdownColor: Colors.white,
+          style: const TextStyle(color: _textPrimary, fontSize: 13),
+          iconEnabledColor: _primaryBlue,
+          iconDisabledColor: _textSecondary,
           isExpanded: true,
           decoration: _inputDecoration(
             label: 'Grupo de cargos / Nível *',
@@ -786,8 +934,9 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
           items: kRegistrationLevelLabels.entries
               .map((entry) => DropdownMenuItem(
                   value: entry.key,
-                  child:
-                      Text(entry.value, style: const TextStyle(fontSize: 13))))
+                  child: Text(entry.value,
+                      style: const TextStyle(color: _textPrimary, fontSize: 13),
+                      overflow: TextOverflow.ellipsis)))
               .toList(),
           onChanged: isLoading
               ? null
@@ -804,6 +953,14 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
         DropdownButtonFormField<String>(
           key: ValueKey(_selectedRegistrationLevel),
           initialValue: _selectedRole,
+          hint: const Text('Selecione seu cargo',
+              style: TextStyle(color: _textSecondary)),
+          disabledHint: const Text('Selecione primeiro o nível',
+              style: TextStyle(color: _textSecondary)),
+          dropdownColor: Colors.white,
+          style: const TextStyle(color: _textPrimary, fontSize: 13),
+          iconEnabledColor: _primaryBlue,
+          iconDisabledColor: _textSecondary,
           isExpanded: true,
           decoration: _inputDecoration(
             label: 'Cargo / Função na Unidade (SUS) *',
@@ -817,7 +974,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
               .map((role) => DropdownMenuItem(
                   value: role,
                   child: Text(role,
-                      style: const TextStyle(fontSize: 13),
+                      style: const TextStyle(color: _textPrimary, fontSize: 13),
                       overflow: TextOverflow.ellipsis)))
               .toList(),
           onChanged: isLoading || _selectedRegistrationLevel == null
@@ -841,7 +998,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
     return InkWell(
       onTap: enabled
           ? () async {
-              final parts = time.split(':').map((e) => int.tryParse(e) ?? 0).toList();
+              final parts =
+                  time.split(':').map((e) => int.tryParse(e) ?? 0).toList();
               final initial = TimeOfDay(
                 hour: parts.isNotEmpty ? parts[0] : 7,
                 minute: parts.length > 1 ? parts[1] : 0,
@@ -850,7 +1008,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                 context: context,
                 initialTime: initial,
                 builder: (context, child) => MediaQuery(
-                  data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+                  data: MediaQuery.of(context)
+                      .copyWith(alwaysUse24HourFormat: true),
                   child: child!,
                 ),
               );
@@ -890,7 +1049,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
                 ),
               ],
             ),
-            const Icon(Icons.access_time_rounded, size: 18, color: _primaryBlue),
+            const Icon(Icons.access_time_rounded,
+                size: 18, color: _primaryBlue),
           ],
         ),
       ),
@@ -907,7 +1067,8 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
       labelText: label,
       hintText: hint,
       labelStyle: const TextStyle(color: _textSecondary, fontSize: 13.5),
-      hintStyle: TextStyle(color: _textSecondary.withValues(alpha: 0.6), fontSize: 13.5),
+      hintStyle: TextStyle(
+          color: _textSecondary.withValues(alpha: 0.6), fontSize: 13.5),
       prefixIcon: Icon(icon, size: 20, color: _textSecondary),
       suffixIcon: suffix,
       filled: true,
