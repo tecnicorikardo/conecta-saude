@@ -121,16 +121,19 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
   Widget build(BuildContext context) {
     final state = ref.watch(channelMessagesProvider(widget.channelId));
     final perms = ref.watch(permissionsProvider);
-    final canPublish = perms.canCreateChannel; // Direção, Coordenação ou Supervisão
+    final canPublish =
+        perms.canCreateChannel; // Direção, Coordenação ou Supervisão
     final tokens = context.appTokens;
 
     final channelName = widget.channel?.nome ?? 'Canal Oficial';
     final sectorName = widget.channel?.setorNome ??
-        (widget.channel?.isEmergencia == true ? 'Emergência Geral' : 'Institucional');
+        (widget.channel?.isEmergencia == true
+            ? 'Emergência Geral'
+            : 'Institucional');
 
     return Scaffold(
       resizeToAvoidBottomInset: true,
-      backgroundColor: AppColors.background,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
         titleSpacing: 0,
         title: Row(
@@ -190,8 +193,12 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
               icon: const Icon(Icons.delete_outline),
               onPressed: () async {
                 final deleted = await showDeleteContentDialog(
-                  context: context, kind: 'canal', title: channelName,
-                  onDelete: () => ref.read(channelsProvider.notifier).deleteChannel(widget.channelId),
+                  context: context,
+                  kind: 'canal',
+                  title: channelName,
+                  onDelete: () => ref
+                      .read(channelsProvider.notifier)
+                      .deleteChannel(widget.channelId),
                 );
                 if (deleted && context.mounted) context.go('/channels');
               },
@@ -217,7 +224,8 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
                   decoration: tokens.isLgbtq
                       ? const BoxDecoration(
                           image: DecorationImage(
-                            image: AssetImage('assets/images/background_lgbtq.jpg'),
+                            image: AssetImage(
+                                'assets/images/background_lgbtq.jpg'),
                             fit: BoxFit.cover,
                             opacity: 0.20,
                           ),
@@ -229,7 +237,8 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
                           ? _buildEmptyState()
                           : ListView.builder(
                               controller: _scrollController,
-                              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                              keyboardDismissBehavior:
+                                  ScrollViewKeyboardDismissBehavior.onDrag,
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 16,
                                 vertical: 16,
@@ -268,32 +277,32 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
           children: [
             Container(
               padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(
-                color: AppColors.surfaceVariant,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.campaign_outlined,
                 size: 40,
-                color: AppColors.neutral500,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'Nenhum comunicado no canal',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
-                color: AppColors.neutral800,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
             const SizedBox(height: 6),
-            const Text(
+            Text(
               'Avisos e comunicados publicados pela Coordenação e Direção aparecerão aqui.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 13,
-                color: AppColors.neutral600,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
           ],
@@ -328,7 +337,7 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
       margin: const EdgeInsets.only(bottom: 16),
       decoration: tokens.cardDecoration(
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.outlineVariant),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -368,10 +377,10 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
                           Flexible(
                             child: Text(
                               msg.remetenteNome,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 13.5,
                                 fontWeight: FontWeight.w700,
-                                color: AppColors.neutral900,
+                                color: Theme.of(context).colorScheme.onSurface,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -401,9 +410,9 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
                       const SizedBox(height: 2),
                       Text(
                         timeStr,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
-                          color: AppColors.neutral500,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -419,10 +428,10 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
             child: SelectableText(
               msg.texto,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 height: 1.45,
-                color: AppColors.neutral900,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ),
@@ -432,7 +441,10 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
-              color: AppColors.surfaceVariant.withValues(alpha: 0.5),
+              color: Theme.of(context)
+                  .colorScheme
+                  .surfaceContainerHighest
+                  .withValues(alpha: 0.5),
               borderRadius: const BorderRadius.vertical(
                 bottom: Radius.circular(14),
               ),
@@ -452,25 +464,25 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.visibility_rounded,
                             size: 15,
-                            color: AppColors.primary,
+                            color: Theme.of(context).colorScheme.primary,
                           ),
                           const SizedBox(width: 6),
                           Text(
                             '${msg.readsCount} visualizaç${msg.readsCount == 1 ? 'ão' : 'ões'}',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
-                              color: AppColors.primary,
+                              color: Theme.of(context).colorScheme.primary,
                             ),
                           ),
                           const SizedBox(width: 4),
-                          const Icon(
+                          Icon(
                             Icons.info_outline_rounded,
                             size: 13,
-                            color: AppColors.primary,
+                            color: Theme.of(context).colorScheme.primary,
                           ),
                         ],
                       ),
@@ -478,34 +490,34 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
                   ),
                 ] else ...[
                   // Indicador de conformidade para o funcionário
-                  const Icon(
+                  Icon(
                     Icons.check_circle_rounded,
                     size: 14,
-                    color: AppColors.secondary,
+                    color: Theme.of(context).colorScheme.secondary,
                   ),
                   const SizedBox(width: 5),
-                  const Text(
+                  Text(
                     'Leitura registrada',
                     style: TextStyle(
                       fontSize: 11.5,
                       fontWeight: FontWeight.w600,
-                      color: AppColors.secondary,
+                      color: Theme.of(context).colorScheme.secondary,
                     ),
                   ),
                 ],
                 const Spacer(),
-                const Icon(
+                Icon(
                   Icons.shield_outlined,
                   size: 13,
-                  color: AppColors.neutral500,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
                 const SizedBox(width: 4),
-                const Text(
+                Text(
                   'Oficial',
                   style: TextStyle(
                     fontSize: 10.5,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.neutral500,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ],
@@ -520,7 +532,7 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surface,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -538,10 +550,10 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
           children: [
             Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.campaign_rounded,
                   size: 14,
-                  color: AppColors.primary,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
                 const SizedBox(width: 5),
                 Text(
@@ -549,7 +561,10 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.primary.withValues(alpha: 0.9),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .primary
+                        .withValues(alpha: 0.9),
                   ),
                 ),
               ],
@@ -575,11 +590,18 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
                       maxLines: 4,
                       minLines: 1,
                       keyboardType: TextInputType.multiline,
+                      style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface),
                       decoration: InputDecoration(
                         hintText: 'Escreva um aviso ou comunicado...',
-                        hintStyle: const TextStyle(fontSize: 13.5),
+                        hintStyle: TextStyle(
+                            fontSize: 13.5,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant),
                         filled: true,
-                        fillColor: AppColors.surfaceVariant,
+                        fillColor: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerHighest,
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 14,
                           vertical: 10,
@@ -605,12 +627,12 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
                       ),
                     ),
                     child: isSending
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 18,
                             height: 18,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: Colors.white,
+                              color: Theme.of(context).colorScheme.onPrimary,
                             ),
                           )
                         : const Icon(Icons.send_rounded, size: 20),
@@ -629,25 +651,25 @@ class _ChannelDetailPageState extends ConsumerState<ChannelDetailPage> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: AppColors.primaryContainer.withValues(alpha: 0.5),
-        border: const Border(
-          top: BorderSide(color: AppColors.outlineVariant),
+        border: Border(
+          top: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
         ),
       ),
-      child: const Row(
+      child: Row(
         children: [
           Icon(
             Icons.lock_outline_rounded,
             size: 20,
-            color: AppColors.primary,
+            color: Theme.of(context).colorScheme.primary,
           ),
-          SizedBox(width: 10),
+          const SizedBox(width: 10),
           Expanded(
             child: Text(
               'Apenas Coordenação e Direção podem publicar neste canal. Suas visualizações são registradas para conformidade institucional.',
               style: TextStyle(
                 fontSize: 11.5,
                 fontWeight: FontWeight.w500,
-                color: AppColors.neutral800,
+                color: Theme.of(context).colorScheme.onSurface,
                 height: 1.3,
               ),
             ),
@@ -692,9 +714,9 @@ class _ReadersBottomSheetState extends ConsumerState<_ReadersBottomSheet> {
       maxChildSize: 0.9,
       builder: (context, scrollController) {
         return Container(
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           ),
           child: Column(
             children: [
@@ -715,18 +737,18 @@ class _ReadersBottomSheetState extends ConsumerState<_ReadersBottomSheet> {
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.visibility_rounded,
-                      color: AppColors.primary,
+                      color: Theme.of(context).colorScheme.primary,
                       size: 22,
                     ),
                     const SizedBox(width: 10),
-                    const Text(
+                    Text(
                       'Quem visualizou este aviso',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.neutral900,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                     const Spacer(),
@@ -764,9 +786,11 @@ class _ReadersBottomSheetState extends ConsumerState<_ReadersBottomSheet> {
                               Text(
                                 'Erro ao carregar visualizações:\n${snapshot.error}',
                                 textAlign: TextAlign.center,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 12.5,
-                                  color: AppColors.neutral700,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
                                 ),
                               ),
                             ],
@@ -785,9 +809,13 @@ class _ReadersBottomSheetState extends ConsumerState<_ReadersBottomSheet> {
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: AppColors.primaryContainer.withValues(alpha: 0.5),
+                            color: AppColors.primaryContainer
+                                .withValues(alpha: 0.5),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppColors.outlineVariant),
+                            border: Border.all(
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .outlineVariant),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -798,18 +826,20 @@ class _ReadersBottomSheetState extends ConsumerState<_ReadersBottomSheet> {
                                 children: [
                                   Text(
                                     '${stats.totalReads} de ${stats.totalMembers} membros leram',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 13.5,
                                       fontWeight: FontWeight.w700,
-                                      color: AppColors.primary,
+                                      color:
+                                          Theme.of(context).colorScheme.primary,
                                     ),
                                   ),
                                   Text(
                                     '${stats.percentual}%',
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w800,
-                                      color: AppColors.primary,
+                                      color:
+                                          Theme.of(context).colorScheme.primary,
                                     ),
                                   ),
                                 ],
@@ -823,7 +853,8 @@ class _ReadersBottomSheetState extends ConsumerState<_ReadersBottomSheet> {
                                       : 1.0,
                                   minHeight: 8,
                                   backgroundColor: AppColors.surfaceVariant,
-                                  valueColor: const AlwaysStoppedAnimation<Color>(
+                                  valueColor:
+                                      const AlwaysStoppedAnimation<Color>(
                                     AppColors.primary,
                                   ),
                                 ),
@@ -833,26 +864,29 @@ class _ReadersBottomSheetState extends ConsumerState<_ReadersBottomSheet> {
                         ),
                         const SizedBox(height: 18),
 
-                        const Text(
+                        Text(
                           'COLABORADORES QUE LERAM',
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w800,
                             letterSpacing: 0.5,
-                            color: AppColors.neutral600,
+                            color:
+                                Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                         ),
                         const SizedBox(height: 8),
 
                         if (stats.readers.isEmpty)
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 24),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 24),
                             child: Center(
                               child: Text(
                                 'Nenhum membro visualizou ainda.',
                                 style: TextStyle(
                                   fontSize: 13,
-                                  color: AppColors.neutral500,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant,
                                 ),
                               ),
                             ),
@@ -867,10 +901,12 @@ class _ReadersBottomSheetState extends ConsumerState<_ReadersBottomSheet> {
                               margin: const EdgeInsets.only(bottom: 8),
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: Theme.of(context).colorScheme.surface,
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
-                                  color: AppColors.outlineVariant,
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .outlineVariant,
                                 ),
                               ),
                               child: Row(
@@ -886,9 +922,11 @@ class _ReadersBottomSheetState extends ConsumerState<_ReadersBottomSheet> {
                                             reader.nome.isNotEmpty
                                                 ? reader.nome[0].toUpperCase()
                                                 : 'U',
-                                            style: const TextStyle(
+                                            style: TextStyle(
                                               fontWeight: FontWeight.w700,
-                                              color: AppColors.primary,
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .primary,
                                               fontSize: 13,
                                             ),
                                           )
@@ -902,42 +940,49 @@ class _ReadersBottomSheetState extends ConsumerState<_ReadersBottomSheet> {
                                       children: [
                                         Text(
                                           reader.nome,
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 13.5,
                                             fontWeight: FontWeight.w700,
-                                            color: AppColors.neutral900,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurface,
                                           ),
                                         ),
                                         const SizedBox(height: 2),
                                         Text(
                                           '${reader.cargo} • ${reader.setorNome}',
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 11.5,
-                                            color: AppColors.neutral600,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurfaceVariant,
                                           ),
                                         ),
                                       ],
                                     ),
                                   ),
                                   Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.end,
+                                    crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
-                                      const Row(
+                                      Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           Icon(
                                             Icons.done_all_rounded,
                                             size: 13,
-                                            color: AppColors.secondary,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .secondary,
                                           ),
-                                          SizedBox(width: 3),
+                                          const SizedBox(width: 3),
                                           Text(
                                             'Lido',
                                             style: TextStyle(
                                               fontSize: 10.5,
                                               fontWeight: FontWeight.w700,
-                                              color: AppColors.secondary,
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .secondary,
                                             ),
                                           ),
                                         ],
@@ -945,9 +990,11 @@ class _ReadersBottomSheetState extends ConsumerState<_ReadersBottomSheet> {
                                       const SizedBox(height: 2),
                                       Text(
                                         readTimeStr,
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 10,
-                                          color: AppColors.neutral500,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant,
                                         ),
                                       ),
                                     ],

@@ -256,3 +256,11 @@ Os demais achados do `report.md` permanecem como itens de revisão. As vulnerabi
 
 - Publicação da alternativa `4d332f6` confirmada no Firebase Hosting. HTML e JavaScript responderam HTTP 200 e coincidiram com o build local. SHA-256 HTML: `361be12b1a81deffcd727213fccaa5456fe0d9fdd7a5d44f033ae4c3ed554ee9`; JavaScript: `a8ce5001dc4a3fddf9443a20cee78c66dad8499b47dae60c7f4a273fdc2defce`. Backend inalterado.
 - Estado da alternativa após publicação: estrutura e validação verificadas; aguardando confirmação do responsável sobre preenchimento com a credencial salva no Chrome.
+
+## 15. Contraste de mensagens e digitação em canais
+
+- Arquivo: `app/lib/features/channels/presentation/pages/channel_detail_page.dart`.
+- Nome do autor, texto da mensagem, data, rodapé de visualizações e indicadores usam cores de texto do tema. Fundo da página, rodapés, barra de publicação, campo de digitação e modal de leitores usam superfícies do tema. Texto digitado e dica possuem cor explícita compatível com esse fundo.
+- Ajuste também aplicado ao aviso de somente leitura e à lista de leitores. Crachás de cargo preservam sua combinação original de fundo e texto.
+- Não houve alteração em envio, permissões, leitura, atualização periódica ou dados. Diagnóstico: verificar as cores `onSurface`, `onSurfaceVariant` e `surfaceContainerHighest` no tema ativo.
+- Correção solicitada a partir da captura do modo escuro; publicação somente web. Resultado de análise/build/deploy registrado após conclusão.
