@@ -28,7 +28,15 @@ export async function listUsers(req: Request, res: Response): Promise<void> {
 
   // Restrição de setor para não-Direção
   if (actor.hierarquiaNivel !== HierarquiaNivel.DIRECAO) {
-    where.setorId = actor.setorId;
+    if (query.contactable === 'true') {
+      // A seleção de contatos segue as mesmas regras da criação de conversas.
+      where.AND = [{ OR: [
+        { setorId: actor.setorId },
+        { hierarquiaNivel: HierarquiaNivel.DIRECAO },
+      ] }];
+    } else {
+      where.setorId = actor.setorId;
+    }
   } else if (query.setorId) {
     where.setorId = query.setorId;
   }

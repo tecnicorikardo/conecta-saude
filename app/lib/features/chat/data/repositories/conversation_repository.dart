@@ -225,6 +225,7 @@ class ConversationRepository {
         if (setorId != null) 'setorId': setorId,
         if (cargo != null && cargo.isNotEmpty) 'cargo': cargo,
         'excludeSelf': 'true',
+        'contactable': 'true',
         'ativo': 'true',
         'limit': 100,
       });

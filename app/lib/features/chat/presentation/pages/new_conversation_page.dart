@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/auth/permissions_provider.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../data/models/conversation_model.dart';
@@ -18,8 +19,7 @@ class NewConversationPage extends ConsumerStatefulWidget {
       _NewConversationPageState();
 }
 
-class _NewConversationPageState
-    extends ConsumerState<NewConversationPage>
+class _NewConversationPageState extends ConsumerState<NewConversationPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabs;
 
@@ -87,12 +87,12 @@ class _IndividualTabState extends ConsumerState<_IndividualTab> {
     // 1. Otimização Instantânea: Se a conversa individual já existe localmente, abre na hora (0ms delay)
     final allConvs = ref.read(conversationsProvider).valueOrNull ?? [];
     final existing = allConvs.cast<ConversationEntity?>().firstWhere(
-      (c) =>
-          c != null &&
-          c.tipo == 'individual' &&
-          c.participantes.any((p) => p.id == user.id),
-      orElse: () => null,
-    );
+          (c) =>
+              c != null &&
+              c.tipo == 'individual' &&
+              c.participantes.any((p) => p.id == user.id),
+          orElse: () => null,
+        );
 
     if (existing != null) {
       context.pop();
@@ -154,84 +154,87 @@ class _IndividualTabState extends ConsumerState<_IndividualTab> {
 
         // ─── Lista de usuários e Filtros ───────────────────────────────
         ref.watch(usersSearchProvider).when(
-          loading: () => const Expanded(
-            child: Center(child: CircularProgressIndicator()),
-          ),
-          error: (e, _) => Expanded(
-            child: _ErrorView(
-              message: e.toString(),
-              onRetry: () => ref.read(usersSearchProvider.notifier).search(''),
-            ),
-          ),
-          data: (rawUsers) {
-            final myId = ref.watch(currentUserIdProvider);
-            final users = rawUsers.where((u) => u.id != myId).toList();
-            final cargoOptions = _getCargoOptionsForUsers(users);
-            final filteredUsers = _filterUsers(
-              users,
-              cargoOptions,
-              _statusFilter,
-              _cargoFilterId,
-            );
-
-            return Expanded(
-              child: Column(
-                children: [
-                  _UserFilterBar(
-                    statusFilter: _statusFilter,
-                    onStatusFilterChanged: (s) =>
-                        setState(() => _statusFilter = s),
-                    selectedCargoId: _cargoFilterId,
-                    onCargoFilterChanged: (c) =>
-                        setState(() => _cargoFilterId = c),
-                    users: users,
-                    cargoOptions: cargoOptions,
-                  ),
-                  Expanded(
-                    child: users.isEmpty
-                        ? const _EmptyView(
-                            message: 'Nenhum funcionário encontrado.')
-                        : filteredUsers.isEmpty
-                            ? _FilterEmptyView(
-                                onClear: () => setState(() {
-                                  _statusFilter = 'all';
-                                  _cargoFilterId = 'all';
-                                }),
-                              )
-                            : ListView.separated(
-                                keyboardDismissBehavior:
-                                    ScrollViewKeyboardDismissBehavior.onDrag,
-                                itemCount: filteredUsers.length,
-                                separatorBuilder: (_, __) =>
-                                    const Divider(height: 1, indent: 70),
-                                itemBuilder: (context, i) {
-                                  final user = filteredUsers[i];
-                                  final isThisUserLoading =
-                                      _loadingUserId == user.id;
-                                  return _UserTile(
-                                    user: user,
-                                    trailing: isThisUserLoading
-                                        ? const SizedBox(
-                                            width: 20,
-                                            height: 20,
-                                            child: CircularProgressIndicator(
-                                                strokeWidth: 2),
-                                          )
-                                        : const Icon(Icons.chevron_right,
-                                            color: AppColors.neutral400),
-                                    onTap: _loadingUserId != null
-                                        ? null
-                                        : () => _startConversation(
-                                            context, user),
-                                  );
-                                },
-                              ),
-                  ),
-                ],
+              loading: () => const Expanded(
+                child: Center(child: CircularProgressIndicator()),
               ),
-            );
-          },
-        ),
+              error: (e, _) => Expanded(
+                child: _ErrorView(
+                  message: e.toString(),
+                  onRetry: () =>
+                      ref.read(usersSearchProvider.notifier).search(''),
+                ),
+              ),
+              data: (rawUsers) {
+                final myId = ref.watch(currentUserIdProvider);
+                final users = rawUsers.where((u) => u.id != myId).toList();
+                final cargoOptions = _getCargoOptionsForUsers(users);
+                final filteredUsers = _filterUsers(
+                  users,
+                  cargoOptions,
+                  _statusFilter,
+                  _cargoFilterId,
+                );
+
+                return Expanded(
+                  child: Column(
+                    children: [
+                      _UserFilterBar(
+                        statusFilter: _statusFilter,
+                        onStatusFilterChanged: (s) =>
+                            setState(() => _statusFilter = s),
+                        selectedCargoId: _cargoFilterId,
+                        onCargoFilterChanged: (c) =>
+                            setState(() => _cargoFilterId = c),
+                        users: users,
+                        cargoOptions: cargoOptions,
+                      ),
+                      Expanded(
+                        child: users.isEmpty
+                            ? const _EmptyView(
+                                message: 'Nenhum funcionário encontrado.')
+                            : filteredUsers.isEmpty
+                                ? _FilterEmptyView(
+                                    onClear: () => setState(() {
+                                      _statusFilter = 'all';
+                                      _cargoFilterId = 'all';
+                                    }),
+                                  )
+                                : ListView.separated(
+                                    keyboardDismissBehavior:
+                                        ScrollViewKeyboardDismissBehavior
+                                            .onDrag,
+                                    itemCount: filteredUsers.length,
+                                    separatorBuilder: (_, __) =>
+                                        const Divider(height: 1, indent: 70),
+                                    itemBuilder: (context, i) {
+                                      final user = filteredUsers[i];
+                                      final isThisUserLoading =
+                                          _loadingUserId == user.id;
+                                      return _UserTile(
+                                        user: user,
+                                        trailing: isThisUserLoading
+                                            ? const SizedBox(
+                                                width: 20,
+                                                height: 20,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                        strokeWidth: 2),
+                                              )
+                                            : const Icon(Icons.chevron_right,
+                                                color: AppColors.neutral400),
+                                        onTap: _loadingUserId != null
+                                            ? null
+                                            : () => _startConversation(
+                                                context, user),
+                                      );
+                                    },
+                                  ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
       ],
     );
   }
@@ -247,14 +250,33 @@ class _GroupTab extends ConsumerStatefulWidget {
 
 class _GroupTabState extends ConsumerState<_GroupTab> {
   static const _presetPhotos = [
-    ('Geral / Hospital', 'https://images.unsplash.com/photo-1586773860418-d37222d8fce3?w=150&auto=format&fit=crop&q=80'),
-    ('Equipe Médica', 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=150&auto=format&fit=crop&q=80'),
-    ('Enfermagem', 'https://images.unsplash.com/photo-1576765608535-5f04d1e3f289?w=150&auto=format&fit=crop&q=80'),
-    ('UTI / Emergência', 'https://images.unsplash.com/photo-1516549655169-df83a0774514?w=150&auto=format&fit=crop&q=80'),
-    ('Farmácia', 'https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=150&auto=format&fit=crop&q=80'),
-    ('Centro Cirúrgico', 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=150&auto=format&fit=crop&q=80'),
+    (
+      'Geral / Hospital',
+      'https://images.unsplash.com/photo-1586773860418-d37222d8fce3?w=150&auto=format&fit=crop&q=80'
+    ),
+    (
+      'Equipe Médica',
+      'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=150&auto=format&fit=crop&q=80'
+    ),
+    (
+      'Enfermagem',
+      'https://images.unsplash.com/photo-1576765608535-5f04d1e3f289?w=150&auto=format&fit=crop&q=80'
+    ),
+    (
+      'UTI / Emergência',
+      'https://images.unsplash.com/photo-1516549655169-df83a0774514?w=150&auto=format&fit=crop&q=80'
+    ),
+    (
+      'Farmácia',
+      'https://images.unsplash.com/photo-1471864190281-a93a3070b6de?w=150&auto=format&fit=crop&q=80'
+    ),
+    (
+      'Centro Cirúrgico',
+      'https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=150&auto=format&fit=crop&q=80'
+    ),
   ];
 
+  final _scrollController = ScrollController();
   final _nameCtrl = TextEditingController();
   final _searchCtrl = TextEditingController();
   final Set<UserSummary> _selected = {};
@@ -266,6 +288,7 @@ class _GroupTabState extends ConsumerState<_GroupTab> {
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _nameCtrl.dispose();
     _searchCtrl.dispose();
     super.dispose();
@@ -283,7 +306,8 @@ class _GroupTabState extends ConsumerState<_GroupTab> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Escolha uma foto temática:', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+              const Text('Escolha uma foto temática:',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
               const SizedBox(height: 8),
               SizedBox(
                 height: 72,
@@ -297,7 +321,9 @@ class _GroupTabState extends ConsumerState<_GroupTab> {
                       onTap: () => Navigator.pop(ctx, item.$2),
                       child: Column(
                         children: [
-                          CircleAvatar(radius: 24, backgroundImage: NetworkImage(item.$2)),
+                          CircleAvatar(
+                              radius: 24,
+                              backgroundImage: NetworkImage(item.$2)),
                           const SizedBox(height: 2),
                           Text(item.$1, style: const TextStyle(fontSize: 9)),
                         ],
@@ -307,7 +333,8 @@ class _GroupTabState extends ConsumerState<_GroupTab> {
                 ),
               ),
               const Divider(height: 24),
-              const Text('Ou insira o link de uma imagem pública:', style: TextStyle(fontSize: 12, color: Colors.black54)),
+              const Text('Ou insira o link de uma imagem pública:',
+                  style: TextStyle(fontSize: 12, color: Colors.black54)),
               const SizedBox(height: 8),
               TextField(
                 controller: controller,
@@ -328,8 +355,12 @@ class _GroupTabState extends ConsumerState<_GroupTab> {
               style: TextButton.styleFrom(foregroundColor: Colors.red),
               child: const Text('Remover foto'),
             ),
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
-          ElevatedButton(onPressed: () => Navigator.pop(ctx, controller.text.trim()), child: const Text('Confirmar')),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar')),
+          ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+              child: const Text('Confirmar')),
         ],
       ),
     );
@@ -378,221 +409,260 @@ class _GroupTabState extends ConsumerState<_GroupTab> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // ─── Foto e Nome do grupo ──────────────────────────────────────
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-          child: Row(
-            children: [
-              GestureDetector(
-                onTap: _pickGroupPhoto,
-                child: Stack(
-                  children: [
-                    CircleAvatar(
-                      radius: 28,
-                      backgroundColor: AppColors.primary.withValues(alpha: 0.15),
-                      backgroundImage: _selectedFotoUrl != null ? NetworkImage(_selectedFotoUrl!) : null,
-                      child: _selectedFotoUrl == null
-                          ? const Icon(Icons.camera_alt, color: AppColors.primary, size: 26)
-                          : null,
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: Container(
-                        padding: const EdgeInsets.all(3),
-                        decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
-                        child: const Icon(Icons.edit, size: 10, color: Colors.white),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextField(
-                  controller: _nameCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'Nome do grupo',
-                    hintText: 'Ex: Maqueiros CCO',
-                    prefixIcon: Icon(Icons.group_outlined),
-                  ),
-                  textCapitalization: TextCapitalization.words,
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        // ─── Switch Auto-exclusão 24h ──────────────────────────────────
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: SwitchListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            secondary: const Icon(Icons.timer_outlined, color: AppColors.primary, size: 20),
-            title: const Text('Auto-exclusão 24h', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-            subtitle: const Text('Mensagens expiram após 24 horas', style: TextStyle(fontSize: 11)),
-            value: _autoExcluir24h,
-            activeTrackColor: AppColors.primary,
-            onChanged: (val) => setState(() => _autoExcluir24h = val),
-          ),
-        ),
-
-        // ─── Participantes selecionados ────────────────────────────────
-        if (_selected.isNotEmpty)
-          Container(
-            height: 80,
-            padding: const EdgeInsets.symmetric(
-                horizontal: 12, vertical: 8),
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: _selected.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder: (_, i) {
-                final u = _selected.elementAt(i);
-                return Column(
-                  children: [
-                    Stack(
+        Expanded(
+          child: Scrollbar(
+              controller: _scrollController,
+              thumbVisibility: true,
+              child: SingleChildScrollView(
+                key: const ValueKey('group-form-scroll'),
+                controller: _scrollController,
+                keyboardDismissBehavior:
+                    ScrollViewKeyboardDismissBehavior.onDrag,
+                child: Column(children: [
+                  // ─── Foto e Nome do grupo ──────────────────────────────────────
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+                    child: Row(
                       children: [
-                        ConversationAvatar(
-                            name: u.nome,
-                            photoUrl: u.fotoUrl,
-                            size: 42),
-                        Positioned(
-                          top: 0,
-                          right: 0,
-                          child: GestureDetector(
-                            onTap: () =>
-                                setState(() => _selected.remove(u)),
-                            child: Container(
-                              width: 16,
-                              height: 16,
-                              decoration: const BoxDecoration(
-                                color: AppColors.error,
-                                shape: BoxShape.circle,
+                        GestureDetector(
+                          onTap: _pickGroupPhoto,
+                          child: Stack(
+                            children: [
+                              CircleAvatar(
+                                radius: 28,
+                                backgroundColor:
+                                    AppColors.primary.withValues(alpha: 0.15),
+                                backgroundImage: _selectedFotoUrl != null
+                                    ? NetworkImage(_selectedFotoUrl!)
+                                    : null,
+                                child: _selectedFotoUrl == null
+                                    ? const Icon(Icons.camera_alt,
+                                        color: AppColors.primary, size: 26)
+                                    : null,
                               ),
-                              child: const Icon(Icons.close,
-                                  color: Colors.white, size: 10),
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: Container(
+                                  padding: const EdgeInsets.all(3),
+                                  decoration: const BoxDecoration(
+                                      color: AppColors.primary,
+                                      shape: BoxShape.circle),
+                                  child: const Icon(Icons.edit,
+                                      size: 10, color: Colors.white),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextField(
+                            controller: _nameCtrl,
+                            decoration: const InputDecoration(
+                              labelText: 'Nome do grupo',
+                              hintText: 'Ex: Maqueiros CCO',
+                              prefixIcon: Icon(Icons.group_outlined),
                             ),
+                            textCapitalization: TextCapitalization.words,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    SizedBox(
-                      width: 48,
-                      child: Text(
-                        u.nome.split(' ').first,
-                        style: const TextStyle(fontSize: 10),
-                        overflow: TextOverflow.ellipsis,
-                        textAlign: TextAlign.center,
+                  ),
+
+                  // ─── Switch Auto-exclusão 24h ──────────────────────────────────
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: SwitchListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      secondary: const Icon(Icons.timer_outlined,
+                          color: AppColors.primary, size: 20),
+                      title: const Text('Auto-exclusão 24h',
+                          style: TextStyle(
+                              fontSize: 13, fontWeight: FontWeight.w600)),
+                      subtitle: const Text('Mensagens expiram após 24 horas',
+                          style: TextStyle(fontSize: 11)),
+                      value: _autoExcluir24h,
+                      activeTrackColor: AppColors.primary,
+                      onChanged: (val) => setState(() => _autoExcluir24h = val),
+                    ),
+                  ),
+
+                  // ─── Participantes selecionados ────────────────────────────────
+                  if (_selected.isNotEmpty)
+                    Container(
+                      height: 80,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _selected.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 8),
+                        itemBuilder: (_, i) {
+                          final u = _selected.elementAt(i);
+                          return Column(
+                            children: [
+                              Stack(
+                                children: [
+                                  ConversationAvatar(
+                                      name: u.nome,
+                                      photoUrl: u.fotoUrl,
+                                      size: 42),
+                                  Positioned(
+                                    top: 0,
+                                    right: 0,
+                                    child: GestureDetector(
+                                      onTap: () =>
+                                          setState(() => _selected.remove(u)),
+                                      child: Container(
+                                        width: 16,
+                                        height: 16,
+                                        decoration: const BoxDecoration(
+                                          color: AppColors.error,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(Icons.close,
+                                            color: Colors.white, size: 10),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              SizedBox(
+                                width: 48,
+                                child: Text(
+                                  u.nome.split(' ').first,
+                                  style: const TextStyle(fontSize: 10),
+                                  overflow: TextOverflow.ellipsis,
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ),
-                  ],
-                );
-              },
-            ),
-          ),
 
-        // ─── Busca ────────────────────────────────────────────────────
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: TextField(
-            controller: _searchCtrl,
-            decoration: const InputDecoration(
-              hintText: 'Adicionar participante...',
-              prefixIcon: Icon(Icons.search),
-            ),
-            onChanged: (v) =>
-                ref.read(usersSearchProvider.notifier).search(v),
-          ),
-        ),
-
-        // ─── Lista de usuários e Filtros ───────────────────────────────
-        ref.watch(usersSearchProvider).when(
-          loading: () => const Expanded(
-            child: Center(child: CircularProgressIndicator()),
-          ),
-          error: (e, _) => Expanded(
-            child: _ErrorView(
-              message: e.toString(),
-              onRetry: () => ref.read(usersSearchProvider.notifier).search(''),
-            ),
-          ),
-          data: (rawUsers) {
-            final myId = ref.watch(currentUserIdProvider);
-            final users = rawUsers.where((u) => u.id != myId).toList();
-            final cargoOptions = _getCargoOptionsForUsers(users);
-            final filteredUsers = _filterUsers(
-              users,
-              cargoOptions,
-              _statusFilter,
-              _cargoFilterId,
-            );
-
-            return Expanded(
-              child: Column(
-                children: [
-                  _UserFilterBar(
-                    statusFilter: _statusFilter,
-                    onStatusFilterChanged: (s) =>
-                        setState(() => _statusFilter = s),
-                    selectedCargoId: _cargoFilterId,
-                    onCargoFilterChanged: (c) =>
-                        setState(() => _cargoFilterId = c),
-                    users: users,
-                    cargoOptions: cargoOptions,
+                  // ─── Busca ────────────────────────────────────────────────────
+                  Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    child: TextField(
+                      controller: _searchCtrl,
+                      decoration: const InputDecoration(
+                        hintText: 'Adicionar participante...',
+                        prefixIcon: Icon(Icons.search),
+                      ),
+                      onChanged: (v) =>
+                          ref.read(usersSearchProvider.notifier).search(v),
+                    ),
                   ),
-                  Expanded(
-                    child: users.isEmpty
-                        ? const _EmptyView(
-                            message: 'Nenhum funcionário encontrado.')
-                        : filteredUsers.isEmpty
-                            ? _FilterEmptyView(
-                                onClear: () => setState(() {
-                                  _statusFilter = 'all';
-                                  _cargoFilterId = 'all';
-                                }),
-                              )
-                            : ListView.separated(
-                                keyboardDismissBehavior:
-                                    ScrollViewKeyboardDismissBehavior.onDrag,
-                                itemCount: filteredUsers.length,
-                                separatorBuilder: (_, __) =>
-                                    const Divider(height: 1, indent: 70),
-                                itemBuilder: (context, i) {
-                                  final u = filteredUsers[i];
-                                  final isSelected = _selected.contains(u);
-                                  return _UserTile(
-                                    user: u,
-                                    trailing: Checkbox(
-                                      value: isSelected,
-                                      activeColor: AppColors.primary,
-                                      onChanged: (_) => setState(() {
-                                        if (isSelected) {
-                                          _selected.remove(u);
-                                        } else {
-                                          _selected.add(u);
-                                        }
-                                      }),
-                                    ),
-                                    onTap: () => setState(() {
-                                      if (isSelected) {
-                                        _selected.remove(u);
-                                      } else {
-                                        _selected.add(u);
-                                      }
-                                    }),
-                                  );
-                                },
+
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+                    child: Text(
+                        ref.watch(permissionsProvider).isDirecao
+                            ? 'Contas ativas de todos os centros. Você já participa como criador.'
+                            : 'Contas ativas do seu centro e Direção Geral. Você já participa como criador.',
+                        style: const TextStyle(fontSize: 12)),
+                  ),
+                  // ─── Lista de usuários e Filtros ───────────────────────────────
+                  ref.watch(usersSearchProvider).when(
+                        loading: () => const Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Center(child: CircularProgressIndicator()),
+                        ),
+                        error: (e, _) => Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: _ErrorView(
+                            message: e.toString(),
+                            onRetry: () => ref
+                                .read(usersSearchProvider.notifier)
+                                .search(''),
+                          ),
+                        ),
+                        data: (rawUsers) {
+                          final myId = ref.watch(currentUserIdProvider);
+                          final users =
+                              rawUsers.where((u) => u.id != myId).toList();
+                          final cargoOptions = _getCargoOptionsForUsers(users);
+                          final filteredUsers = _filterUsers(
+                            users,
+                            cargoOptions,
+                            _statusFilter,
+                            _cargoFilterId,
+                          );
+
+                          return Column(
+                            children: [
+                              _UserFilterBar(
+                                statusFilter: _statusFilter,
+                                onStatusFilterChanged: (s) =>
+                                    setState(() => _statusFilter = s),
+                                selectedCargoId: _cargoFilterId,
+                                onCargoFilterChanged: (c) =>
+                                    setState(() => _cargoFilterId = c),
+                                users: users,
+                                cargoOptions: cargoOptions,
                               ),
-                  ),
-                ],
-              ),
-            );
-          },
+                              users.isEmpty
+                                  ? const _EmptyView(
+                                      message: 'Nenhum funcionário encontrado.')
+                                  : filteredUsers.isEmpty
+                                      ? _FilterEmptyView(
+                                          onClear: () => setState(() {
+                                            _statusFilter = 'all';
+                                            _cargoFilterId = 'all';
+                                          }),
+                                        )
+                                      : ListView.separated(
+                                          shrinkWrap: true,
+                                          physics:
+                                              const NeverScrollableScrollPhysics(),
+                                          keyboardDismissBehavior:
+                                              ScrollViewKeyboardDismissBehavior
+                                                  .onDrag,
+                                          itemCount: filteredUsers.length,
+                                          separatorBuilder: (_, __) =>
+                                              const Divider(
+                                                  height: 1, indent: 70),
+                                          itemBuilder: (context, i) {
+                                            final u = filteredUsers[i];
+                                            final isSelected =
+                                                _selected.contains(u);
+                                            return _UserTile(
+                                              user: u,
+                                              trailing: Checkbox(
+                                                value: isSelected,
+                                                activeColor: AppColors.primary,
+                                                onChanged: (_) => setState(() {
+                                                  if (isSelected) {
+                                                    _selected.remove(u);
+                                                  } else {
+                                                    _selected.add(u);
+                                                  }
+                                                }),
+                                              ),
+                                              onTap: () => setState(() {
+                                                if (isSelected) {
+                                                  _selected.remove(u);
+                                                } else {
+                                                  _selected.add(u);
+                                                }
+                                              }),
+                                            );
+                                          },
+                                        ),
+                            ],
+                          );
+                        },
+                      ),
+                ]),
+              )),
         ),
-
         // ─── Botão criar grupo ─────────────────────────────────────────
         SafeArea(
           top: false,
@@ -690,8 +760,7 @@ class _UserTile extends StatelessWidget {
       ),
       subtitle: Text(
         '${user.hierarquiaNome} · ${user.setorNome}',
-        style: const TextStyle(
-            fontSize: 12, color: AppColors.neutral500),
+        style: const TextStyle(fontSize: 12, color: AppColors.neutral500),
       ),
       trailing: trailing,
       onTap: onTap,
@@ -713,8 +782,7 @@ class _EmptyView extends StatelessWidget {
           const Icon(Icons.person_search_outlined,
               size: 48, color: AppColors.neutral400),
           const SizedBox(height: 12),
-          Text(message,
-              style: const TextStyle(color: AppColors.neutral500)),
+          Text(message, style: const TextStyle(color: AppColors.neutral500)),
         ],
       ),
     );
@@ -734,8 +802,7 @@ class _ErrorView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline,
-                size: 40, color: AppColors.error),
+            const Icon(Icons.error_outline, size: 40, color: AppColors.error),
             const SizedBox(height: 8),
             Text(
               message,
@@ -844,8 +911,7 @@ List<_CargoOption> _getCargoOptionsForUsers(List<UserSummary> users) {
   for (final u in users) {
     final c = u.cargo.trim();
     if (c.isEmpty) continue;
-    final matchesAny =
-        _kBaseCargoOptions.skip(1).any((opt) => opt.matches(c));
+    final matchesAny = _kBaseCargoOptions.skip(1).any((opt) => opt.matches(c));
     if (!matchesAny) {
       unmapped.add(c);
     }
@@ -916,7 +982,8 @@ class _UserFilterBar extends StatelessWidget {
         color: Theme.of(context).scaffoldBackgroundColor,
         border: Border(
           bottom: BorderSide(
-            color: isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.05),
+            color:
+                isDark ? Colors.white12 : Colors.black.withValues(alpha: 0.05),
             width: 1,
           ),
         ),
@@ -931,13 +998,14 @@ class _UserFilterBar extends StatelessWidget {
               height: 38,
               padding: const EdgeInsets.all(3),
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
+                color:
+                    isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Row(
                 children: [
                   _SegmentItem(
-                    label: 'Todos',
+                    label: 'Disponíveis',
                     count: total,
                     isSelected: statusFilter == 'all',
                     activeColor: AppColors.primary,
@@ -993,16 +1061,21 @@ class _UserFilterBar extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 150),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
                         color: isSelected
                             ? AppColors.primary
-                            : (isDark ? const Color(0xFF1E293B) : const Color(0xFFF8FAFC)),
+                            : (isDark
+                                ? const Color(0xFF1E293B)
+                                : const Color(0xFFF8FAFC)),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
                           color: isSelected
                               ? AppColors.primary
-                              : (isDark ? Colors.white12 : const Color(0xFFE2E8F0)),
+                              : (isDark
+                                  ? Colors.white12
+                                  : const Color(0xFFE2E8F0)),
                           width: 1,
                         ),
                       ),
@@ -1014,26 +1087,35 @@ class _UserFilterBar extends StatelessWidget {
                             size: 13,
                             color: isSelected
                                 ? Colors.white
-                                : (isDark ? Colors.white70 : AppColors.neutral600),
+                                : (isDark
+                                    ? Colors.white70
+                                    : AppColors.neutral600),
                           ),
                           const SizedBox(width: 5),
                           Text(
                             opt.label,
                             style: TextStyle(
                               fontSize: 11.5,
-                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                              fontWeight: isSelected
+                                  ? FontWeight.w600
+                                  : FontWeight.w500,
                               color: isSelected
                                   ? Colors.white
-                                  : (isDark ? Colors.white : AppColors.neutral800),
+                                  : (isDark
+                                      ? Colors.white
+                                      : AppColors.neutral800),
                             ),
                           ),
                           const SizedBox(width: 4),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 4.5, vertical: 1),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 4.5, vertical: 1),
                             decoration: BoxDecoration(
                               color: isSelected
                                   ? Colors.white.withValues(alpha: 0.22)
-                                  : (isDark ? Colors.white12 : const Color(0xFFE2E8F0)),
+                                  : (isDark
+                                      ? Colors.white12
+                                      : const Color(0xFFE2E8F0)),
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
@@ -1043,7 +1125,9 @@ class _UserFilterBar extends StatelessWidget {
                                 fontWeight: FontWeight.bold,
                                 color: isSelected
                                     ? Colors.white
-                                    : (isDark ? Colors.white70 : AppColors.neutral600),
+                                    : (isDark
+                                        ? Colors.white70
+                                        : AppColors.neutral600),
                               ),
                             ),
                           ),
@@ -1099,7 +1183,8 @@ class _SegmentItem extends StatelessWidget {
             boxShadow: isSelected
                 ? [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
+                      color:
+                          Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
                       blurRadius: 4,
                       offset: const Offset(0, 1.5),
                     )
@@ -1110,7 +1195,9 @@ class _SegmentItem extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (icon != null) ...[
-                Icon(icon, size: icon == Icons.circle ? 7 : 11, color: iconColor ?? activeColor),
+                Icon(icon,
+                    size: icon == Icons.circle ? 7 : 11,
+                    color: iconColor ?? activeColor),
                 const SizedBox(width: 4),
               ],
               Text(
@@ -1125,11 +1212,14 @@ class _SegmentItem extends StatelessWidget {
               ),
               const SizedBox(width: 4),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 4.5, vertical: 0.5),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 4.5, vertical: 0.5),
                 decoration: BoxDecoration(
                   color: isSelected
                       ? activeColor.withValues(alpha: 0.15)
-                      : (isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
+                      : (isDark
+                          ? Colors.white10
+                          : Colors.black.withValues(alpha: 0.05)),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
