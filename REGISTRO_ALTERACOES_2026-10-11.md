@@ -253,3 +253,6 @@ Os demais achados do `report.md` permanecem como itens de revisão. As vulnerabi
 - Chrome desktop, build local: ambos os campos visíveis e no mesmo formulário; atributos conferidos; validação vazia e senha curta; mostrar/ocultar e Enter na senha verificados. Foram usados somente dados fictícios inválidos, sem tentativa de autenticação ou escrita no banco.
 - Evidência: `C:/Users/Ricardo/.codex/visualizations/2026/10/11/01a12a97-b7a3-7291-8a6d-440d097ff3b3/login-campos-html-alternativa.png`.
 - **Limite da confirmação:** o preenchimento com a credencial salva do responsável ainda precisa ser observado no Chrome dele após publicação. Os testes acima comprovam estrutura e funcionamento do formulário, não acesso à senha salva. Registrar o resultado dessa alternativa antes de repetir qualquer abordagem.
+
+- Publicação da alternativa `4d332f6` confirmada no Firebase Hosting. HTML e JavaScript responderam HTTP 200 e coincidiram com o build local. SHA-256 HTML: `361be12b1a81deffcd727213fccaa5456fe0d9fdd7a5d44f033ae4c3ed554ee9`; JavaScript: `a8ce5001dc4a3fddf9443a20cee78c66dad8499b47dae60c7f4a273fdc2defce`. Backend inalterado.
+- Estado da alternativa após publicação: estrutura e validação verificadas; aguardando confirmação do responsável sobre preenchimento com a credencial salva no Chrome.
