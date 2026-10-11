@@ -208,3 +208,6 @@ Os demais achados do `report.md` permanecem como itens de revisão. As vulnerabi
 - O e-mail lembrado pelo aplicativo só é aplicado se o campo estiver vazio, evitando substituir um preenchimento já realizado. A opção de lembrar e-mail permanece sem armazenamento de senha no SharedPreferences.
 - Diagnóstico: diferenciar sugestão de e-mail de uma credencial completa salva para o domínio. O navegador decide o preenchimento e pode pedir confirmação. A correção integra os campos; não cria nem recupera uma senha ausente do gerenciador.
 - Análise do arquivo sem problemas. Publicação somente do aplicativo web; backend inalterado. Verificação final registrada após deploy.
+
+- Publicação confirmada do código `3404b38` no Firebase Hosting. Build release concluído. `main.dart.js` publicado respondeu HTTP 200 e coincidiu com o build local: SHA-256 `eb02cfbabf1245dae4ae15a693504b200f82ce4430e91ceefab6935062c59381`.
+- Não foi acessado o gerenciador de senhas do usuário nem executado login com uma senha salva durante a verificação. A validação confirma integração, análise, compilação e publicação; o comportamento final depende da credencial salva e do navegador.
