@@ -221,3 +221,35 @@ Os demais achados do `report.md` permanecem como itens de revisão. As vulnerabi
 
 - Publicação `e4e6f06` confirmada no Firebase Hosting; build web release concluído. HTML e JavaScript publicados responderam HTTP 200 e coincidiram com o build local por SHA-256. HTML: `060a113d780b98f4c3db0b16fe06d909d7bef4513f1fc55062b7ef5cc6b9c405`. JavaScript: `eb02cfbabf1245dae4ae15a693504b200f82ce4430e91ceefab6935062c59381`.
 - Não foi efetuado login com credenciais salvas nem acessado o gerenciador de senhas. Backend não foi alterado nem republicado nesta entrega.
+
+## 14. Alternativa para preenchimento de senha — campos HTML nativos
+
+### Tentativas anteriores: não repetir como solução suficiente
+
+- `3404b38`: agrupamento Flutter e `AutofillHints` de usuário/e-mail/senha. Integração compilou e foi publicada, mas não resolveu o preenchimento conjunto no navegador do responsável. Os hints permanecem úteis na implementação não web.
+- `e4e6f06`: observador no `app/web/index.html` trocando `autocomplete=off` por `current-password` na rota de login. O responsável atualizou a página várias vezes e informou que a senha continuava ausente. **Tentativa insuficiente; observador removido. Não reintroduzir nem recomendar novamente apenas esse ajuste de atributo.**
+- As verificações anteriores de build/hash comprovaram publicação, não comprovaram preenchimento com uma credencial salva no Chrome.
+
+### Abordagem diferente implementada
+
+- Somente na versão web, os campos de e-mail e senha agora são inputs HTML permanentes no mesmo formulário real, incorporados ao Flutter via `HtmlElementView`. Não dependem dos inputs temporários da árvore de semântica do Flutter.
+- Formulário `conecta-login-credentials`; usuário `name=username`, `autocomplete=username`; senha `name=password`, `type=password`, `autocomplete=current-password`. Labels explícitos mantêm identificação acessível.
+- Valores são sincronizados com os controladores existentes por eventos input/change e consulta periódica enquanto a tela está aberta. Antes de validar/enviar, o formulário lê os valores diretamente, cobrindo gerenciadores que não emitem evento de digitação.
+- Enter no e-mail move para a senha; Enter na senha executa o mesmo envio do aplicativo. Validação mantém e-mail obrigatório/válido e senha obrigatória com mínimo de seis caracteres. Botão mostrar/ocultar preservado. Inputs ficam desabilitados durante o login.
+- Timer e listeners são liberados ao fechar a tela. Não há armazenamento adicional de senha, leitura de credenciais do Chrome, log dos valores nem envio por um endpoint novo. Autenticação, aprovação e recuperação de senha continuam nos fluxos existentes.
+- Aplicativos fora da web continuam com os campos Flutter anteriores. A dependência `web` 1.1.1, já presente transitivamente, foi declarada diretamente, sem atualização de versão.
+
+### Arquivos e diagnóstico
+
+- `app/lib/features/auth/presentation/widgets/login_form.dart`: escolhe os campos HTML no web e sincroniza antes de validar.
+- `app/lib/features/auth/presentation/widgets/browser_login_controller.dart`: ponte de sincronização.
+- `app/lib/features/auth/presentation/widgets/browser_login_fields.dart`, `browser_login_fields_stub.dart` e `browser_login_fields_web.dart`: implementação condicional e inputs do navegador.
+- `app/web/index.html`: remoção da tentativa anterior. `app/pubspec.yaml` e `app/pubspec.lock`: declaração da dependência web.
+- Se ocorrer regressão, verificar primeiro a presença dos dois inputs no formulário, os atributos autocomplete, a sincronização e a validação. Não armazenar senha em SharedPreferences nem restaurar o observador antigo como correção automática.
+
+### Verificações desta alternativa
+
+- Análise dos widgets de autenticação sem problemas; build web release concluído. Dois testes existentes de cadastro e inicialização passaram.
+- Chrome desktop, build local: ambos os campos visíveis e no mesmo formulário; atributos conferidos; validação vazia e senha curta; mostrar/ocultar e Enter na senha verificados. Foram usados somente dados fictícios inválidos, sem tentativa de autenticação ou escrita no banco.
+- Evidência: `C:/Users/Ricardo/.codex/visualizations/2026/10/11/01a12a97-b7a3-7291-8a6d-440d097ff3b3/login-campos-html-alternativa.png`.
+- **Limite da confirmação:** o preenchimento com a credencial salva do responsável ainda precisa ser observado no Chrome dele após publicação. Os testes acima comprovam estrutura e funcionamento do formulário, não acesso à senha salva. Registrar o resultado dessa alternativa antes de repetir qualquer abordagem.

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +9,8 @@ import '../../../../core/routes/app_routes.dart';
 import '../../../../core/services/http_service.dart';
 import '../../../../core/services/biometric_service.dart';
 import '../providers/auth_provider.dart';
+import 'browser_login_fields.dart';
+import 'browser_login_controller.dart';
 
 class LoginForm extends ConsumerStatefulWidget {
   final bool isLoading;
@@ -19,6 +22,7 @@ class LoginForm extends ConsumerStatefulWidget {
 }
 
 class _LoginFormState extends ConsumerState<LoginForm> {
+  final _browserFields = BrowserLoginController();
   final _formKey    = GlobalKey<FormState>();
   final _emailCtrl  = TextEditingController();
   final _passCtrl   = TextEditingController();
@@ -94,6 +98,7 @@ class _LoginFormState extends ConsumerState<LoginForm> {
   }
 
   void _submit() async {
+    _browserFields.sync();
     if (!_formKey.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
 
@@ -201,6 +206,11 @@ class _LoginFormState extends ConsumerState<LoginForm> {
             },
           ),
 
+          if (kIsWeb)
+            browserLoginFields(email: _emailCtrl, password: _passCtrl,
+              controller: _browserFields, enabled: !widget.isLoading,
+              onSubmit: _submit)
+          else ...[
           // ─── Campo E-mail Institucional ──────────────────────────────────
           TextFormField(
             controller: _emailCtrl,
@@ -351,6 +361,7 @@ class _LoginFormState extends ConsumerState<LoginForm> {
             },
           ),
 
+          ],
           // ─── Lembrar login & Esqueci minha senha ───────────────────────
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
