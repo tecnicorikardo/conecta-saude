@@ -480,6 +480,52 @@
       }
     })();
   </script>
+  <!-- ─── Workaround Autofill de Senha no Login (Flutter Web) ────────────── -->
+  <!-- flutter/flutter#174773: no Flutter web 3.47 o input de senha da árvore de
+       semântica é renderizado com autocomplete="off", e o Chrome só oferece
+       preenchimento de credenciais em pares username/current-password — por
+       isso escolher a conta preenchia só o e-mail. Reescrevemos o atributo
+       apenas na rota de login. Remover quando o PR #190126 chegar ao stable. -->
+  <script>
+    (function () {
+      function isLoginRoute() {
+        return location.pathname.indexOf('/login') !== -1 ||
+               location.hash.indexOf('/login') !== -1;
+      }
+      function fixPasswordInputs(root) {
+        if (!root || !root.querySelectorAll || !isLoginRoute()) return;
+        var nodes = root.querySelectorAll('input[type="password"]');
+        for (var i = 0; i < nodes.length; i++) {
+          if (nodes[i].getAttribute('autocomplete') === 'off') {
+            nodes[i].setAttribute('autocomplete', 'current-password');
+          }
+        }
+      }
+      function boot() {
+        fixPasswordInputs(document);
+        var mo = new MutationObserver(function (records) {
+          for (var r = 0; r < records.length; r++) {
+            if (records[r].type === 'attributes') {
+              fixPasswordInputs(records[r].target.parentNode || document);
+              continue;
+            }
+            for (var j = 0; j < records[r].addedNodes.length; j++) {
+              var n = records[r].addedNodes[j];
+              if (n.nodeType === 1) fixPasswordInputs(n);
+            }
+          }
+        });
+        mo.observe(document.body, {
+          childList: true,
+          subtree: true,
+          attributes: true,
+          attributeFilter: ['autocomplete']
+        });
+      }
+      if (document.body) boot();
+      else document.addEventListener('DOMContentLoaded', boot);
+    })();
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

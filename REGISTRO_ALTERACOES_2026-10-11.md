@@ -211,3 +211,10 @@ Os demais achados do `report.md` permanecem como itens de revisão. As vulnerabi
 
 - Publicação confirmada do código `3404b38` no Firebase Hosting. Build release concluído. `main.dart.js` publicado respondeu HTTP 200 e coincidiu com o build local: SHA-256 `eb02cfbabf1245dae4ae15a693504b200f82ce4430e91ceefab6935062c59381`.
 - Não foi acessado o gerenciador de senhas do usuário nem executado login com uma senha salva durante a verificação. A validação confirma integração, análise, compilação e publicação; o comportamento final depende da credencial salva e do navegador.
+
+## 13. Ajuste adicional de preenchimento automático no login web
+
+- Arquivo recebido com alteração local: `app/web/index.html`.
+- Script observa inputs de senha com `autocomplete=off` e configura `current-password` na rota de login. Cadastro e demais rotas não são alvo do ajuste.
+- Sintaxe dos scripts inline verificada pelo Node sem erros. Publicação solicitada pelo responsável, somente no Firebase Hosting.
+- O arquivo local `serve_probe.cjs`, o relatório e os scripts de teste permanecem fora dos commits. Confirmação de publicação registrada após deploy.
