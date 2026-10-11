@@ -264,3 +264,5 @@ Os demais achados do `report.md` permanecem como itens de revisão. As vulnerabi
 - Ajuste também aplicado ao aviso de somente leitura e à lista de leitores. Crachás de cargo preservam sua combinação original de fundo e texto.
 - Não houve alteração em envio, permissões, leitura, atualização periódica ou dados. Diagnóstico: verificar as cores `onSurface`, `onSurfaceVariant` e `surfaceContainerHighest` no tema ativo.
 - Correção solicitada a partir da captura do modo escuro; publicação somente web. Resultado de análise/build/deploy registrado após conclusão.
+
+- Publicação `0915126` confirmada no Firebase Hosting. Análise do arquivo sem problemas; build web release concluído. JavaScript publicado respondeu HTTP 200 e coincidiu com o build local: SHA-256 `11882f42a670626de7c1617438420f2339733a377b0247ac8f2975513720f08f`. Backend inalterado; não foram enviadas mensagens para testar o estilo.
