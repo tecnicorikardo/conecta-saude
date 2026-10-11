@@ -73,3 +73,27 @@ List<String> get kAllHospitalRoles {
   all.sort((a, b) => a.compareTo(b));
   return all;
 }
+
+/// Nível 1 é atribuído apenas pela administração.
+const Map<int, String> kRegistrationLevelLabels = {
+  2: 'Nível 2 — Coordenação / Chefia',
+  3: 'Nível 3 — Supervisão / Enfermeiro',
+  4: 'Nível 4 — Equipe operacional / Assistencial',
+};
+
+int registrationLevelForRole(String role) {
+  final cargo = role.toLowerCase();
+  if (cargo.contains('diretor') ||
+      cargo.contains('direção') ||
+      cargo.contains('coordenad') ||
+      (cargo.contains('chefe') &&
+          (cargo.contains('enferm') || cargo.contains('supervis')))) {
+    return 2;
+  }
+  if (cargo.contains('enfermeir') || cargo.contains('supervis')) return 3;
+  return 4;
+}
+
+List<String> registrationRolesForLevel(int level) => kAllHospitalRoles
+    .where((role) => registrationLevelForRole(role) == level)
+    .toList();

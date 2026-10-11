@@ -39,6 +39,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   String? _selectedUnitId;
   String? _selectedSectorId;
   String? _selectedRole;
+  int? _selectedRegistrationLevel;
   bool _isCustomRole = false;
 
   // Escala inicial sugerida
@@ -769,48 +770,65 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   }
 
   Widget _buildRoleSelector(bool isLoading) {
-    final allRolesWithOther = [...kAllHospitalRoles, kOtherRoleOption];
-
-    return Autocomplete<String>(
-      optionsBuilder: (TextEditingValue textEditingValue) {
-        if (textEditingValue.text.isEmpty) {
-          return allRolesWithOther;
-        }
-        return allRolesWithOther.where((role) =>
-            role.toLowerCase().contains(textEditingValue.text.toLowerCase()));
-      },
-      onSelected: (String selection) {
-        setState(() {
-          _selectedRole = selection;
-          _isCustomRole = (selection == kOtherRoleOption);
-        });
-      },
-      fieldViewBuilder: (context, textEditingController, focusNode, onFieldSubmitted) {
-        return TextFormField(
-          controller: textEditingController,
-          focusNode: focusNode,
-          enabled: !isLoading,
-          style: const TextStyle(color: _textPrimary, fontSize: 14),
+    final roles = _selectedRegistrationLevel == null
+        ? <String>[]
+        : registrationRolesForLevel(_selectedRegistrationLevel!);
+    return Column(
+      children: [
+        DropdownButtonFormField<int>(
+          initialValue: _selectedRegistrationLevel,
+          isExpanded: true,
+          decoration: _inputDecoration(
+            label: 'Grupo de cargos / Nível *',
+            hint: 'Selecione o grupo do seu cargo',
+            icon: Icons.account_tree_outlined,
+          ),
+          items: kRegistrationLevelLabels.entries
+              .map((entry) => DropdownMenuItem(
+                  value: entry.key,
+                  child:
+                      Text(entry.value, style: const TextStyle(fontSize: 13))))
+              .toList(),
+          onChanged: isLoading
+              ? null
+              : (level) => setState(() {
+                    _selectedRegistrationLevel = level;
+                    _selectedRole = null;
+                    _isCustomRole = false;
+                    _cargoCustomCtrl.clear();
+                  }),
+          validator: (value) =>
+              value == null ? 'Selecione o grupo do seu cargo.' : null,
+        ),
+        const SizedBox(height: 16),
+        DropdownButtonFormField<String>(
+          key: ValueKey(_selectedRegistrationLevel),
+          initialValue: _selectedRole,
+          isExpanded: true,
           decoration: _inputDecoration(
             label: 'Cargo / Função na Unidade (SUS) *',
-            hint: 'Digite ou selecione seu cargo...',
+            hint: 'Selecione seu cargo',
             icon: Icons.work_outline_rounded,
-            suffix: const Icon(Icons.search, size: 20, color: _textSecondary),
           ),
-          onChanged: (val) {
-            setState(() {
-              _selectedRole = val;
-              _isCustomRole = (val == kOtherRoleOption);
-            });
-          },
-          validator: (v) {
-            if (v == null || v.trim().isEmpty) {
-              return 'Selecione ou informe seu cargo.';
-            }
-            return null;
-          },
-        );
-      },
+          items: [
+            ...roles,
+            if (_selectedRegistrationLevel == 4) kOtherRoleOption
+          ]
+              .map((role) => DropdownMenuItem(
+                  value: role,
+                  child: Text(role,
+                      style: const TextStyle(fontSize: 13),
+                      overflow: TextOverflow.ellipsis)))
+              .toList(),
+          onChanged: isLoading || _selectedRegistrationLevel == null
+              ? null
+              : (role) => setState(() {
+                    _selectedRole = role;
+                    _isCustomRole = role == kOtherRoleOption;
+                  }),
+          validator: (value) => value == null ? 'Selecione seu cargo.' : null,
+        ),
+      ],
     );
   }
 

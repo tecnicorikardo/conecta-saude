@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../../config/database';
 import { getFirebaseAuth } from '../../config/firebase';
 import { HierarquiaNivel } from '../../types';
+import { determineHierarquiaByCargo } from '../auth/auth.controller';
 import { AppError } from '../../middleware/errorHandler';
 import { auditLog } from '../../utils/auditLogger';
 import { isUserCurrentlyWorking } from '../../utils/schedule';
@@ -454,6 +455,8 @@ export async function approveUser(req: Request, res: Response): Promise<void> {
     where: { id },
     data: {
       ativo: true,
+      // Corrige cadastros antigos pendentes; reativações preservam o nível administrativo.
+      ...(!user.aprovadoEm && { hierarquiaNivel: determineHierarquiaByCargo(user.cargo) }),
       aprovadoPor: actor.id,
       aprovadoEm: new Date(),
     },
@@ -489,6 +492,7 @@ export async function approveUser(req: Request, res: Response): Promise<void> {
       nome: updatedUser.nome,
       email: updatedUser.email,
       cargo: updatedUser.cargo,
+      hierarquiaNivel: updatedUser.hierarquiaNivel,
       setorNome: updatedUser.setor.nome,
       unitNome: updatedUser.unit?.nome ?? null,
       unitSigla: updatedUser.unit?.sigla ?? null,

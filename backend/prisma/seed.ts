@@ -154,7 +154,7 @@ async function main(): Promise<void> {
       nome: 'Thiago Duarte',
       email: 'thiago.cco@conectasaude.dev',
       cargo: 'Enfermeiro Cirúrgico — CCO',
-      hierarquiaNivel: 4,
+      hierarquiaNivel: 3,
       setorId: cco.id,
       ativo: true,
     },
