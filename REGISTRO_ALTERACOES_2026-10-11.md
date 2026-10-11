@@ -273,3 +273,7 @@ Os demais achados do `report.md` permanecem como itens de revisão. As vulnerabi
 - Comparação antes/depois sem linhas de comentários confirmou que o código executável foi preservado. Nenhum comportamento foi modificado nesta entrega.
 - Análise dos widgets de autenticação sem problemas; 119 testes do backend aprovados. Deploys separados solicitados no Render e Firebase Hosting; confirmação registrada após conclusão.
 - Relatório e dois scripts locais não versionados permanecem preservados e fora dos commits.
+
+- Commit publicado: `210cc29a33d698617688abc6d8f0d93ceeab2965`. Render confirmou `Deploy succeeded|Live`; API `/health` respondeu HTTP 200. TypeScript sem erros.
+- Firebase Hosting confirmou o deploy; JavaScript publicado respondeu HTTP 200 e coincidiu com o build web release local: SHA-256 `f667ae6c12cb93de7ed686e68107123981070ec9d505b46bfa0ff4d2b458fcb5`.
+- Este registro é documentação posterior ao deploy. Não houve alteração de funcionalidade nem escrita de dados de produção nesta entrega.
