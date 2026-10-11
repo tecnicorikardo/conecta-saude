@@ -383,13 +383,9 @@ export async function getPendingUsers(req: Request, res: Response): Promise<void
     throw new AppError('Apenas a Direção ou Coordenação podem visualizar aprovações pendentes.', 403);
   }
 
-  const rejected = await prisma.auditLog.findMany({ where: {
-    acao: 'rejeitar_cadastro', entidade: 'user', entidadeId: { not: null },
-  }, select: { entidadeId: true } });
   const where: Record<string, unknown> = {
     ativo: false,
     aprovadoEm: null,
-    id: { notIn: rejected.map((log) => log.entidadeId!) },
   };
 
   // Coordenação só vê pendentes da sua unidade / setor
@@ -422,15 +418,27 @@ export async function getPendingUsers(req: Request, res: Response): Promise<void
     },
   });
 
+  // Solicitações já rejeitadas ficam arquivadas (auditoria) e não voltam à fila.
+  const rejectedLogs = pendingUsers.length === 0 ? [] : await prisma.auditLog.findMany({
+    where: {
+      acao: 'rejeitar_cadastro',
+      entidade: 'user',
+      entidadeId: { in: pendingUsers.map((u) => u.id) },
+    },
+    select: { entidadeId: true },
+  });
+  const rejectedIds = new Set(rejectedLogs.map((log) => log.entidadeId));
+  const openUsers = pendingUsers.filter((u) => !rejectedIds.has(u.id));
+
   res.json({
     success: true,
     data: {
-      items: pendingUsers.map(u => ({
+      items: openUsers.map(u => ({
         ...u,
         unitNome: u.unit?.nome ?? null,
         unitSigla: u.unit?.sigla ?? null,
       })),
-      total: pendingUsers.length,
+      total: openUsers.length,
     },
   });
 }
@@ -464,7 +472,12 @@ export async function approveUser(req: Request, res: Response): Promise<void> {
   }
 
   const updatedUser = await prisma.$transaction(async (tx) => {
-    const updated = await tx.user.update({
+    const rejected = await tx.auditLog.findFirst({ where: {
+      acao: 'rejeitar_cadastro', entidade: 'user', entidadeId: id,
+    } });
+    if (rejected) throw new AppError('Cadastro rejeitado. A aprovação desta solicitação foi encerrada.', 409);
+
+    return tx.user.update({
       where: { id },
       data: {
         ativo: true,
@@ -479,12 +492,6 @@ export async function approveUser(req: Request, res: Response): Promise<void> {
         aprovador: { select: { id: true, nome: true, cargo: true } },
       },
     });
-
-    const rejected = await tx.auditLog.findFirst({ where: {
-      acao: 'rejeitar_cadastro', entidade: 'user', entidadeId: id,
-    } });
-    if (rejected) throw new AppError('Cadastro rejeitado. A aprovação desta solicitação foi encerrada.', 409);
-    return updated;
   });
 
   await auditLog({

@@ -207,14 +207,17 @@ class EmployeesRepositoryImpl implements EmployeesRepository {
       if (data is Map<String, dynamic> &&
           data['data'] is Map<String, dynamic>) {
         final resultData = data['data'] as Map<String, dynamic>;
-        final rawItems = resultData['items'] as List? ?? [];
+        if (resultData['items'] is! List) {
+          return const Left(ServerFailure('Formato de resposta inválido.'));
+        }
+        final rawItems = resultData['items'] as List;
         final items = rawItems
             .map((item) => UserModel.fromJson(item as Map<String, dynamic>))
             .toList();
         return Right(items);
       }
 
-      return const Right([]);
+      return const Left(ServerFailure('Formato de resposta inválido.'));
     } on Failure catch (f) {
       return Left(f);
     } catch (e) {

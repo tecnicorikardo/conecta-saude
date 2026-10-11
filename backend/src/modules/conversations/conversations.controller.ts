@@ -654,11 +654,6 @@ export async function deleteConversation(req: Request, res: Response): Promise<v
 
   // Se for grupo:
   if (conversation.tipo !== ConversationTipo.INDIVIDUAL) {
-    const isMember = conversation.members.some((m) => m.userId === actor.id);
-    if (!isMember) {
-      throw new AppError('Você não faz parte deste grupo.', 403);
-    }
-
     // Se o grupo tem outros membros: remover apenas a participação deste usuário (sair do grupo)
     // Isso evita que um usuário exclua o grupo para todos os outros colegas!
     if (conversation.members.length > 1) {

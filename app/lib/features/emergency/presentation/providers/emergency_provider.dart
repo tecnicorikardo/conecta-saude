@@ -85,13 +85,7 @@ class EmergencyNotifier extends StateNotifier<EmergencyState> {
           activeAlert: () => active,
           statusConfirmed: true,
           statusError: () => null);
-      final history = await _repository.getEmergencyHistory();
-      if (!mounted) return;
-      state = state.copyWith(
-        isLoading: false,
-        history: history,
-      );
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
       state = state.copyWith(
         isLoading: false,
@@ -99,6 +93,22 @@ class EmergencyNotifier extends StateNotifier<EmergencyState> {
         statusConfirmed: false,
         statusError: () =>
             'Não foi possível confirmar o status de emergência. Atualize para tentar novamente.',
+      );
+      return;
+    }
+    try {
+      final history = await _repository.getEmergencyHistory();
+      if (!mounted) return;
+      state = state.copyWith(
+        isLoading: false,
+        history: history,
+      );
+    } catch (_) {
+      // Falha no histórico não invalida o status de emergência já confirmado.
+      if (!mounted) return;
+      state = state.copyWith(
+        isLoading: false,
+        errorMessage: 'Erro ao carregar dados de emergência.',
       );
     }
   }

@@ -4,6 +4,7 @@ import { getFirebaseAuth, getFirebaseMessaging } from '../../config/firebase';
 import { HierarquiaNivel } from '../../types';
 import { verifyTokenSchema, updateFcmTokenSchema, registerUserSchema } from './auth.schema';
 import { AppError } from '../../middleware/errorHandler';
+import { auditLog } from '../../utils/auditLogger';
 
 /**
  * POST /api/auth/verify
@@ -38,6 +39,15 @@ export async function verifyToken(req: Request, res: Response): Promise<void> {
     const rejected = await prisma.auditLog.findFirst({ where: {
       acao: 'rejeitar_cadastro', entidade: 'user', entidadeId: user.id,
     } });
+    const motivo = rejected ? 'rejeitado' : !user.aprovadoEm ? 'pendente' : 'inativo';
+    await auditLog({
+      userId: user.id,
+      acao: 'login_falha',
+      entidade: 'user',
+      entidadeId: user.id,
+      detalhes: { nome: user.nome, email: user.email, motivo },
+      req,
+    });
     if (rejected) throw new AppError('Cadastro rejeitado. Entre em contato com o RH da unidade.', 403);
     if (!user.aprovadoEm) {
       throw new AppError(

@@ -67,6 +67,36 @@ describe('Autenticação exige UID vinculado', () => {
     await expect(verifyToken(request(), response())).rejects.toThrow('Cadastro rejeitado');
   });
 });
+describe('Tentativas de login bloqueadas são auditadas', () => {
+  it('registra login_falha para cadastro pendente', async () => {
+    await expect(verifyToken(request(), response())).rejects.toThrow('aguardando aprovação');
+    expect(m.auditCreate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
+      acao: 'login_falha', entidade: 'user', entidadeId: 'target', userId: 'target',
+      detalhes: expect.stringContaining('"motivo":"pendente"'),
+    }) }));
+  });
+  it('registra login_falha para cadastro rejeitado', async () => {
+    m.auditFind.mockResolvedValue({ id: 'rejection' });
+    await expect(verifyToken(request(), response())).rejects.toThrow('Cadastro rejeitado');
+    expect(m.auditCreate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
+      acao: 'login_falha', detalhes: expect.stringContaining('"motivo":"rejeitado"'),
+    }) }));
+  });
+  it('registra login_falha para conta desativada', async () => {
+    m.findUser.mockResolvedValue({ id: 'target', firebaseUid: 'linked', nome: 'Cadastro',
+      email: 'e@example.invalid', setor: { nome: 'CCO' }, unit: null,
+      ativo: false, aprovadoEm: new Date() });
+    await expect(verifyToken(request(), response())).rejects.toThrow('acesso foi desativado');
+    expect(m.auditCreate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
+      acao: 'login_falha', detalhes: expect.stringContaining('"motivo":"inativo"'),
+    }) }));
+  });
+  it('não registra auditoria para token inválido', async () => {
+    m.verify.mockRejectedValue(new Error('bad token'));
+    await expect(verifyToken(request(), response())).rejects.toThrow('Token inválido');
+    expect(m.auditCreate).not.toHaveBeenCalled();
+  });
+});
 describe('Histórico compartilhado protegido', () => {
   it('limpeza por membro operacional não apaga nenhuma mensagem do servidor', async () => {
     m.member.mockResolvedValue({ userId: 'actor', isAdmin: false });
@@ -111,15 +141,24 @@ describe('Rejeição preserva cadastro e auditoria', () => {
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true })); warning.mockRestore();
   });
   it('cadastro rejeitado não volta à lista pendente', async () => {
-    m.auditList.mockResolvedValue([{ entidadeId: 'target' }]); m.listUsers.mockResolvedValue([]);
-    await getPendingUsers(request(), response());
-    expect(m.listUsers).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({
-      id: { notIn: ['target'] }, ativo: false, aprovadoEm: null,
+    const base = { nome: 'Cadastro', email: 'x@example.invalid', cargo: 'Enfermeiro',
+      matricula: null, hierarquiaNivel: 5, fotoUrl: null, ativo: false, unitId: null,
+      jornadaInicio: null, jornadaFim: null, jornadaDias: null, criadoEm: new Date(),
+      setor: { id: 'cco', nome: 'CCO' }, unit: null };
+    m.listUsers.mockResolvedValue([{ ...base, id: 'target' }, { ...base, id: 'other' }]);
+    m.auditList.mockResolvedValue([{ entidadeId: 'target' }]);
+    const res = response(); await getPendingUsers(request(), res);
+    expect(m.auditList).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({
+      acao: 'rejeitar_cadastro', entidade: 'user', entidadeId: { in: ['target', 'other'] },
+    }) }));
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
+      items: [expect.objectContaining({ id: 'other' })], total: 1,
     }) }));
   });
   it('nega aprovação de solicitação já rejeitada', async () => {
     m.auditFind.mockResolvedValue({ id: 'rejection' });
     await expect(approveUser(request(), response())).rejects.toThrow('Cadastro rejeitado');
+    expect(m.updateUser).not.toHaveBeenCalled();
   });
   it('Coordenação não rejeita cadastro de outro centro', async () => {
     m.findUser.mockResolvedValue({ ativo: false, setorId: 'cce' });

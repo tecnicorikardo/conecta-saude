@@ -593,9 +593,10 @@ class MessagesNotifier
   // ─── Limpar mensagens da conversa ──────────────────────────────────────
   Future<void> clearConversation() async {
     final repo = _ref.read(conversationRepositoryProvider);
+    final userId = _ref.read(currentUserIdProvider);
     await repo.clearConversation(conversationId);
-    if (!mounted) return;
-    await _conversationHistory.clear(_ref.read(currentUserIdProvider), conversationId, DateTime.now());
+    // O marcador local deve persistir mesmo se a tela desmontar após o sucesso da API.
+    await _conversationHistory.clear(userId, conversationId, DateTime.now());
     if (!mounted) return;
     state = const AsyncValue.data([]);
     _ref.read(conversationsProvider.notifier).clearConversationLastMessage(conversationId);
