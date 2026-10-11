@@ -9,11 +9,12 @@ import 'package:uuid/uuid.dart';
 import '../../../auth/presentation/providers/current_user_provider.dart';
 import '../../data/repositories/conversation_repository.dart';
 import '../../data/models/conversation_model.dart';
+import '../../data/conversation_history_store.dart';
 import '../../domain/entities/conversation_entity.dart';
 import '../../domain/entities/message_entity.dart';
 
 // Armazena timestamp em memória e cache local de quando cada conversa foi limpa
-final Map<String, DateTime> _conversationClearedAt = {};
+final _conversationHistory = ConversationHistoryStore();
 
 Future<List<MessageEntity>?> _getCachedMessages(String conversationId) async {
   try {
@@ -33,30 +34,6 @@ Future<void> _saveCachedMessages(String conversationId, List<MessageEntity> mess
     final toSave = messages.length > 50 ? messages.sublist(messages.length - 50) : messages;
     final jsonList = toSave.map((m) => m.toJson()).toList();
     await prefs.setString('chat_cache_msgs_$conversationId', jsonEncode(jsonList));
-  } catch (_) {}
-}
-
-Future<DateTime?> _getConversationClearedAt(String conversationId) async {
-  if (_conversationClearedAt.containsKey(conversationId)) {
-    return _conversationClearedAt[conversationId];
-  }
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    final ms = prefs.getInt('chat_cleared_at_$conversationId');
-    if (ms != null) {
-      final dt = DateTime.fromMillisecondsSinceEpoch(ms);
-      _conversationClearedAt[conversationId] = dt;
-      return dt;
-    }
-  } catch (_) {}
-  return null;
-}
-
-Future<void> _setConversationClearedAt(String conversationId, DateTime dt) async {
-  _conversationClearedAt[conversationId] = dt;
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('chat_cleared_at_$conversationId', dt.millisecondsSinceEpoch);
   } catch (_) {}
 }
 
@@ -155,7 +132,7 @@ class ConversationsNotifier
 
   List<ConversationEntity> _sortConversations(List<ConversationEntity> list) {
     return List<ConversationEntity>.from(list.map((c) {
-      final clearedAt = _conversationClearedAt[c.id];
+      final clearedAt = _conversationHistory.cached(_ref.read(currentUserIdProvider), c.id);
       if (clearedAt != null && c.lastMessage != null && !c.lastMessage!.criadoEm.isAfter(clearedAt)) {
         return c.copyWith(lastMessage: null);
       }
@@ -333,7 +310,7 @@ class MessagesNotifier
     var result = msgs;
 
     // 1. Oculta mensagens enviadas antes do momento em que a conversa foi limpa
-    final clearedAt = _conversationClearedAt[conversationId];
+    final clearedAt = _conversationHistory.cached(_ref.read(currentUserIdProvider), conversationId);
     if (clearedAt != null) {
       result = result.where((m) => m.criadoEm.isAfter(clearedAt)).toList();
     }
@@ -355,7 +332,7 @@ class MessagesNotifier
   /// Carregamento inicial completo com suporte offline imediato
   Future<void> _load() async {
     try {
-      await _getConversationClearedAt(conversationId);
+      await _conversationHistory.read(_ref.read(currentUserIdProvider), conversationId);
 
       // 1. Carrega imediatamente do cache local para abertura instantânea (0 delay / offline)
       final cached = await _getCachedMessages(conversationId);
@@ -615,20 +592,13 @@ class MessagesNotifier
 
   // ─── Limpar mensagens da conversa ──────────────────────────────────────
   Future<void> clearConversation() async {
-    final now = DateTime.now();
-    await _setConversationClearedAt(conversationId, now);
-
+    final repo = _ref.read(conversationRepositoryProvider);
+    await repo.clearConversation(conversationId);
+    if (!mounted) return;
+    await _conversationHistory.clear(_ref.read(currentUserIdProvider), conversationId, DateTime.now());
+    if (!mounted) return;
     state = const AsyncValue.data([]);
-
-    try {
-      final repo = _ref.read(conversationRepositoryProvider);
-      try {
-        await repo.clearConversation(conversationId);
-      } catch (_) {}
-      _ref.read(conversationsProvider.notifier).clearConversationLastMessage(conversationId);
-    } catch (_) {
-      state = const AsyncValue.data([]);
-    }
+    _ref.read(conversationsProvider.notifier).clearConversationLastMessage(conversationId);
   }
 
   /// Forçar recarregamento

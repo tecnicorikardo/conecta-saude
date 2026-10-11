@@ -383,9 +383,13 @@ export async function getPendingUsers(req: Request, res: Response): Promise<void
     throw new AppError('Apenas a Direção ou Coordenação podem visualizar aprovações pendentes.', 403);
   }
 
+  const rejected = await prisma.auditLog.findMany({ where: {
+    acao: 'rejeitar_cadastro', entidade: 'user', entidadeId: { not: null },
+  }, select: { entidadeId: true } });
   const where: Record<string, unknown> = {
     ativo: false,
     aprovadoEm: null,
+    id: { notIn: rejected.map((log) => log.entidadeId!) },
   };
 
   // Coordenação só vê pendentes da sua unidade / setor
@@ -459,20 +463,28 @@ export async function approveUser(req: Request, res: Response): Promise<void> {
     throw new AppError('Este colaborador já se encontra ativo e aprovado.', 400);
   }
 
-  const updatedUser = await prisma.user.update({
-    where: { id },
-    data: {
-      ativo: true,
-      // Corrige cadastros antigos pendentes; reativações preservam o nível administrativo.
-      ...(!user.aprovadoEm && { hierarquiaNivel: determineHierarquiaByCargo(user.cargo) }),
-      aprovadoPor: actor.id,
-      aprovadoEm: new Date(),
-    },
-    include: {
-      setor: { select: { id: true, nome: true } },
-      unit: { select: { id: true, nome: true, sigla: true } },
-      aprovador: { select: { id: true, nome: true, cargo: true } },
-    },
+  const updatedUser = await prisma.$transaction(async (tx) => {
+    const updated = await tx.user.update({
+      where: { id },
+      data: {
+        ativo: true,
+        // Corrige cadastros antigos pendentes; reativações preservam o nível administrativo.
+        ...(!user.aprovadoEm && { hierarquiaNivel: determineHierarquiaByCargo(user.cargo) }),
+        aprovadoPor: actor.id,
+        aprovadoEm: new Date(),
+      },
+      include: {
+        setor: { select: { id: true, nome: true } },
+        unit: { select: { id: true, nome: true, sigla: true } },
+        aprovador: { select: { id: true, nome: true, cargo: true } },
+      },
+    });
+
+    const rejected = await tx.auditLog.findFirst({ where: {
+      acao: 'rejeitar_cadastro', entidade: 'user', entidadeId: id,
+    } });
+    if (rejected) throw new AppError('Cadastro rejeitado. A aprovação desta solicitação foi encerrada.', 409);
+    return updated;
   });
 
   await auditLog({
@@ -513,7 +525,7 @@ export async function approveUser(req: Request, res: Response): Promise<void> {
 
 /**
  * DELETE /api/users/:id/reject
- * Rejeita e remove a solicitação de cadastro pendente.
+ * Rejeita e arquiva a solicitação, preservando a auditoria.
  * Permitido para Direção e Coordenação (da unidade).
  */
 export async function rejectUser(req: Request, res: Response): Promise<void> {
@@ -539,34 +551,30 @@ export async function rejectUser(req: Request, res: Response): Promise<void> {
     throw new AppError('Não é possível rejeitar um colaborador que já está ativo.', 400);
   }
 
-  // Deletar do Firebase Auth se existir
+  // Registra a decisão sem apagar o usuário e seus vínculos de auditoria.
+  await prisma.$transaction(async (tx) => {
+    const result = await tx.user.updateMany({ where: { id, ativo: false, aprovadoEm: null },
+      data: { ativo: false, fcmToken: null } });
+    if (result.count !== 1) throw new AppError('Esta solicitação não está mais pendente.', 409);
+    const closed = await tx.auditLog.findFirst({ where: {
+      acao: 'rejeitar_cadastro', entidade: 'user', entidadeId: id,
+    } });
+    if (closed) throw new AppError('Esta solicitação já foi rejeitada.', 409);
+    await tx.auditLog.create({ data: { userId: actor.id, acao: 'rejeitar_cadastro',
+      entidade: 'user', entidadeId: id,
+      detalhes: JSON.stringify({ nome: user.nome, setor: user.setor.nome, rejeitadoPor: actor.nome }),
+    } });
+  });
+
+  // Mesmo que o Firebase esteja indisponível, a API mantém a conta inativa.
   try {
-    await getFirebaseAuth().deleteUser(user.firebaseUid);
+    await getFirebaseAuth().updateUser(user.firebaseUid, { disabled: true });
+    await getFirebaseAuth().revokeRefreshTokens(user.firebaseUid);
   } catch {
-    console.warn(`[Users] Usuário ${user.firebaseUid} não encontrado no Firebase Auth durante rejeição.`);
+    console.warn('[Users] Cadastro rejeitado; bloqueio adicional no Firebase indisponível.');
   }
 
-  // Deletar do PostgreSQL
-  await prisma.user.delete({ where: { id } });
-
-  await auditLog({
-    userId: actor.id,
-    acao: 'rejeitar_cadastro',
-    entidade: 'user',
-    entidadeId: id,
-    detalhes: {
-      nome: user.nome,
-      email: user.email,
-      setor: user.setor.nome,
-      rejeitadoPor: actor.nome,
-    },
-    req,
-  });
-
-  res.json({
-    success: true,
-    message: `Solicitação de ${user.nome} rejeitada e removida com sucesso.`,
-  });
+  res.json({ success: true, message: `Solicitação de ${user.nome} rejeitada e arquivada com sucesso.` });
 }
 
 /**

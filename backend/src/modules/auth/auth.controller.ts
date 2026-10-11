@@ -22,7 +22,7 @@ export async function verifyToken(req: Request, res: Response): Promise<void> {
   }
 
   // Buscar usuário no banco
-  let user = await prisma.user.findUnique({
+  const user = await prisma.user.findUnique({
     where: { firebaseUid: decodedToken.uid },
     include: {
       setor: { select: { id: true, nome: true } },
@@ -30,32 +30,15 @@ export async function verifyToken(req: Request, res: Response): Promise<void> {
     },
   });
 
-  if (!user && decodedToken.email) {
-    user = await prisma.user.findUnique({
-      where: { email: decodedToken.email },
-      include: {
-        setor: { select: { id: true, nome: true } },
-        unit: { select: { id: true, nome: true, sigla: true } },
-      },
-    });
-
-    if (user) {
-      user = await prisma.user.update({
-        where: { id: user.id },
-        data: { firebaseUid: decodedToken.uid },
-        include: {
-          setor: { select: { id: true, nome: true } },
-          unit: { select: { id: true, nome: true, sigla: true } },
-        },
-      });
-    }
-  }
-
   if (!user) {
     throw new AppError('Usuário não cadastrado no sistema.', 404);
   }
 
   if (!user.ativo) {
+    const rejected = await prisma.auditLog.findFirst({ where: {
+      acao: 'rejeitar_cadastro', entidade: 'user', entidadeId: user.id,
+    } });
+    if (rejected) throw new AppError('Cadastro rejeitado. Entre em contato com o RH da unidade.', 403);
     if (!user.aprovadoEm) {
       throw new AppError(
         'Cadastro em análise. Seu acesso está aguardando aprovação pelo RH ou Coordenação da unidade.',

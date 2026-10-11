@@ -392,7 +392,7 @@ class _ChatPageState extends ConsumerState<ChatPage> with WidgetsBindingObserver
                 builder: (ctx) => AlertDialog(
                   title: const Text('Limpar conversa?'),
                   content: const Text(
-                    'Todas as mensagens desta conversa serão apagadas permanentemente. A conversa continuará na sua lista.',
+                    'O histórico será ocultado somente para você neste dispositivo. As mensagens dos outros participantes serão preservadas.',
                   ),
                   actions: [
                     TextButton(

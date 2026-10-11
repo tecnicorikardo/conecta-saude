@@ -2,10 +2,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Request, Response } from 'express';
 
 const mocks = vi.hoisted(() => ({ find: vi.fn(), update: vi.fn(), audit: vi.fn(),
-  create: vi.fn(), sector: vi.fn(), firebaseCreate: vi.fn(), verify: vi.fn() }));
+  create: vi.fn(), sector: vi.fn(), firebaseCreate: vi.fn(), verify: vi.fn(), rejected: vi.fn() }));
 vi.mock('../config/database', () => ({ prisma: { user: {
   findUnique: mocks.find, update: mocks.update, create: mocks.create,
-}, sector: { findUnique: mocks.sector }, auditLog: { create: mocks.audit } } }));
+}, sector: { findUnique: mocks.sector }, auditLog: { create: mocks.audit, findFirst: mocks.rejected },
+  $transaction: (fn: any) => fn({ user: { update: mocks.update }, auditLog: { findFirst: mocks.rejected } }),
+} }));
 vi.mock('../config/firebase', () => ({ getFirebaseAuth: () => ({
   createUser: mocks.firebaseCreate, verifyIdToken: mocks.verify,
 }), getFirebaseMessaging: vi.fn() }));

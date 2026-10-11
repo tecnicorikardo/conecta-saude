@@ -54,7 +54,7 @@ export async function authenticate(
     }
 
     // 3. Buscar usuário no banco — dados reais, não do token
-    let user = await prisma.user.findUnique({
+    const user = await prisma.user.findUnique({
       where: { firebaseUid: decodedToken.uid },
       select: {
         id: true,
@@ -68,29 +68,6 @@ export async function authenticate(
         ativo: true,
       },
     });
-
-    if (!user && (decodedToken as any).email) {
-      const existing = await prisma.user.findUnique({
-        where: { email: (decodedToken as any).email },
-      });
-      if (existing) {
-        user = await prisma.user.update({
-          where: { id: existing.id },
-          data: { firebaseUid: decodedToken.uid },
-          select: {
-            id: true,
-            firebaseUid: true,
-            nome: true,
-            email: true,
-            cargo: true,
-            hierarquiaNivel: true,
-            setorId: true,
-            unitId: true,
-            ativo: true,
-          },
-        });
-      }
-    }
 
     if (!user) {
       res.status(401).json({

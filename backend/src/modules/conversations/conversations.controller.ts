@@ -4,6 +4,7 @@ import { HierarquiaNivel, ConversationTipo } from '../../types';
 import { AppError } from '../../middleware/errorHandler';
 import { listMessages, sendMessage } from '../messages/messages.controller';
 import { z } from 'zod';
+import { auditLog } from '../../utils/auditLogger';
 
 const createConversationSchema = z.object({
   tipo: z.nativeEnum(ConversationTipo),
@@ -647,6 +648,10 @@ export async function deleteConversation(req: Request, res: Response): Promise<v
     throw new AppError('Conversa ou grupo não encontrado.', 404);
   }
 
+  if (!conversation.members.some((m) => m.userId === actor.id)) {
+    throw new AppError('Você não participa desta conversa.', 403);
+  }
+
   // Se for grupo:
   if (conversation.tipo !== ConversationTipo.INDIVIDUAL) {
     const isMember = conversation.members.some((m) => m.userId === actor.id);
@@ -753,11 +758,10 @@ export async function clearConversation(req: Request, res: Response): Promise<vo
   });
   if (!membership) throw new AppError('Você não participa desta conversa.', 403);
 
-  await prisma.message.deleteMany({
-    where: { conversationId },
-  });
-
-  res.json({ success: true, message: 'Histórico da conversa limpo com sucesso.' });
+  // Limpar o histórico local não exclui mensagens compartilhadas no servidor.
+  await auditLog({ userId: actor.id, acao: 'limpar_conversa_local',
+    entidade: 'conversation', entidadeId: conversationId, req });
+  res.json({ success: true, message: 'Histórico local da conversa limpo com sucesso.' });
 }
 
 // Re-exportar handlers de mensagens para o router de conversations
