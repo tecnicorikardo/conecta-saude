@@ -93,14 +93,16 @@ class _EmergencyPageState extends ConsumerState<EmergencyPage>
               Navigator.of(ctx).pop();
               final success = await ref
                   .read(emergencyProvider.notifier)
-                  .resolveEmergency(alert.id, observacao: obsController.text.trim());
+                  .resolveEmergency(alert.id,
+                      observacao: obsController.text.trim());
               if (!mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(success
                       ? '✅ Protocolo de emergência encerrado com sucesso.'
                       : 'Erro ao encerrar protocolo no servidor.'),
-                  backgroundColor: success ? AppColors.success : AppColors.error,
+                  backgroundColor:
+                      success ? AppColors.success : AppColors.error,
                 ),
               );
             },
@@ -130,10 +132,12 @@ class _EmergencyPageState extends ConsumerState<EmergencyPage>
             letterSpacing: 0.2,
           ),
         ),
-        backgroundColor: activeAlert != null ? AppColors.emergency : AppColors.primaryDeep,
+        backgroundColor:
+            activeAlert != null ? AppColors.emergency : AppColors.primaryDeep,
         foregroundColor: Colors.white,
         systemOverlayStyle: SystemUiOverlayStyle(
-          statusBarColor: activeAlert != null ? AppColors.emergency : AppColors.primaryDeep,
+          statusBarColor:
+              activeAlert != null ? AppColors.emergency : AppColors.primaryDeep,
           statusBarIconBrightness: Brightness.light,
         ),
         actions: [
@@ -151,6 +155,28 @@ class _EmergencyPageState extends ConsumerState<EmergencyPage>
           padding: const EdgeInsets.all(16),
           children: [
             // ─── Banner de Emergência Ativa ou Status Normal ───────────────
+            if (state.statusError != null) ...[
+              Semantics(
+                liveRegion: true,
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(children: [
+                      const Icon(Icons.cloud_off_rounded,
+                          color: AppColors.warning),
+                      const SizedBox(width: 12),
+                      Expanded(child: Text(state.statusError!)),
+                      TextButton(
+                        onPressed: () =>
+                            ref.read(emergencyProvider.notifier).loadData(),
+                        child: const Text('Tentar novamente'),
+                      ),
+                    ]),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             if (activeAlert != null) ...[
               ScaleTransition(
                 scale: _pulseAnimation,
@@ -180,8 +206,10 @@ class _EmergencyPageState extends ConsumerState<EmergencyPage>
                                         color: AppColors.emergencyLight,
                                         borderRadius: BorderRadius.circular(6),
                                       ),
-                                      child: const Icon(Icons.error_outline_rounded,
-                                          color: AppColors.emergency, size: 24),
+                                      child: const Icon(
+                                          Icons.error_outline_rounded,
+                                          color: AppColors.emergency,
+                                          size: 24),
                                     ),
                                     const SizedBox(width: 10),
                                     Expanded(
@@ -202,7 +230,8 @@ class _EmergencyPageState extends ConsumerState<EmergencyPage>
                                         color: AppColors.emergencyLight,
                                         borderRadius: BorderRadius.circular(4),
                                         border: Border.all(
-                                            color: AppColors.emergency.withValues(alpha: 0.3)),
+                                            color: AppColors.emergency
+                                                .withValues(alpha: 0.3)),
                                       ),
                                       child: const Text(
                                         'EM ANDAMENTO',
@@ -220,10 +249,14 @@ class _EmergencyPageState extends ConsumerState<EmergencyPage>
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 10, vertical: 8),
                                   decoration: BoxDecoration(
-                                    color: isDark ? Colors.white10 : AppColors.softBlue,
+                                    color: isDark
+                                        ? Colors.white10
+                                        : AppColors.softBlue,
                                     borderRadius: BorderRadius.circular(6),
                                     border: Border.all(
-                                        color: isDark ? Colors.white24 : AppColors.border),
+                                        color: isDark
+                                            ? Colors.white24
+                                            : AppColors.border),
                                   ),
                                   child: Row(
                                     children: [
@@ -234,7 +267,9 @@ class _EmergencyPageState extends ConsumerState<EmergencyPage>
                                         child: Text(
                                           activeAlert.localizacao,
                                           style: TextStyle(
-                                            color: isDark ? Colors.white : AppColors.navy,
+                                            color: isDark
+                                                ? Colors.white
+                                                : AppColors.navy,
                                             fontWeight: FontWeight.w700,
                                             fontSize: 13,
                                           ),
@@ -260,7 +295,9 @@ class _EmergencyPageState extends ConsumerState<EmergencyPage>
                                 Text(
                                   'Acionado por: ${activeAlert.criadorNome} (${activeAlert.criadorCargo}) • ${DateFormat('HH:mm').format(activeAlert.criadoEm)}',
                                   style: TextStyle(
-                                    color: isDark ? Colors.white60 : AppColors.textSecondary,
+                                    color: isDark
+                                        ? Colors.white60
+                                        : AppColors.textSecondary,
                                     fontSize: 12,
                                   ),
                                 ),
@@ -274,14 +311,18 @@ class _EmergencyPageState extends ConsumerState<EmergencyPage>
                                         foregroundColor: Colors.white,
                                         elevation: 0,
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(8),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
                                         ),
                                       ),
-                                      icon: const Icon(Icons.check_circle_rounded, size: 18),
+                                      icon: const Icon(
+                                          Icons.check_circle_rounded,
+                                          size: 18),
                                       label: const Text(
                                         'ENCERRAR PROTOCOLO DE EMERGÊNCIA',
                                         style: TextStyle(
-                                            fontWeight: FontWeight.bold, fontSize: 13),
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13),
                                       ),
                                       onPressed: () =>
                                           _confirmResolveEmergency(activeAlert),
@@ -297,6 +338,19 @@ class _EmergencyPageState extends ConsumerState<EmergencyPage>
                   ),
                 ),
               ),
+            ] else if (!state.statusConfirmed) ...[
+              Card(
+                  child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(children: [
+                  const Icon(Icons.info_outline_rounded),
+                  const SizedBox(width: 12),
+                  Expanded(
+                      child: Text(state.isLoading
+                          ? 'Consultando status de emergência…'
+                          : 'Status de emergência não confirmado.')),
+                ]),
+              )),
             ] else ...[
               Container(
                 padding: const EdgeInsets.all(16),
@@ -329,7 +383,9 @@ class _EmergencyPageState extends ConsumerState<EmergencyPage>
                             style: TextStyle(
                               fontWeight: FontWeight.w700,
                               fontSize: 15,
-                              color: isDark ? AppColors.onDarkSurface : AppColors.navy,
+                              color: isDark
+                                  ? AppColors.onDarkSurface
+                                  : AppColors.navy,
                             ),
                           ),
                           const SizedBox(height: 2),
@@ -368,7 +424,9 @@ class _EmergencyPageState extends ConsumerState<EmergencyPage>
                 label: const Text(
                   'DISPARAR CHAMADO DE EMERGÊNCIA',
                   style: TextStyle(
-                      fontWeight: FontWeight.w800, fontSize: 13, letterSpacing: 0.5),
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
+                      letterSpacing: 0.5),
                 ),
                 onPressed: _openTriggerEmergencyModal,
               ),
@@ -413,7 +471,9 @@ class _EmergencyPageState extends ConsumerState<EmergencyPage>
                                 style: TextStyle(
                                   fontSize: 14,
                                   fontWeight: FontWeight.w700,
-                                  color: isDark ? AppColors.onDarkSurface : AppColors.navy,
+                                  color: isDark
+                                      ? AppColors.onDarkSurface
+                                      : AppColors.navy,
                                 ),
                               ),
                               const SizedBox(height: 2),
@@ -505,7 +565,9 @@ class _EmergencyPageState extends ConsumerState<EmergencyPage>
                   child: Text(
                     'Nenhuma ocorrência registrada no histórico.',
                     style: TextStyle(
-                      color: isDark ? AppColors.onDarkSurfaceVariant : AppColors.textSecondary,
+                      color: isDark
+                          ? AppColors.onDarkSurfaceVariant
+                          : AppColors.textSecondary,
                       fontSize: 13,
                     ),
                   ),
@@ -530,7 +592,8 @@ class _TriggerEmergencySheet extends ConsumerStatefulWidget {
       _TriggerEmergencySheetState();
 }
 
-class _TriggerEmergencySheetState extends ConsumerState<_TriggerEmergencySheet> {
+class _TriggerEmergencySheetState
+    extends ConsumerState<_TriggerEmergencySheet> {
   EmergencyType _selectedType = EmergencyType.pcr;
   final _localController = TextEditingController();
   final _descController = TextEditingController();
@@ -643,7 +706,9 @@ class _TriggerEmergencySheetState extends ConsumerState<_TriggerEmergencySheet> 
                     fontSize: 12,
                   ),
                   side: BorderSide(
-                    color: isSelected ? AppColors.emergency : const Color(0xFFBDBDBD),
+                    color: isSelected
+                        ? AppColors.emergency
+                        : const Color(0xFFBDBDBD),
                     width: 1.5,
                   ),
                   onSelected: (_) => setState(() => _selectedType = type),
@@ -767,7 +832,9 @@ class _EmergencyContactTile extends StatelessWidget {
                     subtitulo,
                     style: TextStyle(
                       fontSize: 11,
-                      color: isDark ? AppColors.onDarkSurfaceVariant : AppColors.textSecondary,
+                      color: isDark
+                          ? AppColors.onDarkSurfaceVariant
+                          : AppColors.textSecondary,
                     ),
                   ),
                 ],
@@ -779,7 +846,9 @@ class _EmergencyContactTile extends StatelessWidget {
                 color: isDark ? Colors.white10 : AppColors.softBlue,
                 borderRadius: BorderRadius.circular(4),
                 border: Border.all(
-                  color: isDark ? Colors.white24 : AppColors.primary.withValues(alpha: 0.25),
+                  color: isDark
+                      ? Colors.white24
+                      : AppColors.primary.withValues(alpha: 0.25),
                 ),
               ),
               child: Text(
@@ -842,7 +911,8 @@ class _HistoryAlertCard extends StatelessWidget {
                           isAtivo
                               ? Icons.error_outline_rounded
                               : Icons.check_circle_outline_rounded,
-                          color: isAtivo ? AppColors.emergency : AppColors.success,
+                          color:
+                              isAtivo ? AppColors.emergency : AppColors.success,
                           size: 16,
                         ),
                         const SizedBox(width: 6),
@@ -854,12 +924,15 @@ class _HistoryAlertCard extends StatelessWidget {
                               fontSize: 13,
                               color: isAtivo
                                   ? AppColors.emergency
-                                  : (isDark ? AppColors.onDarkSurface : AppColors.navy),
+                                  : (isDark
+                                      ? AppColors.onDarkSurface
+                                      : AppColors.navy),
                             ),
                           ),
                         ),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
                             color: isAtivo
                                 ? AppColors.emergencyLight
@@ -871,7 +944,9 @@ class _HistoryAlertCard extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
-                              color: isAtivo ? AppColors.emergency : AppColors.success,
+                              color: isAtivo
+                                  ? AppColors.emergency
+                                  : AppColors.success,
                             ),
                           ),
                         ),
@@ -883,16 +958,20 @@ class _HistoryAlertCard extends StatelessWidget {
                       style: TextStyle(
                         fontWeight: FontWeight.w600,
                         fontSize: 12,
-                        color: isDark ? AppColors.onDarkSurface : AppColors.navy,
+                        color:
+                            isDark ? AppColors.onDarkSurface : AppColors.navy,
                       ),
                     ),
-                    if (alert.descricao != null && alert.descricao!.isNotEmpty) ...[
+                    if (alert.descricao != null &&
+                        alert.descricao!.isNotEmpty) ...[
                       const SizedBox(height: 4),
                       Text(
                         alert.descricao!,
                         style: TextStyle(
                           fontSize: 12,
-                          color: isDark ? AppColors.onDarkSurfaceVariant : AppColors.textSecondary,
+                          color: isDark
+                              ? AppColors.onDarkSurfaceVariant
+                              : AppColors.textSecondary,
                         ),
                       ),
                     ],
@@ -901,7 +980,8 @@ class _HistoryAlertCard extends StatelessWidget {
                       'Acionado por ${alert.criadorNome} • ${DateFormat('dd/MM HH:mm').format(alert.criadoEm)}${alert.resolvidoEm != null ? ' • Encerrado às ${DateFormat('HH:mm').format(alert.resolvidoEm!)}' : ''}',
                       style: TextStyle(
                         fontSize: 11,
-                        color: isDark ? Colors.white38 : AppColors.textSecondary,
+                        color:
+                            isDark ? Colors.white38 : AppColors.textSecondary,
                       ),
                     ),
                   ],

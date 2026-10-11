@@ -1,4 +1,5 @@
-﻿import { Router } from 'express';
+import { asyncHandler } from '../../utils/asyncHandler';
+import { Router } from 'express';
 import { authenticate } from '../../middleware/authenticate';
 import {
   getActiveEmergency,
@@ -11,9 +12,9 @@ const router = Router();
 
 router.use(authenticate);
 
-router.get('/active', getActiveEmergency);
-router.get('/history', listEmergencyHistory);
-router.post('/', createEmergencyAlert);
-router.patch('/:id/resolve', resolveEmergencyAlert);
+router.get('/active', asyncHandler(getActiveEmergency));
+router.get('/history', asyncHandler(listEmergencyHistory));
+router.post('/', asyncHandler(createEmergencyAlert));
+router.patch('/:id/resolve', asyncHandler(resolveEmergencyAlert));
 
 export { router as emergencyRouter };

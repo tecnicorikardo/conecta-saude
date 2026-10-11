@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/emergency_entity.dart';
 import '../../domain/repositories/emergency_repository.dart';
@@ -9,12 +9,16 @@ class EmergencyState {
   final EmergencyAlertEntity? activeAlert;
   final List<EmergencyAlertEntity> history;
   final String? errorMessage;
+  final bool statusConfirmed;
+  final String? statusError;
 
   const EmergencyState({
     this.isLoading = false,
     this.activeAlert,
     this.history = const [],
     this.errorMessage,
+    this.statusConfirmed = false,
+    this.statusError,
   });
 
   bool get hasActiveAlert => activeAlert != null && activeAlert!.isAtivo;
@@ -24,12 +28,16 @@ class EmergencyState {
     EmergencyAlertEntity? Function()? activeAlert,
     List<EmergencyAlertEntity>? history,
     String? errorMessage,
+    bool? statusConfirmed,
+    String? Function()? statusError,
   }) {
     return EmergencyState(
       isLoading: isLoading ?? this.isLoading,
       activeAlert: activeAlert != null ? activeAlert() : this.activeAlert,
       history: history ?? this.history,
       errorMessage: errorMessage,
+      statusConfirmed: statusConfirmed ?? this.statusConfirmed,
+      statusError: statusError != null ? statusError() : this.statusError,
     );
   }
 }
@@ -51,28 +59,46 @@ class EmergencyNotifier extends StateNotifier<EmergencyState> {
   }
 
   Future<void> _pollActive() async {
+    if (!mounted || state.isLoading) return;
     try {
       final active = await _repository.getActiveEmergency();
-      if (state.activeAlert != active) {
-        state = state.copyWith(activeAlert: () => active);
-      }
-    } catch (_) {}
+      if (!mounted) return;
+      state = state.copyWith(
+          activeAlert: () => active,
+          statusConfirmed: true,
+          statusError: () => null);
+    } catch (_) {
+      if (!mounted) return;
+      state = state.copyWith(
+          statusConfirmed: false,
+          statusError: () =>
+              'Não foi possível confirmar o status de emergência. Atualize para tentar novamente.');
+    }
   }
 
   Future<void> loadData() async {
     state = state.copyWith(isLoading: true, errorMessage: null);
     try {
       final active = await _repository.getActiveEmergency();
+      if (!mounted) return;
+      state = state.copyWith(
+          activeAlert: () => active,
+          statusConfirmed: true,
+          statusError: () => null);
       final history = await _repository.getEmergencyHistory();
+      if (!mounted) return;
       state = state.copyWith(
         isLoading: false,
-        activeAlert: () => active,
         history: history,
       );
     } catch (e) {
+      if (!mounted) return;
       state = state.copyWith(
         isLoading: false,
         errorMessage: 'Erro ao carregar dados de emergência.',
+        statusConfirmed: false,
+        statusError: () =>
+            'Não foi possível confirmar o status de emergência. Atualize para tentar novamente.',
       );
     }
   }
@@ -90,9 +116,12 @@ class EmergencyNotifier extends StateNotifier<EmergencyState> {
         descricao: descricao,
         localizacao: localizacao,
       );
+      if (!mounted) return false;
       state = state.copyWith(
         activeAlert: () => created,
         history: [created, ...state.history],
+        statusConfirmed: true,
+        statusError: () => null,
       );
       return true;
     } catch (_) {
@@ -102,7 +131,9 @@ class EmergencyNotifier extends StateNotifier<EmergencyState> {
 
   Future<bool> resolveEmergency(String id, {String? observacao}) async {
     try {
-      final success = await _repository.resolveEmergencyAlert(id, observacao: observacao);
+      final success =
+          await _repository.resolveEmergencyAlert(id, observacao: observacao);
+      if (!mounted) return false;
       if (success) {
         state = state.copyWith(
           activeAlert: () => null,

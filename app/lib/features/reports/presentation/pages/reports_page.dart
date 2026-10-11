@@ -463,7 +463,7 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
     );
     if (!context.mounted || reportId == null) return;
     final protocolNumber =
-        'CS-${DateTime.now().year}-${reportId.substring(0, 8).toUpperCase()}';
+        'CS-${DateTime.now().year}-${reportId.substring(0, reportId.length < 8 ? reportId.length : 8).toUpperCase()}';
 
     showDialog(
       context: context,

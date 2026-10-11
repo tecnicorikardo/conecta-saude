@@ -4,7 +4,7 @@
 
 Registrar o que foi alterado, como foi verificado e onde investigar uma eventual regressão. Este documento é o ponto de consulta para as correções discutidas em `report.md` e para os ajustes realizados anteriormente no mesmo dia.
 
-Após a orientação do responsável para não mexer em nenhuma funcionalidade, esta rodada modifica somente documentação. A revisão adicional abaixo é estática: não representa correção implementada nem reprodução em produção.
+A rodada inicial registrou a investigação sem alterar funcionalidades. Após a autorização para continuar, foram feitas as correções pontuais da seção 8, preservando os fluxos existentes. A publicação dessa nova rodada ainda não foi realizada.
 
 Não constam senhas, tokens, conexões de banco ou chaves neste registro. O `report.md` original foi preservado.
 
@@ -117,16 +117,54 @@ Uma reversão de `d7224da` desfaz várias proteções ao mesmo tempo: pode resta
 
 Reverter código não recupera mensagens apagadas anteriormente, não limpa marcadores locais automaticamente e não reativa identidades já desativadas no Firebase. Não executar seed, exclusão de auditoria ou limpeza de usuários como procedimento de recuperação.
 
-## 7. Revisão adicional do relatório — pendências sem alteração de código
+## 7. Revisão adicional do relatório — situação dos achados
 
 | Achado | Conferência atual | Estado |
 |---|---|---|
-| Funcionários fictícios quando a API falha | `EmployeesRepositoryImpl.listUsers` retorna fallback em erros e respostas inesperadas | Confirmado por leitura; não corrigido |
-| Erro de emergência interpretado como ausência de alerta | `EmergencyRepositoryImpl.getActiveEmergency` retorna `null` no catch | Confirmado por leitura; não corrigido |
+| Funcionários fictícios quando a API falha | `EmployeesRepositoryImpl.listUsers` retorna fallback em erros e respostas inesperadas | Corrigido e testado; ver seção 8 |
+| Erro de emergência interpretado como ausência de alerta | `EmergencyRepositoryImpl.getActiveEmergency` retorna `null` no catch | Corrigido e testado; ver seção 8 |
 | Ações de auditoria rotuladas incorretamente | `_parseAction` mapeia `criar_canal` para denúncia e usa usuário editado como default | Confirmado por leitura; não corrigido |
-| Protocolo de denúncia com ID curto | Tela usa `reportId.substring(0, 8)` sem proteger tamanho | Confirmado por leitura; não corrigido |
+| Protocolo de denúncia com ID curto | Tela usa `reportId.substring(0, 8)` sem proteger tamanho | Corrigido e testado; ver seção 8 |
 | Cursor de mensagens por UUID | `listMessages` filtra `id < cursor` e ordena por `criadoEm` | Confirmado por leitura; não corrigido |
-| Rotas async sem encaminhamento de rejeições | Rotas de unidades, emergência e `/api/me` têm handlers sem `asyncHandler` | Confirmado por leitura; não corrigido |
+| Rotas async sem encaminhamento de rejeições | Rotas de unidades, emergência e `/api/me` têm handlers sem `asyncHandler` | Corrigido e testado; ver seção 8 |
 | Escrita de state após fechamento da tela de canal | `ChannelMessagesNotifier` contém awaits sem checagem posterior de mounted | Confirmado por leitura; não corrigido |
 
 Os demais achados do `report.md` permanecem como itens de revisão. As vulnerabilidades de dependências não foram recontadas nesta rodada. Nenhuma rotação de senha/chave, remoção de legado ou alteração de funcionalidades foi feita nesta rodada de documentação.
+
+## 8. Continuação autorizada — respostas de erro e informações exibidas
+
+**Publicação:** pendente. Esta seção descreve alterações locais verificadas; não afirma que estão em produção.
+
+### Colaboradores
+
+- Arquivo: `app/lib/features/employees/data/repositories/employees_repository_impl.dart`, método `listUsers`.
+- Removida a lista de funcionários fictícios que aparecia em falhas de API. Respostas inválidas, sessão expirada, falta de permissão e falha de conexão agora retornam erro ao fluxo existente. Listas vazias confirmadas continuam válidas.
+- Diagnóstico: conferir resposta de `GET /api/users` e estado da sessão; não restabelecer dados de demonstração como solução de indisponibilidade.
+
+### Emergência
+
+- Arquivos: `app/lib/features/emergency/data/repositories/emergency_repository_impl.dart`, `app/lib/features/emergency/presentation/providers/emergency_provider.dart` e `app/lib/features/emergency/presentation/pages/emergency_page.dart`.
+- Erro ao consultar alerta ativo deixa de virar ausência de alerta. Estado normal exige resposta válida. A tela informa status não confirmado, permite tentar novamente e mantém o último alerta recebido quando a atualização falha.
+- Adicionadas verificações de tela ativa após requisições para evitar atualização depois de fechamento. Emissão, resolução e permissões foram preservadas.
+- Diagnóstico: conferir `GET /api/emergency/active`; o aviso significa falta de confirmação, não resolução do alerta.
+
+### Protocolo de denúncia
+
+- Arquivo: `app/lib/features/reports/presentation/pages/reports_page.dart`.
+- IDs menores que oito caracteres não quebram mais a apresentação de sucesso. IDs normais mantêm o formato anterior.
+- Diagnóstico: conferir ID retornado no envio e apresentação do protocolo, sem reenviar uma denúncia já criada apenas para gerar protocolo.
+
+### Respostas de erro nas rotas
+
+- Arquivos: `backend/src/modules/units/units.routes.ts`, `backend/src/modules/emergency/emergency.routes.ts` e `backend/src/app.ts`.
+- Aplicado o `asyncHandler` existente aos handlers de unidades, emergência e `/api/me`. Rejeições passam ao tratamento central de erros, evitando requisições aguardando timeout. Validação e permissões continuam nos controladores existentes.
+- Diagnóstico: conferir status HTTP e log do servidor; erros 403, 404 e 422 continuam representando permissão, inexistência e validação.
+
+### Verificação
+
+- Backend: 111 testes aprovados e TypeScript sem erros. Dez testes novos exercitam rotas HTTP reais com dependências simuladas.
+- Aplicativo: 18 testes aprovados para falhas de API, emergência, denúncias e preservação do histórico local. Análise Flutter dos arquivos envolvidos sem problemas.
+- Novos testes: `backend/src/__tests__/async_error_routes.test.ts`, `app/test/api_failure_feedback_test.dart`, `app/test/emergency_status_feedback_test.dart`; ampliado `app/test/reports_submission_test.dart`.
+- Build web release concluído; somente o aviso preexistente de fonte Cupertino ausente.
+- Nenhum dado de produção foi criado, alterado ou excluído pelos testes. Não houve migração de banco, alteração de níveis ou de regras de aprovação nesta rodada.
+- Auditoria, cursor de mensagens e atualização de estado em canais continuam pendentes na seção 7.

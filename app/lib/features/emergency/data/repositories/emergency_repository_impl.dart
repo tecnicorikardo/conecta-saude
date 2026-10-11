@@ -1,4 +1,4 @@
-﻿import 'package:dio/dio.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/services/http_service.dart';
 import '../../domain/entities/emergency_entity.dart';
@@ -18,11 +18,17 @@ class EmergencyRepositoryImpl implements EmergencyRepository {
   Future<EmergencyAlertEntity?> getActiveEmergency() async {
     try {
       final response = await _http.get('/emergency/active');
-      final data = response.data['data'];
+      final body = response.data;
+      if (body is! Map ||
+          body['success'] != true ||
+          !body.containsKey('data')) {
+        throw Exception('Resposta inválida ao consultar emergência.');
+      }
+      final data = body['data'];
       if (data == null) return null;
       return EmergencyAlertEntity.fromJson(data as Map<String, dynamic>);
-    } catch (_) {
-      return null;
+    } on DioException catch (e) {
+      throw _handleError(e);
     }
   }
 
@@ -56,7 +62,8 @@ class EmergencyRepositoryImpl implements EmergencyRepository {
       final response = await _http.patch(
         '/emergency/$id/resolve',
         data: {
-          if (observacao != null && observacao.isNotEmpty) 'observacao': observacao,
+          if (observacao != null && observacao.isNotEmpty)
+            'observacao': observacao,
         },
       );
       return response.data['success'] == true;
@@ -71,7 +78,8 @@ class EmergencyRepositoryImpl implements EmergencyRepository {
       final response = await _http.get('/emergency/history');
       final items = response.data['data']?['items'] as List? ?? [];
       return items
-          .map((item) => EmergencyAlertEntity.fromJson(item as Map<String, dynamic>))
+          .map((item) =>
+              EmergencyAlertEntity.fromJson(item as Map<String, dynamic>))
           .toList();
     } catch (_) {
       return [];

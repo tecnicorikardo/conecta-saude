@@ -13,6 +13,7 @@ class FakeReportsRepository extends ReportsRepository {
   FakeReportsRepository() : super(HttpService.instance);
   int calls = 0;
   bool fail = false;
+  String reportId = '1c5017ec-4800-4c54-8ce4-90e44c5a1525';
   Completer<String>? pending;
   @override
   Future<String> createReport(
@@ -26,8 +27,7 @@ class FakeReportsRepository extends ReportsRepository {
     if (fail) {
       throw Exception('A descrição deve ter no máximo 2000 caracteres.');
     }
-    return pending?.future ??
-        Future.value('1c5017ec-4800-4c54-8ce4-90e44c5a1525');
+    return pending?.future ?? Future.value(reportId);
   }
 }
 
@@ -62,6 +62,16 @@ void main() {
     expect(repo.calls, 1);
     expect(find.text('Manifestação Registrada'), findsOneWidget);
     expect(find.textContaining('1C5017EC'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+  testWidgets('protocolo com ID curto não quebra o sucesso', (tester) async {
+    final repo = FakeReportsRepository()..reportId = 'abc';
+    await open(tester, repo);
+    await tester.tap(find.text('Enviar Manifestação'));
+    await tester.pumpAndSettle();
+    expect(find.text('Manifestação Registrada'), findsOneWidget);
+    expect(find.textContaining('-ABC'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });

@@ -17,6 +17,7 @@ import { unitsRouter } from './modules/units/units.routes';
 
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { authenticate } from './middleware/authenticate';
+import { asyncHandler } from './utils/asyncHandler';
 import { getMe } from './modules/auth/auth.controller';
 import { prisma } from './config/database';
 import { getFirebaseAdmin } from './config/firebase';
@@ -103,7 +104,7 @@ export function createApp(): express.Application {
 
   // ─── Rotas da API ─────────────────────────────────────────────────────────
   app.use('/api/auth', authLimiter, authRoutes);
-  app.get('/api/me', authenticate, getMe);
+  app.get('/api/me', authenticate, asyncHandler(getMe));
   app.use('/api/units', unitsRouter);
   app.use('/api/users', usersRoutes);
   app.use('/api/sectors', sectorsRoutes);

@@ -1,3 +1,4 @@
+import { asyncHandler } from '../../utils/asyncHandler';
 import { Router } from 'express';
 import { listUnits, getUnit, createUnit, updateUnit } from './units.controller';
 import { authenticate } from '../../middleware/authenticate';
@@ -5,9 +6,9 @@ import { authenticate } from '../../middleware/authenticate';
 export const unitsRouter = Router();
 
 // Rota pública para seleção no cadastro
-unitsRouter.get('/', listUnits);
-unitsRouter.get('/:id', getUnit);
+unitsRouter.get('/', asyncHandler(listUnits));
+unitsRouter.get('/:id', asyncHandler(getUnit));
 
 // Rotas protegidas (Gestão pela Direção)
-unitsRouter.post('/', authenticate, createUnit);
-unitsRouter.put('/:id', authenticate, updateUnit);
+unitsRouter.post('/', authenticate, asyncHandler(createUnit));
+unitsRouter.put('/:id', authenticate, asyncHandler(updateUnit));
