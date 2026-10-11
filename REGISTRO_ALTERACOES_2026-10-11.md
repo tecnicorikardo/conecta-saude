@@ -266,3 +266,10 @@ Os demais achados do `report.md` permanecem como itens de revisão. As vulnerabi
 - Correção solicitada a partir da captura do modo escuro; publicação somente web. Resultado de análise/build/deploy registrado após conclusão.
 
 - Publicação `0915126` confirmada no Firebase Hosting. Análise do arquivo sem problemas; build web release concluído. JavaScript publicado respondeu HTTP 200 e coincidiu com o build local: SHA-256 `11882f42a670626de7c1617438420f2339733a377b0247ac8f2975513720f08f`. Backend inalterado; não foram enviadas mensagens para testar o estilo.
+
+## 16. Publicação dos comentários adicionados pelo responsável
+
+- Alterações locais encontradas em cinco arquivos: `browser_login_controller.dart`, `browser_login_fields.dart`, `browser_login_fields_stub.dart`, `browser_login_fields_web.dart` e `login_form.dart`, todos em `app/lib/features/auth/presentation/widgets/`.
+- Comparação antes/depois sem linhas de comentários confirmou que o código executável foi preservado. Nenhum comportamento foi modificado nesta entrega.
+- Análise dos widgets de autenticação sem problemas; 119 testes do backend aprovados. Deploys separados solicitados no Render e Firebase Hosting; confirmação registrada após conclusão.
+- Relatório e dois scripts locais não versionados permanecem preservados e fora dos commits.

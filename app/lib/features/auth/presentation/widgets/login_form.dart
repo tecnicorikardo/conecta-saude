@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+// kIsWeb diz se estamos rodando no navegador (true) ou no celular/desktop (false).
+// Ele escolhe qual versão dos campos de login mostrar, mais abaixo neste arquivo.
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -22,6 +24,10 @@ class LoginForm extends ConsumerStatefulWidget {
 }
 
 class _LoginFormState extends ConsumerState<LoginForm> {
+  // "Telefone" de ligação com os campos HTML que aparecem SÓ na web.
+  // O widget browser_login_fields grava a função de sincronizar aqui dentro;
+  // a gente chama .sync() antes de validar/enviar (ver _submit abaixo).
+  // No celular não existe campo HTML, então fica parado e não faz nada.
   final _browserFields = BrowserLoginController();
   final _formKey    = GlobalKey<FormState>();
   final _emailCtrl  = TextEditingController();
@@ -98,6 +104,10 @@ class _LoginFormState extends ConsumerState<LoginForm> {
   }
 
   void _submit() async {
+    // Na web a pessoa digitou nos inputs HTML (não nos campos do Flutter).
+    // Esta linha copia o que está no HTML para os controllers do Flutter,
+    // ANTES de validar — senão a validação veria os campos "vazios".
+    // No celular é uma chamada vazia, sem custo.
     _browserFields.sync();
     if (!_formKey.currentState!.validate()) return;
     FocusScope.of(context).unfocus();
@@ -206,6 +216,11 @@ class _LoginFormState extends ConsumerState<LoginForm> {
             },
           ),
 
+          // Na WEB usamos inputs HTML de verdade por cima do Flutter: o Chrome
+          // só oferece salvar/preencher senha em <input> de formulário real
+          // (bug do próprio Flutter — versão 3.47.2 ainda não corrige).
+          // No CELULAR usamos os campos normais do Flutter, que já têm
+          // autofill nativo e funcionam direito.
           if (kIsWeb)
             browserLoginFields(email: _emailCtrl, password: _passCtrl,
               controller: _browserFields, enabled: !widget.isLoading,
