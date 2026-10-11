@@ -2,6 +2,8 @@
 
 Comunicação institucional para hospitais: conversas, grupos, canais, comunicados e gestão de acesso.
 
+Registro das correções publicadas, arquivos afetados e investigação de regressões: [alterações de 11/10/2026](REGISTRO_ALTERACOES_2026-10-11.md).
+
 ## Estrutura ativa
 
 - app/: Flutter (web e Android), Riverpod, Firebase Auth e FCM.
