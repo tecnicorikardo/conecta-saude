@@ -15,12 +15,15 @@ const createReportSchema = z.object({
     'infraestrutura_risco',
     'fraude_recursos',
     'ofensa',
+    'linguagem_ofensiva',
+    'ameaca_intimidacao',
+    'discriminacao',
     'conteudo_inadequado',
     'comunicacao_impropria',
     'outro',
   ]),
-  titulo: z.string().max(150).optional().nullable(),
-  descricao: z.string().min(5, 'A descrição deve ter no mínimo 5 caracteres.').max(2000),
+  titulo: z.string().trim().max(150, 'O assunto deve ter no máximo 150 caracteres.').optional().nullable(),
+  descricao: z.string().trim().min(5, 'A descrição deve ter no mínimo 5 caracteres.').max(2000, 'A descrição deve ter no máximo 2000 caracteres.'),
   anonimo: z.boolean().default(false),
 });
 

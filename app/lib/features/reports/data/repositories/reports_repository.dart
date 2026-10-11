@@ -155,10 +155,14 @@ class ReportsRepository {
   static ReportCategory _stringToCategory(String m) {
     switch (m) {
       case 'assedio':
+      case 'ameaca_intimidacao':
+      case 'discriminacao':
         return ReportCategory.assedio;
       case 'desvio_conduta':
       case 'comunicacao_impropria':
       case 'comportamento':
+      case 'ofensa':
+      case 'linguagem_ofensiva':
         return ReportCategory.desvioConduta;
       case 'infraestrutura_risco':
         return ReportCategory.infraestruturaRisco;
@@ -195,9 +199,8 @@ class ReportsRepository {
       reportedUserNome: reported?['nome'] as String?,
       resposta: j['resposta'] as String?,
       resolvidoNome: resolvido?['nome'] as String?,
-      criadoEm:
-          DateTime.tryParse(j['criadoEm'] as String? ?? '')?.toLocal() ??
-              DateTime.now(),
+      criadoEm: DateTime.tryParse(j['criadoEm'] as String? ?? '')?.toLocal() ??
+          DateTime.now(),
       resolvidoEm: j['resolvidoEm'] != null
           ? DateTime.tryParse(j['resolvidoEm'] as String)?.toLocal()
           : null,
@@ -205,9 +208,23 @@ class ReportsRepository {
   }
 
   Exception _handleError(DioException e) {
-    final msg = e.response?.data?['error'] as String? ??
-        e.response?.data?['message'] as String?;
+    final body = e.response?.data;
+    final data = body is Map ? body : null;
+    final msg = data?['error'] as String? ?? data?['message'] as String?;
     final status = e.response?.statusCode;
+    if (status == 422) {
+      final details = data?['details'];
+      final messages = details is List
+          ? details
+              .whereType<Map>()
+              .map((item) => item['message'])
+              .whereType<String>()
+              .toList()
+          : <String>[];
+      return Exception(messages.isNotEmpty
+          ? messages.join('\n')
+          : (msg ?? 'Confira os dados da manifestação.'));
+    }
     if (status == 401) return Exception('Sessão expirada.');
     if (status == 403) {
       return Exception(msg ??
@@ -221,4 +238,3 @@ final reportsRepositoryProvider = Provider<ReportsRepository>((ref) {
   final http = ref.watch(httpServiceProvider);
   return ReportsRepository(http);
 });
-

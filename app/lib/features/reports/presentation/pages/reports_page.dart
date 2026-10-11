@@ -439,14 +439,14 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
   }
 
   // ─── Modal de Nova Denúncia ─────────────────────────────────────────────────
-  void _showNewReportModal(
+  Future<void> _showNewReportModal(
     BuildContext context, {
     String? initialReportedUserId,
     String? initialReportedUserName,
     String? initialMessageId,
     String? initialDescription,
-  }) {
-    showModalBottomSheet(
+  }) async {
+    final reportId = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -459,6 +459,74 @@ class _ReportsPageState extends ConsumerState<ReportsPage> {
           ref.invalidate(myReportsProvider);
           ref.invalidate(allReportsProvider(_selectedStatus));
         },
+      ),
+    );
+    if (!context.mounted || reportId == null) return;
+    final protocolNumber =
+        'CS-${DateTime.now().year}-${reportId.substring(0, 8).toUpperCase()}';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.verified_user_rounded, color: AppColors.success),
+            SizedBox(width: 8),
+            Expanded(child: Text('Manifestação Registrada')),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Sua manifestação foi recebida com sucesso pela Ouvidoria / Direção Geral e será tratada sob sigilo institucional.',
+              style: TextStyle(fontSize: 13.5, height: 1.3),
+            ),
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: context.appTokens.primarySoft,
+                borderRadius: BorderRadius.circular(8),
+                border:
+                    Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Número de Protocolo:',
+                    style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.primary),
+                  ),
+                  const SizedBox(height: 4),
+                  SelectableText(
+                    protocolNumber,
+                    style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primary),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Guarde este número para acompanhar o parecer institucional na sua aba de manifestações.',
+              style: TextStyle(
+                  fontSize: 11.5, color: context.appTokens.textSecondary),
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Concluir'),
+          ),
+        ],
       ),
     );
   }
@@ -842,6 +910,7 @@ class _NewReportSheetState extends ConsumerState<_NewReportSheet> {
   String _selectedMotivo = 'assedio';
   bool _isAnonimo = true;
   bool _isSubmitting = false;
+  String? _submissionError;
 
   final _motivos = const [
     {
@@ -907,18 +976,22 @@ class _NewReportSheetState extends ConsumerState<_NewReportSheet> {
 
   Future<void> _submit() async {
     final desc = _descController.text.trim();
-    if (desc.length < 5) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-              'Por favor, detalhe o ocorrido com pelo menos 5 caracteres.'),
-          backgroundColor: AppColors.error,
-        ),
-      );
+    if (desc.length < 5 ||
+        desc.length > 2000 ||
+        _titleController.text.trim().length > 150) {
+      setState(() => _submissionError = desc.length < 5
+          ? 'Detalhe o ocorrido com pelo menos 5 caracteres.'
+          : desc.length > 2000
+              ? 'A descrição deve ter no máximo 2000 caracteres.'
+              : 'O assunto deve ter no máximo 150 caracteres.');
       return;
     }
 
-    setState(() => _isSubmitting = true);
+    if (_isSubmitting) return;
+    setState(() {
+      _isSubmitting = true;
+      _submissionError = null;
+    });
 
     try {
       final reportId = await ref.read(reportsRepositoryProvider).createReport(
@@ -933,86 +1006,15 @@ class _NewReportSheetState extends ConsumerState<_NewReportSheet> {
           );
 
       if (mounted) {
-        Navigator.pop(context);
         widget.onSubmitted();
-
-        final protocolNumber =
-            'CS-${DateTime.now().year}-${reportId.substring(0, 8).toUpperCase()}';
-
-        showDialog(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Row(
-              children: [
-                Icon(Icons.verified_user_rounded, color: AppColors.success),
-                SizedBox(width: 8),
-                Text('Manifestação Registrada'),
-              ],
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Sua manifestação foi recebida com sucesso pela Ouvidoria / Direção Geral e será tratada sob sigilo institucional.',
-                  style: TextStyle(fontSize: 13.5, height: 1.3),
-                ),
-                const SizedBox(height: 14),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: context.appTokens.primarySoft,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                        color: AppColors.primary.withValues(alpha: 0.3)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Número de Protocolo:',
-                        style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primary),
-                      ),
-                      const SizedBox(height: 4),
-                      SelectableText(
-                        protocolNumber,
-                        style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.primary),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Guarde este número para acompanhar o parecer institucional na sua aba de manifestações.',
-                  style: TextStyle(
-                      fontSize: 11.5, color: context.appTokens.textSecondary),
-                ),
-              ],
-            ),
-            actions: [
-              ElevatedButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Concluir'),
-              ),
-            ],
-          ),
-        );
+        Navigator.pop(context, reportId);
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _isSubmitting = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erro ao enviar denúncia: $e'),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        setState(() {
+          _isSubmitting = false;
+          _submissionError = e.toString().replaceFirst('Exception: ', '');
+        });
       }
     }
   }
@@ -1107,6 +1109,7 @@ class _NewReportSheetState extends ConsumerState<_NewReportSheet> {
               controller: _titleController,
               decoration: const InputDecoration(
                 labelText: 'Assunto / Resumo (opcional)',
+                helperText: 'Até 150 caracteres.',
                 hintText: 'Ex: Conduta inadequada no plantão',
               ),
             ),
@@ -1118,6 +1121,7 @@ class _NewReportSheetState extends ConsumerState<_NewReportSheet> {
               maxLines: 4,
               decoration: const InputDecoration(
                 labelText: 'Detalhes da Ocorrência *',
+                helperText: 'Entre 5 e 2000 caracteres.',
                 hintText:
                     'Descreva o que aconteceu, data aproximada, local ou setor e detalhes relevantes...',
                 alignLabelWithHint: true,
@@ -1187,6 +1191,22 @@ class _NewReportSheetState extends ConsumerState<_NewReportSheet> {
             ),
             const SizedBox(height: 20),
 
+            if (_submissionError != null) ...[
+              Semantics(
+                  liveRegion: true,
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: context.appTokens.critical.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: context.appTokens.critical),
+                    ),
+                    child: Text(_submissionError!,
+                        style: TextStyle(color: context.appTokens.critical)),
+                  )),
+              const SizedBox(height: 12),
+            ],
             // Botão Enviar
             SizedBox(
               width: double.infinity,
