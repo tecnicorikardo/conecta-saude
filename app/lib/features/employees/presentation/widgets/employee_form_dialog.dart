@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../auth/domain/entities/user_entity.dart';
@@ -23,6 +23,7 @@ class _EmployeeFormDialogState extends ConsumerState<EmployeeFormDialog> {
   String? _selectedSectorId;
   int _hierarquiaNivel = 4;
   bool _isLoading = false;
+  String? _saveError;
 
   @override
   void initState() {
@@ -54,11 +55,16 @@ class _EmployeeFormDialogState extends ConsumerState<EmployeeFormDialog> {
       return;
     }
 
-    setState(() => _isLoading = true);
+    if (_isLoading) return;
+    setState(() {
+      _isLoading = true;
+      _saveError = null;
+    });
 
     try {
+      UserEntity? saved;
       if (widget.user != null) {
-        await ref.read(employeesProvider.notifier).updateUser(
+        saved = await ref.read(employeesProvider.notifier).updateUser(
               id: widget.user!.id,
               nome: _nomeCtrl.text.trim(),
               cargo: _cargoCtrl.text.trim(),
@@ -66,7 +72,7 @@ class _EmployeeFormDialogState extends ConsumerState<EmployeeFormDialog> {
               setorId: _selectedSectorId!,
             );
       } else {
-        await ref.read(employeesProvider.notifier).createUser(
+        saved = await ref.read(employeesProvider.notifier).createUser(
               nome: _nomeCtrl.text.trim(),
               email: _emailCtrl.text.trim(),
               password: _passCtrl.text.trim(),
@@ -77,16 +83,12 @@ class _EmployeeFormDialogState extends ConsumerState<EmployeeFormDialog> {
       }
 
       if (mounted) {
-        Navigator.of(context).pop();
+        Navigator.of(context).pop(saved);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Erro ao salvar colaborador.'),
-            backgroundColor: AppColors.error,
-          ),
-        );
+        setState(
+            () => _saveError = e.toString().replaceFirst('Exception: ', ''));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -109,7 +111,8 @@ class _EmployeeFormDialogState extends ConsumerState<EmployeeFormDialog> {
               TextFormField(
                 controller: _nomeCtrl,
                 decoration: const InputDecoration(labelText: 'Nome Completo *'),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Informe o nome' : null,
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Informe o nome' : null,
               ),
               const SizedBox(height: 12),
               if (!isEditing) ...[
@@ -117,47 +120,69 @@ class _EmployeeFormDialogState extends ConsumerState<EmployeeFormDialog> {
                   controller: _emailCtrl,
                   decoration: const InputDecoration(labelText: 'E-mail *'),
                   keyboardType: TextInputType.emailAddress,
-                  validator: (v) => (v == null || !v.contains('@')) ? 'E-mail inválido' : null,
+                  validator: (v) => (v == null || !v.contains('@'))
+                      ? 'E-mail inválido'
+                      : null,
                 ),
                 const SizedBox(height: 12),
                 TextFormField(
                   controller: _passCtrl,
-                  decoration: const InputDecoration(labelText: 'Senha inicial *'),
+                  decoration:
+                      const InputDecoration(labelText: 'Senha inicial *'),
                   obscureText: true,
-                  validator: (v) => (v == null || v.length < 6) ? 'Mínimo 6 caracteres' : null,
+                  validator: (v) => (v == null || v.length < 6)
+                      ? 'Mínimo 6 caracteres'
+                      : null,
                 ),
                 const SizedBox(height: 12),
               ],
               TextFormField(
                 controller: _cargoCtrl,
                 decoration: const InputDecoration(labelText: 'Cargo *'),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Informe o cargo' : null,
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Informe o cargo' : null,
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<int>(
-                value: _hierarquiaNivel,
-                decoration: const InputDecoration(labelText: 'Nível Hierárquico *'),
+                initialValue: _hierarquiaNivel,
+                decoration:
+                    const InputDecoration(labelText: 'Nível Hierárquico *'),
                 items: const [
                   DropdownMenuItem(value: 1, child: Text('1 — Direção Geral')),
                   DropdownMenuItem(value: 2, child: Text('2 — Coordenação')),
-                  DropdownMenuItem(value: 3, child: Text('3 — Supervisão')),
+                  DropdownMenuItem(
+                      value: 3, child: Text('3 — Supervisão / Enfermeiro')),
                   DropdownMenuItem(value: 4, child: Text('4 — Funcionário')),
                 ],
-                onChanged: (v) => setState(() => _hierarquiaNivel = v ?? 4),
+                isExpanded: true,
+                onChanged: _isLoading
+                    ? null
+                    : (v) => setState(() => _hierarquiaNivel = v ?? 4),
               ),
               const SizedBox(height: 12),
               sectorsAsync.when(
                 data: (sectors) => DropdownButtonFormField<String>(
-                  value: _selectedSectorId,
-                  decoration: const InputDecoration(labelText: 'Setor / Unidade *'),
+                  initialValue: _selectedSectorId,
+                  isExpanded: true,
+                  decoration:
+                      const InputDecoration(labelText: 'Setor / Unidade *'),
                   items: sectors
-                      .map((s) => DropdownMenuItem(value: s.id, child: Text(s.nome)))
+                      .map((s) =>
+                          DropdownMenuItem(value: s.id, child: Text(s.nome)))
                       .toList(),
                   onChanged: (v) => setState(() => _selectedSectorId = v),
                 ),
                 loading: () => const LinearProgressIndicator(),
                 error: (_, __) => const Text('Erro ao carregar setores'),
               ),
+              if (_saveError != null) ...[
+                const SizedBox(height: 12),
+                Semantics(
+                    liveRegion: true,
+                    child: Text(_saveError!,
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.error))),
+              ],
             ],
           ),
         ),
@@ -177,7 +202,8 @@ class _EmployeeFormDialogState extends ConsumerState<EmployeeFormDialog> {
               ? const SizedBox(
                   width: 18,
                   height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.white),
                 )
               : Text(isEditing ? 'Salvar' : 'Criar'),
         ),

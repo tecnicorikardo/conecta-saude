@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/services/http_service.dart';
+import '../../../../core/auth/permissions_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_avatar.dart';
 import '../../../../core/widgets/hierarchy_badge.dart';
@@ -8,6 +9,7 @@ import '../../../../core/widgets/status_badge.dart';
 import '../../../auth/domain/entities/user_entity.dart';
 import '../../../auth/data/models/user_model.dart';
 import '../providers/employees_provider.dart';
+import '../widgets/employee_form_dialog.dart';
 
 class EmployeeDetailPage extends ConsumerStatefulWidget {
   final String employeeId;
@@ -31,7 +33,8 @@ class _EmployeeDetailPageState extends ConsumerState<EmployeeDetailPage> {
 
   Future<void> _loadUserIfNeeded() async {
     final state = ref.read(employeesProvider);
-    final existing = state.users.where((u) => u.id == widget.employeeId).firstOrNull;
+    final existing =
+        state.users.where((u) => u.id == widget.employeeId).firstOrNull;
     if (existing != null) {
       setState(() => _fetchedUser = existing);
       return;
@@ -43,11 +46,13 @@ class _EmployeeDetailPageState extends ConsumerState<EmployeeDetailPage> {
     });
 
     try {
-      final resp = await HttpService.instance.get('/users/${widget.employeeId}');
+      final resp =
+          await HttpService.instance.get('/users/${widget.employeeId}');
       if (resp.data['success'] == true && resp.data['data'] != null) {
         if (mounted) {
           setState(() {
-            _fetchedUser = UserModel.fromJson(resp.data['data'] as Map<String, dynamic>);
+            _fetchedUser =
+                UserModel.fromJson(resp.data['data'] as Map<String, dynamic>);
             _isLoading = false;
           });
         }
@@ -69,9 +74,23 @@ class _EmployeeDetailPageState extends ConsumerState<EmployeeDetailPage> {
     }
   }
 
+  Future<void> _editEmployee(UserEntity user) async {
+    final updated = await showDialog<UserEntity>(
+      context: context,
+      builder: (_) => EmployeeFormDialog(user: user),
+    );
+    if (!mounted || updated == null) return;
+    setState(() => _fetchedUser = updated);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+          content: Text('Cargo e nível do colaborador atualizados.')),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = _fetchedUser;
+    final canEdit = ref.watch(permissionsProvider).isDirecao;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -79,6 +98,14 @@ class _EmployeeDetailPageState extends ConsumerState<EmployeeDetailPage> {
         title: const Text('Perfil do Profissional'),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
+        actions: [
+          if (canEdit && user != null)
+            IconButton(
+              tooltip: 'Editar cargo e nível',
+              icon: const Icon(Icons.edit_outlined),
+              onPressed: () => _editEmployee(user),
+            ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -87,9 +114,12 @@ class _EmployeeDetailPageState extends ConsumerState<EmployeeDetailPage> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.person_off_outlined, size: 54, color: AppColors.textSecondary),
+                      const Icon(Icons.person_off_outlined,
+                          size: 54, color: AppColors.textSecondary),
                       const SizedBox(height: 12),
-                      Text(_error!, style: const TextStyle(fontSize: 16, color: AppColors.textSecondary)),
+                      Text(_error!,
+                          style: const TextStyle(
+                              fontSize: 16, color: AppColors.textSecondary)),
                       const SizedBox(height: 16),
                       ElevatedButton(
                         onPressed: _loadUserIfNeeded,
@@ -105,6 +135,15 @@ class _EmployeeDetailPageState extends ConsumerState<EmployeeDetailPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+                          if (canEdit) ...[
+                            OutlinedButton.icon(
+                              onPressed: () => _editEmployee(user),
+                              icon: const Icon(Icons.edit_outlined),
+                              label: const Text(
+                                  'Editar colaborador · Cargo e nível'),
+                            ),
+                            const SizedBox(height: 16),
+                          ],
                           // Card Principal
                           Container(
                             padding: const EdgeInsets.all(20),
@@ -152,15 +191,20 @@ class _EmployeeDetailPageState extends ConsumerState<EmployeeDetailPage> {
                                   spacing: 8,
                                   runSpacing: 8,
                                   children: [
-                                    HierarchyBadge(hierarquiaNivel: user.hierarquiaNivel),
+                                    HierarchyBadge(
+                                        hierarquiaNivel: user.hierarquiaNivel),
                                     StatusBadge(ativo: user.ativo),
                                     // Status de Plantão / Jornada em Tempo Real
                                     Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 4),
                                       decoration: BoxDecoration(
-                                        color: user.workStatusColor.withValues(alpha: 0.12),
+                                        color: user.workStatusColor
+                                            .withValues(alpha: 0.12),
                                         borderRadius: BorderRadius.circular(20),
-                                        border: Border.all(color: user.workStatusColor, width: 1),
+                                        border: Border.all(
+                                            color: user.workStatusColor,
+                                            width: 1),
                                       ),
                                       child: Row(
                                         mainAxisSize: MainAxisSize.min,
@@ -223,59 +267,105 @@ class _EmployeeDetailPageState extends ConsumerState<EmployeeDetailPage> {
                                   contentPadding: EdgeInsets.zero,
                                   leading: const CircleAvatar(
                                     backgroundColor: Color(0xFFE3F2FD),
-                                    child: Icon(Icons.work_outline, color: AppColors.primary),
+                                    child: Icon(Icons.work_outline,
+                                        color: AppColors.primary),
                                   ),
-                                  title: const Text('Cargo / Função', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                                  subtitle: Text(user.cargo, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.neutral900)),
+                                  title: const Text('Cargo / Função',
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.textSecondary)),
+                                  subtitle: Text(user.cargo,
+                                      style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.neutral900)),
                                 ),
-                                const Divider(height: 16, color: Color(0xFFF1F5F9)),
+                                const Divider(
+                                    height: 16, color: Color(0xFFF1F5F9)),
                                 ListTile(
                                   contentPadding: EdgeInsets.zero,
                                   leading: const CircleAvatar(
                                     backgroundColor: Color(0xFFE8F5E9),
-                                    child: Icon(Icons.domain_rounded, color: AppColors.success),
+                                    child: Icon(Icons.domain_rounded,
+                                        color: AppColors.success),
                                   ),
-                                  title: const Text('Hospital / Unidade', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                                  title: const Text('Hospital / Unidade',
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.textSecondary)),
                                   subtitle: Text(
-                                    user.unitNome != null && user.unitNome!.isNotEmpty
+                                    user.unitNome != null &&
+                                            user.unitNome!.isNotEmpty
                                         ? '${user.unitNome!}${user.unitSigla != null ? ' (${user.unitSigla!})' : ''}'
                                         : 'Complexo Hospitalar Carioca (Central)',
-                                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.neutral900),
+                                    style: const TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.neutral900),
                                   ),
                                 ),
-                                const Divider(height: 16, color: Color(0xFFF1F5F9)),
+                                const Divider(
+                                    height: 16, color: Color(0xFFF1F5F9)),
                                 ListTile(
                                   contentPadding: EdgeInsets.zero,
                                   leading: const CircleAvatar(
                                     backgroundColor: Color(0xFFEDE7F6),
-                                    child: Icon(Icons.local_hospital_outlined, color: Color(0xFF5E35B1)),
+                                    child: Icon(Icons.local_hospital_outlined,
+                                        color: Color(0xFF5E35B1)),
                                   ),
-                                  title: const Text('Setor de Lotação', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                                  subtitle: Text(user.setorNome, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.neutral900)),
+                                  title: const Text('Setor de Lotação',
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.textSecondary)),
+                                  subtitle: Text(user.setorNome,
+                                      style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.neutral900)),
                                 ),
-                                const Divider(height: 16, color: Color(0xFFF1F5F9)),
+                                const Divider(
+                                    height: 16, color: Color(0xFFF1F5F9)),
                                 ListTile(
                                   contentPadding: EdgeInsets.zero,
                                   leading: const CircleAvatar(
                                     backgroundColor: Color(0xFFE0F2F1),
-                                    child: Icon(Icons.schedule_rounded, color: Color(0xFF00897B)),
+                                    child: Icon(Icons.schedule_rounded,
+                                        color: Color(0xFF00897B)),
                                   ),
-                                  title: const Text('Escala & Horário de Trabalho', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                                  title: const Text(
+                                      'Escala & Horário de Trabalho',
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.textSecondary)),
                                   subtitle: Text(
                                     '${user.jornadaInicio} às ${user.jornadaFim} (${user.jornadaDias.toUpperCase()})',
-                                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.neutral900),
+                                    style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.neutral900),
                                   ),
                                 ),
-                                if (user.matricula != null && user.matricula!.isNotEmpty) ...[
-                                  const Divider(height: 16, color: Color(0xFFF1F5F9)),
+                                if (user.matricula != null &&
+                                    user.matricula!.isNotEmpty) ...[
+                                  const Divider(
+                                      height: 16, color: Color(0xFFF1F5F9)),
                                   ListTile(
                                     contentPadding: EdgeInsets.zero,
                                     leading: const CircleAvatar(
                                       backgroundColor: Color(0xFFFFF3E0),
-                                      child: Icon(Icons.badge_outlined, color: Color(0xFFE65100)),
+                                      child: Icon(Icons.badge_outlined,
+                                          color: Color(0xFFE65100)),
                                     ),
-                                    title: const Text('Matrícula / Registro SUS', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                                    subtitle: Text(user.matricula!, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.neutral900)),
+                                    title: const Text(
+                                        'Matrícula / Registro SUS',
+                                        style: TextStyle(
+                                            fontSize: 12,
+                                            color: AppColors.textSecondary)),
+                                    subtitle: Text(user.matricula!,
+                                        style: const TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.neutral900)),
                                   ),
                                 ],
                               ],
